@@ -4,7 +4,9 @@ export default function MobileBookButton() {
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 md:hidden">
       <a
-        href="#contact"
+        href="https://thelookhairsalon.glossgenius.com/"
+        target="_blank"
+        rel="noopener noreferrer"
         className="flex items-center gap-2 bg-rose hover:bg-rose-light text-white font-body text-sm tracking-widest uppercase px-8 py-3.5 shadow-lg shadow-rose/30 transition-colors"
       >
         <svg

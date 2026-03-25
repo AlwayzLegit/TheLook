@@ -9,17 +9,34 @@ export default function Footer() {
               THE LOOK
             </h3>
             <p className="text-sm leading-relaxed">
-              Premium hair salon in Glendale, CA. Where style meets artistry.
+              Family owned &amp; operated since 11.11.11. Over 25 years in the
+              beauty industry, specializing in men&apos;s, women&apos;s and
+              children&apos;s hair services in Glendale, CA.
             </p>
           </div>
 
           {/* Hours */}
           <div>
-            <h4 className="font-heading text-lg text-white mb-4">Hours</h4>
+            <h4 className="font-heading text-lg text-white mb-4">
+              Salon Hours
+            </h4>
             <div className="text-sm space-y-1">
-              <p>Monday &ndash; Friday: 9:00 AM &ndash; 7:00 PM</p>
-              <p>Saturday: 9:00 AM &ndash; 6:00 PM</p>
-              <p>Sunday: 10:00 AM &ndash; 5:00 PM</p>
+              <div className="flex justify-between">
+                <span>Monday</span>
+                <span>10 AM &ndash; 6 PM</span>
+              </div>
+              <div className="flex justify-between text-white/40">
+                <span>Tuesday</span>
+                <span>CLOSED</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Wednesday &ndash; Saturday</span>
+                <span>10 AM &ndash; 6 PM</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Sunday</span>
+                <span>10 AM &ndash; 5 PM</span>
+              </div>
             </div>
           </div>
 
@@ -27,22 +44,22 @@ export default function Footer() {
           <div>
             <h4 className="font-heading text-lg text-white mb-4">Contact</h4>
             <div className="text-sm space-y-1">
-              <p>919 South Central Avenue</p>
-              <p>Glendale, CA, USA</p>
+              <p>919 South Central Ave Suite #E</p>
+              <p>Glendale, CA 91204</p>
               <p className="mt-2">
                 <a
-                  href="tel:+18185551234"
+                  href="tel:+18186625665"
                   className="hover:text-gold transition-colors"
                 >
-                  (818) 555-1234
+                  (818) 662-5665
                 </a>
               </p>
               <p>
                 <a
-                  href="mailto:info@thelookhairsalonla.com"
+                  href="mailto:thelook_hairsalon@yahoo.com"
                   className="hover:text-gold transition-colors"
                 >
-                  info@thelookhairsalonla.com
+                  thelook_hairsalon@yahoo.com
                 </a>
               </p>
             </div>
@@ -57,7 +74,7 @@ export default function Footer() {
           <div className="flex items-center gap-6">
             {/* Instagram */}
             <a
-              href="https://instagram.com"
+              href="https://www.instagram.com/thelookhairsalon/"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
@@ -69,7 +86,7 @@ export default function Footer() {
             </a>
             {/* Facebook */}
             <a
-              href="https://facebook.com"
+              href="https://www.facebook.com/p/The-Look-Hair-Salon-100046925091028/"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Facebook"
@@ -81,7 +98,7 @@ export default function Footer() {
             </a>
             {/* Yelp */}
             <a
-              href="https://yelp.com"
+              href="https://www.yelp.com/biz/the-look-hair-salon-glendale"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Yelp"

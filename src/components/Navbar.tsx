@@ -25,9 +25,7 @@ export default function Navbar() {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-navy/98 backdrop-blur-md shadow-lg"
-          : "bg-transparent"
+        scrolled ? "bg-navy/98 backdrop-blur-md shadow-lg" : "bg-transparent"
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -50,7 +48,9 @@ export default function Navbar() {
             </a>
           ))}
           <a
-            href="#contact"
+            href="https://thelookhairsalon.glossgenius.com/"
+            target="_blank"
+            rel="noopener noreferrer"
             className="bg-rose hover:bg-rose-light text-white text-sm tracking-widest uppercase px-6 py-2.5 transition-colors font-body"
           >
             Book Now
@@ -109,7 +109,9 @@ export default function Navbar() {
                 </a>
               ))}
               <a
-                href="#contact"
+                href="https://thelookhairsalon.glossgenius.com/"
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={() => setIsOpen(false)}
                 className="bg-rose hover:bg-rose-light text-white text-sm tracking-widest uppercase px-6 py-2.5 text-center transition-colors font-body"
               >

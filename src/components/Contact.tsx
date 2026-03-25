@@ -13,7 +13,9 @@ export default function Contact() {
     service: "",
     message: "",
   });
-  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "submitting" | "success" | "error"
+  >("idle");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -28,7 +30,13 @@ export default function Contact() {
 
       if (res.ok) {
         setStatus("success");
-        setFormData({ name: "", email: "", phone: "", service: "", message: "" });
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          service: "",
+          message: "",
+        });
         setTimeout(() => setStatus("idle"), 5000);
       } else {
         setStatus("error");
@@ -48,9 +56,13 @@ export default function Contact() {
             Get in Touch
           </p>
           <h2 className="font-heading text-4xl md:text-5xl mb-6">
-            Book an Appointment
+            Contact Us
           </h2>
-          <div className="w-16 h-[1px] bg-rose mx-auto" />
+          <div className="w-16 h-[1px] bg-rose mx-auto mb-4" />
+          <p className="text-navy/60 font-body font-light max-w-xl mx-auto">
+            The absolute best way to reach us is by calling the salon directly.
+            We will be glad to assist you with any questions you may have.
+          </p>
         </AnimatedSection>
 
         <div className="grid md:grid-cols-2 gap-16">
@@ -134,12 +146,13 @@ export default function Contact() {
                     className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors"
                   >
                     <option value="">Select a service</option>
-                    <option value="haircut">Haircuts & Styling</option>
-                    <option value="color">Color & Highlights</option>
-                    <option value="blowout">Blowouts</option>
-                    <option value="treatment">Treatments</option>
-                    <option value="bridal">Bridal & Events</option>
+                    <option value="cutting">Cutting</option>
+                    <option value="styling">Styling & Blowout</option>
+                    <option value="color">Color & Perms</option>
+                    <option value="treatment">Hair Treatments</option>
+                    <option value="keratin">Keratin Straightening</option>
                     <option value="extensions">Extensions</option>
+                    <option value="threading">Threading & Waxing</option>
                   </select>
                 </div>
               </div>
@@ -190,55 +203,76 @@ export default function Contact() {
               <div>
                 <h3 className="font-heading text-2xl mb-4">Visit Us</h3>
                 <div className="text-navy/60 font-body font-light space-y-2">
-                  <p>919 South Central Avenue</p>
-                  <p>Glendale, CA, USA</p>
+                  <p>919 South Central Ave Suite #E</p>
+                  <p>Glendale, CA 91204</p>
+                  <p className="text-navy/40 text-sm mt-2">
+                    Free parking lot &amp; free street parking available.
+                  </p>
                 </div>
               </div>
 
               <div>
-                <h3 className="font-heading text-2xl mb-4">Contact</h3>
+                <h3 className="font-heading text-2xl mb-4">
+                  Call or Text Us
+                </h3>
                 <div className="text-navy/60 font-body font-light space-y-2">
                   <p>
                     <a
-                      href="tel:+18185551234"
-                      className="hover:text-rose transition-colors"
+                      href="tel:+18186625665"
+                      className="hover:text-rose transition-colors text-lg"
                     >
-                      (818) 555-1234
+                      (818) 662-5665
                     </a>
                   </p>
                   <p>
                     <a
-                      href="mailto:info@thelookhairsalonla.com"
+                      href="mailto:thelook_hairsalon@yahoo.com"
                       className="hover:text-rose transition-colors"
                     >
-                      info@thelookhairsalonla.com
+                      thelook_hairsalon@yahoo.com
                     </a>
                   </p>
                 </div>
               </div>
 
               <div>
-                <h3 className="font-heading text-2xl mb-4">Hours</h3>
+                <h3 className="font-heading text-2xl mb-4">Salon Hours</h3>
                 <div className="text-navy/60 font-body font-light space-y-2">
                   <div className="flex justify-between">
-                    <span>Monday &ndash; Friday</span>
-                    <span>9:00 AM &ndash; 7:00 PM</span>
+                    <span>Monday</span>
+                    <span>10 AM &ndash; 6 PM</span>
+                  </div>
+                  <div className="flex justify-between text-navy/30">
+                    <span>Tuesday</span>
+                    <span>CLOSED</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Wednesday</span>
+                    <span>10 AM &ndash; 6 PM</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Thursday</span>
+                    <span>10 AM &ndash; 6 PM</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Friday</span>
+                    <span>10 AM &ndash; 6 PM</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Saturday</span>
-                    <span>9:00 AM &ndash; 6:00 PM</span>
+                    <span>10 AM &ndash; 6 PM</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Sunday</span>
-                    <span>10:00 AM &ndash; 5:00 PM</span>
+                    <span>10 AM &ndash; 5 PM</span>
                   </div>
                 </div>
               </div>
 
-              {/* Google Maps Embed - no API key needed */}
+              {/* Google Maps Embed */}
               <div className="aspect-video overflow-hidden">
                 <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3301.8!2d-118.2553!3d34.1425!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80c2c0a4a4a4a4a5%3A0x0!2s919+S+Central+Ave%2C+Glendale%2C+CA!5e0!3m2!1sen!2sus!4v1"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3301.8!2d-118.2553!3d34.1425!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80c2c0a4a4a4a4a5%3A0x0!2s919+S+Central+Ave%2C+Glendale%2C+CA+91204!5e0!3m2!1sen!2sus!4v1"
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}

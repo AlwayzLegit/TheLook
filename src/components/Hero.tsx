@@ -22,7 +22,7 @@ export default function Hero() {
       <motion.div className="absolute inset-0" style={{ y }}>
         <Image
           src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1920&q=80"
-          alt="Hair salon interior"
+          alt="The Look Hair Salon"
           fill
           className="object-cover scale-110"
           priority
@@ -67,8 +67,9 @@ export default function Hero() {
           transition={{ duration: 0.8, delay: 0.8 }}
           className="text-white/70 text-lg md:text-xl font-body font-light max-w-2xl mx-auto mb-10 leading-relaxed"
         >
-          Where style meets artistry. Premium hair salon in Glendale, California
-          &mdash; delivering exceptional cuts, color, and styling since day one.
+          Family owned &amp; operated since 2011. Over 25 years in the beauty
+          industry &mdash; specializing in cutting, coloring, balayage, ombr&eacute;,
+          highlights, extensions &amp; styling in Glendale, CA.
         </motion.p>
 
         <motion.div
@@ -78,16 +79,18 @@ export default function Hero() {
           className="flex flex-col sm:flex-row gap-4 justify-center"
         >
           <a
-            href="#contact"
+            href="https://thelookhairsalon.glossgenius.com/"
+            target="_blank"
+            rel="noopener noreferrer"
             className="bg-rose hover:bg-rose-light text-white tracking-widest uppercase text-sm px-10 py-4 transition-colors font-body"
           >
-            Book Appointment
+            Book Online
           </a>
           <a
-            href="#services"
+            href="tel:+18186625665"
             className="border border-white/30 hover:border-gold hover:text-gold text-white tracking-widest uppercase text-sm px-10 py-4 transition-colors font-body"
           >
-            Our Services
+            Call (818) 662-5665
           </a>
         </motion.div>
       </div>

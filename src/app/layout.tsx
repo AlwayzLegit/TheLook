@@ -2,14 +2,27 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "The Look Hair Salon | Glendale, CA",
+  title: "The Look Hair Salon | Beauty Hair Salon | Glendale, CA",
   description:
-    "Premium hair salon in Glendale, CA offering cuts, color, styling, and treatments. Book your appointment today.",
-  keywords: ["hair salon", "Glendale", "CA", "haircut", "color", "styling", "balayage", "bridal hair"],
+    "Family owned & operated since 2011. Over 25 years in the beauty industry — specializing in cutting, coloring, balayage, ombré, highlights, extensions & styling in Glendale, CA.",
+  keywords: [
+    "hair salon",
+    "Glendale",
+    "CA",
+    "haircut",
+    "color",
+    "balayage",
+    "ombre",
+    "highlights",
+    "extensions",
+    "styling",
+    "keratin",
+    "The Look Hair Salon",
+  ],
   openGraph: {
     title: "The Look Hair Salon | Glendale, CA",
     description:
-      "Premium hair salon in Glendale, CA offering cuts, color, styling, and treatments.",
+      "Family owned & operated since 2011. Highest quality hair salon services in Glendale at unbeatable prices.",
     type: "website",
     locale: "en_US",
     siteName: "The Look Hair Salon",
@@ -25,13 +38,13 @@ const jsonLd = {
   "@type": "HairSalon",
   name: "The Look Hair Salon",
   description:
-    "Premium hair salon in Glendale, CA offering cuts, color, styling, and treatments.",
+    "Family owned & operated since 2011. Over 25 years in the beauty industry — highest quality hair salon services in Glendale at unbeatable prices.",
   url: "https://www.thelookhairsalonla.com",
-  telephone: "+18185551234",
-  email: "info@thelookhairsalonla.com",
+  telephone: "+18186625665",
+  email: "thelook_hairsalon@yahoo.com",
   address: {
     "@type": "PostalAddress",
-    streetAddress: "919 South Central Avenue",
+    streetAddress: "919 South Central Ave Suite #E",
     addressLocality: "Glendale",
     addressRegion: "CA",
     postalCode: "91204",
@@ -45,14 +58,14 @@ const jsonLd = {
   openingHoursSpecification: [
     {
       "@type": "OpeningHoursSpecification",
-      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-      opens: "09:00",
-      closes: "19:00",
+      dayOfWeek: "Monday",
+      opens: "10:00",
+      closes: "18:00",
     },
     {
       "@type": "OpeningHoursSpecification",
-      dayOfWeek: "Saturday",
-      opens: "09:00",
+      dayOfWeek: ["Wednesday", "Thursday", "Friday", "Saturday"],
+      opens: "10:00",
       closes: "18:00",
     },
     {
@@ -62,16 +75,20 @@ const jsonLd = {
       closes: "17:00",
     },
   ],
-  priceRange: "$$",
-  image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1200&q=80",
+  priceRange: "$",
+  image:
+    "https://static.wixstatic.com/media/a9fd8e_2ac664f289754ce8b9da8e22f42ba358~mv2.jpg",
   sameAs: [
     "https://www.instagram.com/thelookhairsalon/",
-    "https://www.facebook.com/thelookhairsalon",
+    "https://www.facebook.com/p/The-Look-Hair-Salon-100046925091028/",
+    "https://www.yelp.com/biz/the-look-hair-salon-glendale",
   ],
+  foundingDate: "2011-11-11",
   aggregateRating: {
     "@type": "AggregateRating",
-    ratingValue: "4.9",
-    reviewCount: "127",
+    ratingValue: "4.2",
+    reviewCount: "830",
+    bestRating: "5",
   },
 };
 

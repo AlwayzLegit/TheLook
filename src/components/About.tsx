@@ -12,8 +12,8 @@ export default function About() {
           <AnimatedSection>
             <div className="aspect-[4/5] relative overflow-hidden">
               <Image
-                src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&q=80"
-                alt="Salon interior with styling chairs"
+                src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&q=80"
+                alt="The Look Hair Salon interior"
                 fill
                 className="object-cover"
               />
@@ -29,38 +29,40 @@ export default function About() {
               Our Story
             </p>
             <h2 className="font-heading text-4xl md:text-5xl mb-6">
-              A Passion for Beauty
+              Since 11.11.11
             </h2>
             <div className="w-16 h-[1px] bg-rose mb-8" />
             <p className="text-navy/70 font-body font-light leading-relaxed mb-6">
-              At The Look Hair Salon, we believe that great hair has the power to
-              transform not just your appearance, but your confidence. Located in
-              the heart of Glendale, California, our salon is a sanctuary where
-              artistry meets expertise.
+              Since 2011, The Look Hair Salon has grown to be one of the most
+              prominent spots in Glendale, guaranteeing quality and
+              professionalism to all of our customers. Over the years, we&apos;ve
+              been committed to making our devoted customers look stunning and
+              feel their best.
             </p>
             <p className="text-navy/70 font-body font-light leading-relaxed mb-8">
-              Our team of experienced stylists brings years of training and a
-              genuine love for the craft. From precision cuts to vibrant color
-              transformations, we are dedicated to helping you look and feel your
-              absolute best.
+              Family owned &amp; operated with over 25 years in the beauty
+              industry, we specialize in men&apos;s, women&apos;s and
+              children&apos;s hair cutting, coloring, balayage, ombr&eacute;,
+              highlights, hair extensions and styling. At The Look, we offer the
+              highest quality hair salon services at unbeatable prices.
             </p>
             <div className="grid grid-cols-3 gap-6">
               <div className="text-center">
-                <p className="font-heading text-3xl text-rose">10+</p>
+                <p className="font-heading text-3xl text-rose">25+</p>
                 <p className="text-navy/50 text-sm mt-1 font-body">
-                  Years Experience
+                  Years in Beauty
                 </p>
               </div>
               <div className="text-center">
-                <p className="font-heading text-3xl text-rose">5K+</p>
+                <p className="font-heading text-3xl text-rose">830+</p>
                 <p className="text-navy/50 text-sm mt-1 font-body">
-                  Happy Clients
+                  Yelp Reviews
                 </p>
               </div>
               <div className="text-center">
-                <p className="font-heading text-3xl text-rose">15+</p>
+                <p className="font-heading text-3xl text-rose">4.2</p>
                 <p className="text-navy/50 text-sm mt-1 font-body">
-                  Expert Stylists
+                  Star Rating
                 </p>
               </div>
             </div>
