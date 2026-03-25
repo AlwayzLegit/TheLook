@@ -51,14 +51,12 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          <a
-            href="https://thelookhairsalon.glossgenius.com/"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/book"
             className="bg-rose hover:bg-rose-light text-white text-sm tracking-widest uppercase px-6 py-2.5 transition-colors font-body"
           >
             Book Now
-          </a>
+          </Link>
         </div>
 
         {/* Mobile hamburger */}
@@ -97,15 +95,13 @@ export default function Navbar() {
                   {link.label}
                 </Link>
               ))}
-              <a
-                href="https://thelookhairsalon.glossgenius.com/"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/book"
                 onClick={() => setIsOpen(false)}
                 className="bg-rose hover:bg-rose-light text-white text-sm tracking-widest uppercase px-6 py-2.5 text-center transition-colors font-body"
               >
                 Book Now
-              </a>
+              </Link>
             </div>
           </motion.div>
         )}

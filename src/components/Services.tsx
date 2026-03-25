@@ -106,9 +106,7 @@ export default function Services() {
 
         <AnimatedSection className="text-center mb-16">
           <a
-            href="https://thelookhairsalon.glossgenius.com/"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/book"
             className="inline-block bg-rose hover:bg-rose-light text-white tracking-widest uppercase text-sm px-10 py-4 transition-colors font-body"
           >
             Book Online

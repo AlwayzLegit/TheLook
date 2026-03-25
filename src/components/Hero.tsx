@@ -82,9 +82,7 @@ export default function Hero() {
           className="flex flex-col sm:flex-row gap-4 justify-center"
         >
           <a
-            href="https://thelookhairsalon.glossgenius.com/"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/book"
             className="bg-rose hover:bg-rose-light text-white tracking-widest uppercase text-sm px-10 py-4 transition-colors font-body"
           >
             Book Online
