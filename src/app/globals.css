@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-navy: #282936;
+  --color-navy-light: #3a3b4a;
+  --color-rose: #c2274b;
+  --color-rose-light: #d4456a;
+  --color-cream: #faf8f5;
+  --color-gold: #c9a96e;
+  --color-gold-light: #d4ba85;
+  --font-heading: "Forum", Georgia, serif;
+  --font-body: "Lato", Arial, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-navy);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
