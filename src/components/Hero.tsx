@@ -1,15 +1,25 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 
 export default function Hero() {
   return (
     <section
       id="home"
-      className="relative min-h-screen flex items-center justify-center bg-navy overflow-hidden"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
-      {/* Background gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-navy via-navy/90 to-navy" />
+      {/* Background image */}
+      <Image
+        src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1920&q=80"
+        alt="Hair salon interior"
+        fill
+        className="object-cover"
+        priority
+      />
+
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-navy/70" />
 
       {/* Decorative accent */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-rose/5 rounded-full blur-3xl" />

@@ -3,6 +3,8 @@
 import { useState, FormEvent } from "react";
 import AnimatedSection from "./AnimatedSection";
 
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/YOUR_FORM_ID";
+
 export default function Contact() {
   const [formData, setFormData] = useState({
     name: "",
@@ -11,15 +13,31 @@ export default function Contact() {
     service: "",
     message: "",
   });
-  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // TODO: Integrate with email service (e.g. Resend, Formspree)
-    console.log("Form submitted:", formData);
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 5000);
-    setFormData({ name: "", email: "", phone: "", service: "", message: "" });
+    setStatus("submitting");
+
+    try {
+      const res = await fetch(FORMSPREE_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (res.ok) {
+        setStatus("success");
+        setFormData({ name: "", email: "", phone: "", service: "", message: "" });
+        setTimeout(() => setStatus("idle"), 5000);
+      } else {
+        setStatus("error");
+        setTimeout(() => setStatus("idle"), 5000);
+      }
+    } catch {
+      setStatus("error");
+      setTimeout(() => setStatus("idle"), 5000);
+    }
   };
 
   return (
@@ -49,6 +67,7 @@ export default function Contact() {
                   </label>
                   <input
                     id="name"
+                    name="name"
                     type="text"
                     required
                     value={formData.name}
@@ -67,6 +86,7 @@ export default function Contact() {
                   </label>
                   <input
                     id="email"
+                    name="email"
                     type="email"
                     required
                     value={formData.email}
@@ -88,6 +108,7 @@ export default function Contact() {
                   </label>
                   <input
                     id="phone"
+                    name="phone"
                     type="tel"
                     value={formData.phone}
                     onChange={(e) =>
@@ -105,6 +126,7 @@ export default function Contact() {
                   </label>
                   <select
                     id="service"
+                    name="service"
                     value={formData.service}
                     onChange={(e) =>
                       setFormData({ ...formData, service: e.target.value })
@@ -131,6 +153,7 @@ export default function Contact() {
                 </label>
                 <textarea
                   id="message"
+                  name="message"
                   rows={4}
                   value={formData.message}
                   onChange={(e) =>
@@ -142,14 +165,20 @@ export default function Contact() {
 
               <button
                 type="submit"
-                className="bg-rose hover:bg-rose-light text-white tracking-widest uppercase text-sm px-10 py-4 transition-colors font-body w-full sm:w-auto"
+                disabled={status === "submitting"}
+                className="bg-rose hover:bg-rose-light disabled:opacity-60 text-white tracking-widest uppercase text-sm px-10 py-4 transition-colors font-body w-full sm:w-auto"
               >
-                Send Message
+                {status === "submitting" ? "Sending..." : "Send Message"}
               </button>
 
-              {submitted && (
+              {status === "success" && (
                 <p className="text-green-600 text-sm font-body">
                   Thank you! We&apos;ll get back to you shortly.
+                </p>
+              )}
+              {status === "error" && (
+                <p className="text-red-600 text-sm font-body">
+                  Something went wrong. Please try again or call us directly.
                 </p>
               )}
             </form>
@@ -206,31 +235,18 @@ export default function Contact() {
                 </div>
               </div>
 
-              {/* Map placeholder */}
-              <div className="aspect-video bg-navy/5 flex items-center justify-center">
-                <div className="text-center text-navy/30">
-                  <svg
-                    className="w-10 h-10 mx-auto mb-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1}
-                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1}
-                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                  <p className="text-sm">Google Maps Embed</p>
-                  <p className="text-xs mt-1">Add your API key to enable</p>
-                </div>
+              {/* Google Maps Embed - no API key needed */}
+              <div className="aspect-video overflow-hidden">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3301.8!2d-118.2553!3d34.1425!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80c2c0a4a4a4a4a5%3A0x0!2s919+S+Central+Ave%2C+Glendale%2C+CA!5e0!3m2!1sen!2sus!4v1"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="The Look Hair Salon location"
+                />
               </div>
             </div>
           </AnimatedSection>
