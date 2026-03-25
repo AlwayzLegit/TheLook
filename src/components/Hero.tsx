@@ -1,22 +1,33 @@
 "use client";
 
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { useRef } from "react";
 
 export default function Hero() {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  });
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
+
   return (
     <section
+      ref={ref}
       id="home"
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
-      {/* Background image */}
-      <Image
-        src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1920&q=80"
-        alt="Hair salon interior"
-        fill
-        className="object-cover"
-        priority
-      />
+      {/* Parallax background image */}
+      <motion.div className="absolute inset-0" style={{ y }}>
+        <Image
+          src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1920&q=80"
+          alt="Hair salon interior"
+          fill
+          className="object-cover scale-110"
+          priority
+        />
+      </motion.div>
 
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-navy/70" />
