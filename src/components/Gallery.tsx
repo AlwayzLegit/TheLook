@@ -7,40 +7,76 @@ import AnimatedSection from "./AnimatedSection";
 
 const galleryItems = [
   {
-    title: "Balayage Blonde",
+    title: "Balayage Transformation",
     category: "Color",
     image:
-      "https://images.unsplash.com/photo-1605497788044-5a32c7078486?w=600&q=80",
+      "https://static.wixstatic.com/media/a9fd8e_0f182f499970493b97f1ac76c0735b60~mv2.jpg",
   },
   {
-    title: "Precision Bob",
+    title: "Precision Cut & Style",
     category: "Cut",
     image:
-      "https://images.unsplash.com/photo-1492106087820-71f1a00d2b11?w=600&q=80",
+      "https://static.wixstatic.com/media/a9fd8e_17dc9433a42d4651a952f4d26882c1fe~mv2.jpg",
   },
   {
-    title: "Bridal Updo",
-    category: "Styling",
-    image:
-      "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=600&q=80",
-  },
-  {
-    title: "Vivid Red",
+    title: "Color & Highlights",
     category: "Color",
     image:
-      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80",
+      "https://static.wixstatic.com/media/a9fd8e_20d9fb7db18f45e681bbd4b80bdf0351~mv2.jpg",
+  },
+  {
+    title: "Blonde Highlights",
+    category: "Color",
+    image:
+      "https://static.wixstatic.com/media/a9fd8e_2280997f75c544778712454cf2982b4c~mv2.jpg",
+  },
+  {
+    title: "Hair Styling",
+    category: "Styling",
+    image:
+      "https://static.wixstatic.com/media/a9fd8e_2d18fb987e1f48769e9586d284ade3d0~mv2.jpg",
+  },
+  {
+    title: "Vivid Color",
+    category: "Color",
+    image:
+      "https://static.wixstatic.com/media/a9fd8e_40a3f01e86f1470bab36d6af5c75621f~mv2.jpg",
   },
   {
     title: "Textured Layers",
     category: "Cut",
     image:
-      "https://images.unsplash.com/photo-1634449571010-02389ed0f9b0?w=600&q=80",
+      "https://static.wixstatic.com/media/a9fd8e_4e9abb55233149d1ad610fb784699384~mv2.jpg",
   },
   {
-    title: "Curly Blowout",
+    title: "Ombré",
+    category: "Color",
+    image:
+      "https://static.wixstatic.com/media/a9fd8e_4f201e2c6b95417fbf5f34ad08fb51ec~mv2.jpg",
+  },
+  {
+    title: "Full Color",
+    category: "Color",
+    image:
+      "https://static.wixstatic.com/media/a9fd8e_51782bbf410e4b0082145d57e28e847e~mv2.jpg",
+  },
+  {
+    title: "Blowout & Style",
     category: "Styling",
     image:
-      "https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=600&q=80",
+      "https://static.wixstatic.com/media/a9fd8e_544c70b7aa7d4cac99491857c424b40f~mv2.jpg",
+  },
+  {
+    title: "Color Correction",
+    category: "Color",
+    image:
+      "https://static.wixstatic.com/media/a9fd8e_935580c03b0b41609202546741261bb9~mv2.jpg",
+  },
+  {
+    title: "Cut & Color",
+    category: "Color",
+    image:
+      "https://static.wixstatic.com/media/a9fd8e_94055c7041bf46a892a76ac8a99e5bd1~mv2.jpg",
   },
 ];
 
@@ -68,15 +104,18 @@ export default function Gallery() {
       <div className="max-w-7xl mx-auto px-6">
         <AnimatedSection className="text-center mb-16">
           <p className="text-gold tracking-[0.3em] uppercase text-sm mb-4 font-body">
-            Our Work
+            A Glimpse of Our Work
           </p>
           <h2 className="font-heading text-4xl md:text-5xl mb-6">Gallery</h2>
-          <div className="w-16 h-[1px] bg-rose mx-auto" />
+          <div className="w-16 h-[1px] bg-rose mx-auto mb-4" />
+          <p className="text-navy/60 font-body font-light">
+            Check out our Instagram for the most recent transformations
+          </p>
         </AnimatedSection>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {galleryItems.map((item, index) => (
-            <AnimatedSection key={item.title} delay={index * 0.1}>
+            <AnimatedSection key={index} delay={index * 0.05}>
               <button
                 onClick={() => setLightboxIndex(index)}
                 className="group relative aspect-square overflow-hidden cursor-pointer w-full"
@@ -133,52 +172,26 @@ export default function Gallery() {
             className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
             onClick={closeLightbox}
           >
-            {/* Close button */}
             <button
               onClick={closeLightbox}
               aria-label="Close lightbox"
               className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-10"
             >
-              <svg
-                className="w-8 h-8"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
-            {/* Prev */}
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                goPrev();
-              }}
+              onClick={(e) => { e.stopPropagation(); goPrev(); }}
               aria-label="Previous image"
               className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors z-10"
             >
-              <svg
-                className="w-10 h-10"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M15 19l-7-7 7-7"
-                />
+              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
 
-            {/* Image */}
             <motion.div
               key={lightboxIndex}
               initial={{ scale: 0.9, opacity: 0 }}
@@ -189,10 +202,7 @@ export default function Gallery() {
               onClick={(e) => e.stopPropagation()}
             >
               <Image
-                src={galleryItems[lightboxIndex].image.replace(
-                  "w=600",
-                  "w=1200"
-                )}
+                src={galleryItems[lightboxIndex].image}
                 alt={galleryItems[lightboxIndex].title}
                 fill
                 className="object-contain"
@@ -207,31 +217,16 @@ export default function Gallery() {
               </div>
             </motion.div>
 
-            {/* Next */}
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                goNext();
-              }}
+              onClick={(e) => { e.stopPropagation(); goNext(); }}
               aria-label="Next image"
               className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors z-10"
             >
-              <svg
-                className="w-10 h-10"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M9 5l7 7-7 7"
-                />
+              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
               </svg>
             </button>
 
-            {/* Counter */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/50 text-sm font-body">
               {lightboxIndex + 1} / {galleryItems.length}
             </div>

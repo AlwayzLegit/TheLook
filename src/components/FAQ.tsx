@@ -13,7 +13,7 @@ const faqs = [
   {
     question: "What is your cancellation policy?",
     answer:
-      "We kindly ask for at least 24 hours notice for cancellations or rescheduling. Late cancellations or no-shows may be subject to a cancellation fee of 50% of the service price.",
+      "We require at least 24 hours notice for cancellations or rescheduling. No-shows or cancellations within 24 hours are subject to a 25% cancellation fee. A $50 deposit is required for select color and styling services.",
   },
   {
     question: "How should I prepare for a color appointment?",
@@ -33,7 +33,7 @@ const faqs = [
   {
     question: "Is parking available?",
     answer:
-      "Yes, there is free street parking available along South Central Avenue and in the adjacent lot behind our building. The area is easily accessible from the 134 and 2 freeways.",
+      "Yes! We offer a free parking lot right at the salon for our customers, plus free street parking is available on South Central Avenue. We're easily accessible from the 134 and 2 freeways.",
   },
   {
     question: "Do you offer gift cards?",

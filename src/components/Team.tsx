@@ -5,32 +5,28 @@ import AnimatedSection from "./AnimatedSection";
 
 const team = [
   {
-    name: "Lilit Hovhannisyan",
-    role: "Founder & Master Stylist",
-    bio: "With over 15 years in the industry, Lilit founded The Look to bring high-end salon artistry to Glendale. She specializes in precision cuts and color corrections.",
-    image: "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=500&q=80",
-    specialties: ["Precision Cuts", "Color Correction", "Bridal"],
+    name: "Armen P.",
+    role: "Stylist — 17+ Years Experience",
+    bio: "Trained in Moscow, Armen brings world-class expertise in coloring, cutting & styling. He's great at barber fades and works with both men's & women's hair. Fluent in Russian, Armenian & English.",
+    image:
+      "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=500&q=80",
+    specialties: ["Coloring", "Barber Fades", "Cutting"],
   },
   {
-    name: "Anna Petrosyan",
-    role: "Senior Colorist",
-    bio: "Anna is our balayage and highlight specialist. Trained in Paris, she brings a European flair to every color transformation she creates.",
-    image: "https://images.unsplash.com/photo-1595959183082-7b570b7e1e21?w=500&q=80",
-    specialties: ["Balayage", "Highlights", "Vivid Color"],
+    name: "Kristina G.",
+    role: "Stylist — 15 Years Experience",
+    bio: "Trained in Armenia, Kristina has 15 years of expertise in cutting & coloring for both men's & women's hair. Fluent in Armenian, Russian & English.",
+    image:
+      "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=500&q=80",
+    specialties: ["Cutting", "Coloring", "Men & Women"],
   },
   {
-    name: "Tatevik Sargsyan",
-    role: "Stylist & Extensions Specialist",
-    bio: "Tatevik is passionate about creating volume and length. She's certified in multiple extension methods and loves dramatic transformations.",
-    image: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=500&q=80",
-    specialties: ["Extensions", "Styling", "Blowouts"],
-  },
-  {
-    name: "Nare Grigoryan",
-    role: "Stylist & Treatment Expert",
-    bio: "Nare focuses on hair health. From keratin treatments to deep conditioning, she helps clients restore and maintain beautiful, healthy hair.",
-    image: "https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=500&q=80",
-    specialties: ["Keratin", "Treatments", "Cuts"],
+    name: "Alisa (Liz) H.",
+    role: "Stylist — 30+ Years Experience",
+    bio: "With over 30 years in the industry, Alisa specializes in cutting & coloring for men's & women's hair. A true veteran of the craft. Fluent in English & Armenian.",
+    image:
+      "https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=500&q=80",
+    specialties: ["Cutting", "Coloring", "30+ Years"],
   },
 ];
 
@@ -46,12 +42,12 @@ export default function Team() {
           <div className="w-16 h-[1px] bg-rose mx-auto" />
         </AnimatedSection>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-12 max-w-5xl mx-auto">
           {team.map((member, index) => (
             <AnimatedSection key={member.name} delay={index * 0.1}>
               <div className="group text-center">
                 {/* Photo */}
-                <div className="relative w-48 h-48 mx-auto mb-6 rounded-full overflow-hidden">
+                <div className="relative w-52 h-52 mx-auto mb-6 rounded-full overflow-hidden">
                   <Image
                     src={member.image}
                     alt={member.name}
@@ -83,6 +79,17 @@ export default function Team() {
             </AnimatedSection>
           ))}
         </div>
+
+        <AnimatedSection className="text-center mt-12">
+          <a
+            href="https://thelookhairsalon.glossgenius.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block bg-rose hover:bg-rose-light text-white tracking-widest uppercase text-sm px-10 py-4 transition-colors font-body"
+          >
+            Book Your Stylist
+          </a>
+        </AnimatedSection>
       </div>
     </section>
   );
