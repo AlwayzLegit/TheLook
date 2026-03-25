@@ -8,22 +8,19 @@ export default function About() {
     <section id="about" className="py-24 md:py-32 bg-cream">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid md:grid-cols-2 gap-16 items-center">
-          {/* Image */}
           <AnimatedSection>
             <div className="aspect-[4/5] relative overflow-hidden">
               <Image
-                src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&q=80"
+                src="/images/hero/salon-main.jpg"
                 alt="The Look Hair Salon interior"
                 fill
                 className="object-cover"
               />
-              {/* Gold accent corners */}
               <div className="absolute top-0 right-0 w-24 h-24 border-t-2 border-r-2 border-gold" />
               <div className="absolute bottom-0 left-0 w-24 h-24 border-b-2 border-l-2 border-gold" />
             </div>
           </AnimatedSection>
 
-          {/* Content */}
           <AnimatedSection delay={0.2}>
             <p className="text-gold tracking-[0.3em] uppercase text-sm mb-4 font-body">
               Our Story
