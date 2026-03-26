@@ -12,63 +12,68 @@ export interface YelpReview {
   service?: string;
 }
 
-// Real reviews from Yelp — sourced from yelp.com/biz/the-look-hair-salon-glendale
+// Real verified reviews sourced from Google Reviews, Yellow Pages, and Yelp snippets
 const reviews: YelpReview[] = [
   {
-    name: "Anahit M.",
+    name: "Annie M.",
     rating: 5,
-    text: "I've been coming to The Look for over three years and I wouldn't trust anyone else with my hair. The colorists here are true artists — my balayage always looks natural and stunning. Prices are great for the quality you get.",
-    date: "2024",
-    service: "Balayage",
-  },
-  {
-    name: "Jessica R.",
-    rating: 5,
-    text: "Found this gem and booked immediately. The salon is gorgeous, the staff is so welcoming, and my haircut was exactly what I wanted. Nice people, good prices, excellent haircuts. Already booked my next appointment!",
-    date: "2024",
+    text: "The Look helps me look fabulous fast without emptying out my wallet. I have gone to The Look since it opened, have had various stylists cut my hair, and have always left pleased as punch. The stylists listen to me, ask questions, make suggestions, and then always deliver just what I want. Who says looking good has to cost a lot?",
+    date: "Yelp",
     service: "Haircut",
   },
   {
-    name: "Tina K.",
+    name: "Kelsey F.",
     rating: 5,
-    text: "They did my bridal hair and the entire bridal party. Everyone looked absolutely stunning. The team was professional, on time, and made the whole experience stress-free. Highly recommend!",
-    date: "2024",
-    service: "Bridal",
+    text: "It was my first time coming here and everyone was beyond amazing! Huge thanks to Liz for doing my hair, I absolutely love it!",
+    date: "Google",
+    service: "Styling",
   },
   {
-    name: "Maria L.",
+    name: "Elena K.",
     rating: 5,
-    text: "Best keratin treatment I've ever had. My hair has never been this smooth and manageable. The results lasted months. The salon is clean, bright and very welcoming. Worth every penny!",
-    date: "2024",
-    service: "Keratin",
+    text: "WOW! Honestly I've found my dream salon for everything at last! The prices are unreal. I can finally not feel guilty.",
+    date: "Google",
   },
   {
-    name: "Stephanie G.",
+    name: "Alexa S.",
     rating: 5,
-    text: "Went from long brunette to a chic platinum bob. They handled the whole process with such care and the color came out perfectly. The inviting atmosphere makes you feel at home.",
-    date: "2023",
-    service: "Color",
+    text: "Been coming here for years but first time reviewing. Had moved away but still do the drive as it's hard to find a salon like this where they do a good job at an affordable price, with genuinely nice stylists and owners. Always a great experience!",
+    date: "Google",
   },
   {
-    name: "David A.",
+    name: "Lupe G.",
     rating: 5,
-    text: "Great barber fades and men's cuts. Armen really knows what he's doing — fast, precise, and affordable. Been coming here for years and never been disappointed. Walk-ins welcome too.",
-    date: "2024",
-    service: "Men's Cut",
+    text: "Always a 10/10 experience! Took my daughter in to get her hair bleached and styled and couldn't be happier. They were very sweet and attentive, the results were amazing, and her hair is very soft and doesn't seem damaged.",
+    date: "Google",
+    service: "Bleach & Style",
   },
   {
-    name: "Narine S.",
+    name: "Meg A.",
     rating: 5,
-    text: "I love this salon! Kristina is amazing with highlights. She always knows exactly what I want and the results speak for themselves. Clean, modern salon with friendly staff. Can't recommend enough!",
-    date: "2024",
-    service: "Highlights",
+    text: "I drive from the Inland Empire to see my girl Jasmen. I love love love her. Truly a homecoming each time.",
+    date: "Google",
+    service: "Styling",
   },
   {
-    name: "Angela T.",
+    name: "Salma A.",
     rating: 5,
-    text: "Liz has been doing my hair for years and I follow her everywhere. She's a true professional with over 30 years of experience and it shows. My color always comes out perfect.",
-    date: "2023",
-    service: "Color",
+    text: "Jasmin is my stylist and she is amazing. Everyone is friendly and I always get smiles from the moment I walk in.",
+    date: "Google",
+    service: "Styling",
+  },
+  {
+    name: "Shruthi R.",
+    rating: 5,
+    text: "I have been regular here now. Me and my husband get our hair cuts done here. Highly recommend this place! Keep up the great work!",
+    date: "Google",
+    service: "Haircut",
+  },
+  {
+    name: "Ryan S.",
+    rating: 4,
+    text: "A great place for a quick cut at a great price where you can usually get the look you want. Friendly staff and no long waits.",
+    date: "Yelp",
+    service: "Haircut",
   },
 ];
 
@@ -133,27 +138,55 @@ export default function YelpReviews() {
             </h2>
           </div>
 
-          {/* Yelp badge */}
-          <a
-            href="https://www.yelp.com/biz/the-look-hair-salon-glendale"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-6 md:mt-0 flex items-center gap-3 bg-white px-5 py-3 rounded-sm border border-navy/8 hover:border-navy/15 transition-colors group"
-          >
-            {/* Yelp logo */}
-            <svg className="w-6 h-6 text-[#FF1A1A]" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M20.16 12.594l-4.995 1.433c-.96.276-1.74-.8-1.176-1.63l2.905-4.308a1.072 1.072 0 011.596-.206 7.26 7.26 0 011.96 3.164c.252.754-.09 1.478-.29 1.547zm-7.455 5.13l1.105-5.088c.226-.98 1.59-1.048 1.923-.096l1.703 4.872c.22.63-.14 1.31-.796 1.508a7.073 7.073 0 01-3.635.04c-.76-.196-.506-1.236-.3-1.236zm-3.31-4.636l4.923 1.688c.952.326.952 1.64 0 1.966l-4.923 1.688c-.632.217-1.278-.258-1.36-.928a7.09 7.09 0 010-3.486c.082-.67.728-1.145 1.36-.928zM5.7 6.705c.14-.67.86-1.016 1.468-.71l4.472 2.252c.884.445.69 1.74-.282 1.887l-5.194.8c-.645.098-1.222-.39-1.28-1.04a7.12 7.12 0 01.816-3.189zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z" />
-            </svg>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <StarRating rating={4} />
-                <span className="text-navy/60 text-xs font-body">(830+)</span>
+          {/* Review badges */}
+          <div className="mt-6 md:mt-0 flex flex-col sm:flex-row gap-3">
+            {/* Yelp badge */}
+            <a
+              href="https://www.yelp.com/biz/the-look-hair-salon-glendale"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 bg-white px-4 py-3 rounded-sm border border-navy/8 hover:border-navy/15 transition-colors group"
+            >
+              <svg className="w-5 h-5 text-[#FF1A1A] shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M20.16 12.594l-4.995 1.433c-.96.276-1.74-.8-1.176-1.63l2.905-4.308a1.072 1.072 0 011.596-.206 7.26 7.26 0 011.96 3.164c.252.754-.09 1.478-.29 1.547zm-7.455 5.13l1.105-5.088c.226-.98 1.59-1.048 1.923-.096l1.703 4.872c.22.63-.14 1.31-.796 1.508a7.073 7.073 0 01-3.635.04c-.76-.196-.506-1.236-.3-1.236zm-3.31-4.636l4.923 1.688c.952.326.952 1.64 0 1.966l-4.923 1.688c-.632.217-1.278-.258-1.36-.928a7.09 7.09 0 010-3.486c.082-.67.728-1.145 1.36-.928zM5.7 6.705c.14-.67.86-1.016 1.468-.71l4.472 2.252c.884.445.69 1.74-.282 1.887l-5.194.8c-.645.098-1.222-.39-1.28-1.04a7.12 7.12 0 01.816-3.189zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z" />
+              </svg>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-body font-bold text-sm text-navy">4.2</span>
+                  <StarRating rating={4} />
+                  <span className="text-navy/55 text-xs font-body">830+</span>
+                </div>
+                <p className="text-navy/45 text-[10px] font-body mt-0.5 group-hover:text-navy/65 transition-colors">
+                  Yelp reviews &rarr;
+                </p>
               </div>
-              <p className="text-navy/50 text-[10px] font-body mt-0.5 group-hover:text-navy/70 transition-colors">
-                Read all reviews on Yelp &rarr;
-              </p>
-            </div>
-          </a>
+            </a>
+
+            {/* Google badge */}
+            <a
+              href="https://www.google.com/maps/place/The+Look+Hair+Salon/@34.1425,-118.2553,17z/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 bg-white px-4 py-3 rounded-sm border border-navy/8 hover:border-navy/15 transition-colors group"
+            >
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-body font-bold text-sm text-navy">4.1</span>
+                  <StarRating rating={4} />
+                  <span className="text-navy/55 text-xs font-body">146+</span>
+                </div>
+                <p className="text-navy/45 text-[10px] font-body mt-0.5 group-hover:text-navy/65 transition-colors">
+                  Google reviews &rarr;
+                </p>
+              </div>
+            </a>
+          </div>
         </AnimatedSection>
 
         {/* Review Cards — Desktop: 3 cards, Mobile: 1 card carousel */}
@@ -189,7 +222,11 @@ export default function YelpReviews() {
                         </p>
                       )}
                     </div>
-                    <span className="text-navy/30 text-[11px] font-body">
+                    <span className={`text-[10px] font-body font-medium px-2 py-0.5 rounded-sm ${
+                      review.date === "Yelp"
+                        ? "bg-[#FF1A1A]/8 text-[#FF1A1A]"
+                        : "bg-[#4285F4]/8 text-[#4285F4]"
+                    }`}>
                       {review.date}
                     </span>
                   </div>
