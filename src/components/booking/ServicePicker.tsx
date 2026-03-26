@@ -44,13 +44,13 @@ export default function ServicePicker({ services, onSelect, selected }: Props) {
             >
               <span className="font-heading text-lg">{cat}</span>
               <div className="flex items-center gap-3">
-                <span className="text-navy/35 text-xs font-body">
+                <span className="text-navy/50 text-xs font-body">
                   {services[cat].length} services
                 </span>
                 <motion.svg
                   animate={{ rotate: openCategory === cat ? 180 : 0 }}
                   transition={{ duration: 0.2 }}
-                  className="w-4 h-4 text-navy/30"
+                  className="w-4 h-4 text-navy/45"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

@@ -205,7 +205,7 @@ export default function Contact() {
                 <div className="text-navy/60 font-body font-light space-y-2">
                   <p>919 South Central Ave Suite #E</p>
                   <p>Glendale, CA 91204</p>
-                  <p className="text-navy/40 text-sm mt-2">
+                  <p className="text-navy/50 text-sm mt-2">
                     Free parking lot &amp; free street parking available.
                   </p>
                 </div>
@@ -242,7 +242,7 @@ export default function Contact() {
                     <span>Monday</span>
                     <span>10 AM &ndash; 6 PM</span>
                   </div>
-                  <div className="flex justify-between text-navy/30">
+                  <div className="flex justify-between text-navy/45">
                     <span>Tuesday</span>
                     <span>CLOSED</span>
                   </div>

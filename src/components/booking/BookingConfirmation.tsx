@@ -58,14 +58,14 @@ export default function BookingConfirmation({ result }: Props) {
           </span>
         </div>
         <div className="border-t border-navy/10 pt-4 mt-4">
-          <p className="text-navy/40 text-xs font-body">
+          <p className="text-navy/50 text-xs font-body">
             919 South Central Ave Suite #E, Glendale, CA 91204
           </p>
-          <p className="text-navy/40 text-xs font-body">(818) 662-5665</p>
+          <p className="text-navy/50 text-xs font-body">(818) 662-5665</p>
         </div>
       </div>
 
-      <p className="text-navy/40 text-xs font-body mt-6">
+      <p className="text-navy/50 text-xs font-body mt-6">
         Need to cancel? Check your confirmation email for a cancellation link.
       </p>
     </div>

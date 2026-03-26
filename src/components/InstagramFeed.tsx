@@ -66,7 +66,7 @@ export default function InstagramFeed() {
             href="https://www.instagram.com/thelookhairsalon/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-3 text-navy/40 hover:text-navy text-[11px] tracking-[0.2em] uppercase font-body transition-colors"
+            className="inline-flex items-center gap-3 text-navy/55 hover:text-navy text-[11px] tracking-[0.2em] uppercase font-body transition-colors"
           >
             Follow @thelookhairsalon
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

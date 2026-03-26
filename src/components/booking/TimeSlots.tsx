@@ -16,7 +16,7 @@ function formatTime(time: string): string {
 export default function TimeSlots({ slots, loading, selectedDate, selectedTime, onSelectTime }: Props) {
   if (!selectedDate) {
     return (
-      <div className="flex items-center justify-center text-navy/30 font-body text-sm">
+      <div className="flex items-center justify-center text-navy/50 font-body text-sm">
         Select a date to see available times
       </div>
     );
@@ -24,7 +24,7 @@ export default function TimeSlots({ slots, loading, selectedDate, selectedTime, 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center text-navy/40 font-body text-sm">
+      <div className="flex items-center justify-center text-navy/50 font-body text-sm">
         Loading available times...
       </div>
     );
@@ -32,7 +32,7 @@ export default function TimeSlots({ slots, loading, selectedDate, selectedTime, 
 
   if (slots.length === 0) {
     return (
-      <div className="flex items-center justify-center text-navy/40 font-body text-sm text-center">
+      <div className="flex items-center justify-center text-navy/50 font-body text-sm text-center">
         No available slots for this date. Please try another day.
       </div>
     );

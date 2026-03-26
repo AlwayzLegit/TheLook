@@ -63,7 +63,7 @@ export default function Team() {
                   className="text-rose text-[11px] tracking-[0.15em] uppercase font-body mb-4"
                   dangerouslySetInnerHTML={{ __html: member.role }}
                 />
-                <p className="text-navy/50 text-sm font-body font-light leading-relaxed mb-5 max-w-xs mx-auto">
+                <p className="text-navy/60 text-sm font-body font-light leading-relaxed mb-5 max-w-xs mx-auto">
                   {member.bio}
                 </p>
 
@@ -71,7 +71,7 @@ export default function Team() {
                   {member.specialties.map((s) => (
                     <span
                       key={s}
-                      className="text-[10px] font-body text-navy/40 tracking-[0.1em] uppercase border border-navy/10 px-3 py-1"
+                      className="text-[10px] font-body text-navy/50 tracking-[0.1em] uppercase border border-navy/10 px-3 py-1"
                     >
                       {s}
                     </span>

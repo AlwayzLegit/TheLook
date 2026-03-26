@@ -65,7 +65,7 @@ export default function Services() {
           <h2 className="font-heading text-4xl md:text-5xl mb-6">
             Services &amp; Pricing
           </h2>
-          <p className="text-navy/50 font-body font-light max-w-lg mx-auto text-[15px]">
+          <p className="text-navy/60 font-body font-light max-w-lg mx-auto text-[15px]">
             The highest quality hair salon services in Glendale at unbeatable prices.
           </p>
         </AnimatedSection>
@@ -93,7 +93,7 @@ export default function Services() {
                         {item.name}
                       </span>
                       <span className="flex-1 border-b border-dotted border-navy/10 min-w-[20px] translate-y-[-3px]" />
-                      <span className="text-navy/40 text-xs font-body shrink-0">
+                      <span className="text-navy/50 text-xs font-body shrink-0">
                         {item.duration}
                       </span>
                       <span className="text-gold font-heading text-base shrink-0">
@@ -108,7 +108,7 @@ export default function Services() {
         </div>
 
         <AnimatedSection className="text-center mt-14">
-          <p className="text-navy/30 text-xs font-body font-light max-w-xl mx-auto leading-relaxed">
+          <p className="text-navy/45 text-xs font-body font-light max-w-xl mx-auto leading-relaxed">
             All prices are based upon consultation &amp; subject to change.
             Pricing depends on hair length, thickness &amp; texture. $50 deposit
             required for select services.
