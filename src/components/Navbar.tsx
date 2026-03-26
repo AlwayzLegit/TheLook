@@ -82,7 +82,7 @@ export default function Navbar() {
       <nav
         className="fixed top-0 left-0 right-0 transition-colors duration-500"
         style={{
-          backgroundColor: showSolid ? "#282936" : "transparent",
+          backgroundColor: showSolid ? "#000000" : "transparent",
           zIndex: 100,
         }}
       >
