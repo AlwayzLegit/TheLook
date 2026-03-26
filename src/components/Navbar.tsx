@@ -26,8 +26,10 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // On non-homepage: always show solid background
   const showSolid = scrolled || !isHome;
+
+  // Overlay color: navy on homepage, black on other pages
+  const overlayBg = isHome ? "#282936" : "#000000";
 
   return (
     <nav
@@ -40,7 +42,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-8 lg:px-12">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <Link href="/" className="relative z-10">
+          <Link href="/" className="relative z-[70]">
             <Image
               src="/images/logo.png"
               alt="The Look Hair Salon"
@@ -82,15 +84,15 @@ export default function Navbar() {
             <div className="flex flex-col gap-1.5">
               <motion.span
                 animate={isOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
-                className="block w-6 h-[1px] bg-white origin-center"
+                className="block w-6 h-[1.5px] bg-white origin-center"
               />
               <motion.span
                 animate={isOpen ? { opacity: 0 } : { opacity: 1 }}
-                className="block w-6 h-[1px] bg-white"
+                className="block w-6 h-[1.5px] bg-white"
               />
               <motion.span
                 animate={isOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
-                className="block w-6 h-[1px] bg-white origin-center"
+                className="block w-6 h-[1.5px] bg-white origin-center"
               />
             </div>
           </button>
@@ -106,7 +108,7 @@ export default function Navbar() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-[60] lg:hidden"
-            style={{ backgroundColor: "#282936" }}
+            style={{ backgroundColor: overlayBg }}
           >
             <div className="flex flex-col items-center justify-center min-h-screen gap-8">
               {navLinks.map((link, i) => (
@@ -119,7 +121,7 @@ export default function Navbar() {
                   <Link
                     href={link.href}
                     onClick={() => setIsOpen(false)}
-                    className="text-white/80 hover:text-gold text-[13px] tracking-[0.3em] uppercase font-body transition-colors"
+                    className="text-white/90 hover:text-gold text-[15px] tracking-[0.3em] uppercase font-body transition-colors"
                   >
                     {link.label}
                   </Link>
@@ -134,7 +136,7 @@ export default function Navbar() {
                 <Link
                   href="/book"
                   onClick={() => setIsOpen(false)}
-                  className="bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-colors"
+                  className="bg-rose hover:bg-rose-light text-white text-[12px] tracking-[0.2em] uppercase px-10 py-4 transition-colors"
                 >
                   Book Now
                 </Link>
@@ -147,7 +149,7 @@ export default function Navbar() {
                 transition={{ delay: 0.5 }}
                 className="absolute bottom-12 text-center"
               >
-                <p className="text-white/30 text-xs font-body tracking-wider">
+                <p className="text-white/40 text-xs font-body tracking-wider">
                   (818) 662-5665
                 </p>
               </motion.div>
