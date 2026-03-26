@@ -76,7 +76,7 @@ export default function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="lg:hidden relative z-10 w-10 h-10 flex items-center justify-center"
+            className="lg:hidden relative z-[70] w-10 h-10 flex items-center justify-center"
             aria-label="Toggle menu"
           >
             <div className="flex flex-col gap-1.5">
@@ -105,7 +105,7 @@ export default function Navbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 bg-navy z-40 lg:hidden"
+            className="fixed inset-0 bg-navy z-[60] lg:hidden"
           >
             <div className="flex flex-col items-center justify-center min-h-screen gap-8">
               {navLinks.map((link, i) => (
