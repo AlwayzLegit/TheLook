@@ -30,7 +30,6 @@ export default function Navbar() {
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
-  // Close menu on route change
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
@@ -39,14 +38,17 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Navbar bar */}
+      {/* Navbar */}
       <nav
         className="fixed top-0 left-0 right-0 transition-colors duration-500"
-        style={{ backgroundColor: showSolid ? "#282936" : "transparent", zIndex: 50 }}
+        style={{
+          backgroundColor: showSolid ? "#282936" : "transparent",
+          zIndex: 100,
+        }}
       >
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex items-center justify-between h-20">
-            <Link href="/" style={{ zIndex: 9999, position: "relative" }}>
+            <Link href="/">
               <Image
                 src="/images/logo.png"
                 alt="The Look Hair Salon"
@@ -79,20 +81,17 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* Hamburger — always above everything */}
+            {/* Mobile hamburger / X — inside nav so it's always above overlay */}
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="lg:hidden w-10 h-10 flex items-center justify-center"
-              style={{ zIndex: 9999, position: "relative" }}
               aria-label="Toggle menu"
             >
               {isOpen ? (
-                // X icon
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               ) : (
-                // Hamburger icon
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
@@ -102,7 +101,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile overlay — completely separate, no opacity animation on background */}
+      {/* Mobile overlay — z-index 90, BELOW the nav (100) so the X button works */}
       {isOpen && (
         <div
           className="lg:hidden"
@@ -112,13 +111,13 @@ export default function Navbar() {
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 9990,
+            zIndex: 90,
             background: "#000000",
           }}
         >
           <div
             className="flex flex-col items-center justify-center gap-7"
-            style={{ height: "100vh", paddingTop: 80 }}
+            style={{ height: "100vh" }}
           >
             {navLinks.map((link) => (
               <Link
@@ -139,7 +138,10 @@ export default function Navbar() {
               Book Now
             </Link>
 
-            <p className="absolute bottom-10 text-white/40 text-xs font-body tracking-wider">
+            <p
+              className="text-white/40 text-xs font-body tracking-wider"
+              style={{ position: "absolute", bottom: 40 }}
+            >
               (818) 662-5665
             </p>
           </div>
