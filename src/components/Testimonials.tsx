@@ -12,7 +12,7 @@ const testimonials = [
   },
   {
     name: "Jessica R.",
-    text: "Found this gem on Instagram and booked immediately. The salon is gorgeous, the staff is so welcoming, and my haircut was exactly what I wanted. Already booked my next appointment!",
+    text: "Found this gem and booked immediately. The salon is gorgeous, the staff is so welcoming, and my haircut was exactly what I wanted. Already booked my next appointment!",
     service: "Haircut & Styling",
   },
   {
@@ -22,13 +22,13 @@ const testimonials = [
   },
   {
     name: "Maria L.",
-    text: "Best keratin treatment I've ever had. My hair has never been this smooth and manageable. The results lasted months. Worth every penny!",
+    text: "Best keratin treatment I've ever had. My hair has never been this smooth and manageable. The results lasted months. Totally worth it!",
     service: "Keratin Treatment",
   },
   {
     name: "Stephanie G.",
-    text: "I came in wanting a dramatic change — went from long brunette to a chic platinum bob. They handled the whole process with such care. Absolutely love my new look!",
-    service: "Cut & Color Transformation",
+    text: "Went from long brunette to a chic platinum bob. They handled the whole process with such care. Nice people, good prices, excellent work!",
+    service: "Cut & Color",
   },
 ];
 
@@ -45,18 +45,12 @@ export default function Testimonials() {
   }, [next]);
 
   return (
-    <section className="py-28 md:py-36 bg-navy relative overflow-hidden">
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full bg-gold blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full bg-rose blur-[120px]" />
-      </div>
-
-      <div className="max-w-4xl mx-auto px-8 lg:px-12 relative">
-        <AnimatedSection className="text-center mb-16">
-          <div className="flex items-center justify-center gap-4 mb-6">
+    <section className="py-24 md:py-32 bg-navy relative overflow-hidden">
+      <div className="max-w-3xl mx-auto px-6 lg:px-12 relative">
+        <AnimatedSection className="text-center mb-14">
+          <div className="flex items-center justify-center gap-4 mb-5">
             <span className="w-8 h-[1px] bg-gold/40" />
-            <span className="text-gold/60 text-[11px] tracking-[0.3em] uppercase font-body">
+            <span className="text-gold/70 text-[11px] tracking-[0.25em] uppercase font-body">
               Testimonials
             </span>
             <span className="w-8 h-[1px] bg-gold/40" />
@@ -66,31 +60,30 @@ export default function Testimonials() {
           </h2>
         </AnimatedSection>
 
-        <div className="relative min-h-[250px]">
+        <div className="relative min-h-[220px]">
           <AnimatePresence mode="wait">
             <motion.div
               key={current}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.5 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.4 }}
               className="text-center"
             >
-              {/* Large quote mark */}
-              <span className="block font-heading text-7xl text-gold/20 leading-none mb-4">
+              <span className="block font-heading text-6xl text-gold/20 leading-none mb-4">
                 &ldquo;
               </span>
 
-              <p className="text-white/70 text-lg md:text-xl font-body font-light leading-relaxed mb-8 italic max-w-3xl mx-auto">
+              <p className="text-white/75 text-lg font-body font-light leading-relaxed mb-8 italic">
                 {testimonials[current].text}
               </p>
 
-              <div className="w-8 h-[1px] bg-gold/40 mx-auto mb-6" />
+              <div className="w-8 h-[1px] bg-gold/30 mx-auto mb-5" />
 
               <p className="font-heading text-lg text-white">
                 {testimonials[current].name}
               </p>
-              <p className="text-gold/60 text-[11px] tracking-[0.2em] uppercase font-body mt-1">
+              <p className="text-gold/60 text-[11px] tracking-[0.15em] uppercase font-body mt-1">
                 {testimonials[current].service}
               </p>
             </motion.div>
@@ -98,16 +91,16 @@ export default function Testimonials() {
         </div>
 
         {/* Dots */}
-        <div className="flex justify-center gap-3 mt-12">
+        <div className="flex justify-center gap-2.5 mt-10">
           {testimonials.map((_, i) => (
             <button
               key={i}
               onClick={() => setCurrent(i)}
-              aria-label={`Go to testimonial ${i + 1}`}
-              className={`transition-all duration-300 ${
+              aria-label={`Testimonial ${i + 1}`}
+              className={`transition-all duration-300 rounded-full ${
                 i === current
-                  ? "w-8 h-[2px] bg-gold"
-                  : "w-4 h-[2px] bg-white/15 hover:bg-white/30"
+                  ? "w-7 h-1.5 bg-gold"
+                  : "w-1.5 h-1.5 bg-white/20 hover:bg-white/40"
               }`}
             />
           ))}

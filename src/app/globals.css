@@ -1,17 +1,18 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* ── Core Palette ── */
-  --color-navy: #1e1f2b;
-  --color-navy-light: #2a2b3d;
-  --color-navy-lighter: #363750;
-  --color-rose: #b8243b;
-  --color-rose-light: #d03050;
-  --color-rose-dark: #8e1c2e;
-  --color-cream: #f8f6f1;
-  --color-cream-dark: #eee9df;
+  /* ── Core Palette — Warm Professional ── */
+  --color-navy: #282936;
+  --color-navy-light: #353647;
+  --color-navy-lighter: #454660;
+  --color-rose: #c2274b;
+  --color-rose-light: #d44068;
+  --color-rose-dark: #9e1f3d;
+  --color-cream: #faf8f3;
+  --color-cream-dark: #f0ece3;
   --color-gold: #c4a265;
   --color-gold-light: #d4b87e;
+  --color-warm-white: #fffefa;
   --color-white: #ffffff;
 
   /* ── Typography ── */
@@ -36,45 +37,18 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   line-height: 1.2;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 /* ── Selection ── */
 ::selection {
-  background: var(--color-gold);
+  background: var(--color-gold-light);
   color: var(--color-navy);
 }
 
-/* ── Section Divider ── */
-.section-divider {
-  width: 60px;
-  height: 1px;
-  background: var(--color-gold);
-  margin: 0 auto;
-}
-
-/* ── Elegant Link Underline ── */
-.link-underline {
-  position: relative;
-  display: inline-block;
-}
-.link-underline::after {
-  content: "";
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 0;
-  height: 1px;
-  background: var(--color-gold);
-  transition: width 0.3s ease;
-}
-.link-underline:hover::after {
-  width: 100%;
-}
-
-/* ── Scrollbar Styling ── */
+/* ── Scrollbar ── */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 ::-webkit-scrollbar-track {
   background: var(--color-cream);

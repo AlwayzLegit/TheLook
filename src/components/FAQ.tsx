@@ -8,7 +8,7 @@ const faqs = [
   {
     question: "Do I need an appointment, or do you accept walk-ins?",
     answer:
-      "While we do accept walk-ins based on availability, we highly recommend booking an appointment to ensure your preferred stylist and time slot. You can book through our website or by calling us directly.",
+      "Walk-ins are always welcome! However, we recommend booking an appointment to ensure your preferred stylist and time slot. You can book online through our website or call us directly at (818) 662-5665.",
   },
   {
     question: "What is your cancellation policy?",
@@ -18,12 +18,12 @@ const faqs = [
   {
     question: "How should I prepare for a color appointment?",
     answer:
-      "For best results, come with unwashed hair (1-2 days without washing is ideal). Avoid using heavy styling products. If it's your first color appointment with us, we'll schedule a consultation to discuss your goals and do a strand test if needed.",
+      "For best results, come with unwashed hair (1-2 days without washing is ideal). Avoid using heavy styling products. If it's your first color appointment with us, we'll do a quick consultation to discuss your goals.",
   },
   {
-    question: "Do you offer consultations?",
+    question: "Do you offer free consultations?",
     answer:
-      "Yes! We offer complimentary 15-minute consultations for new clients or anyone considering a major change. This allows us to understand your vision, assess your hair, and recommend the best approach.",
+      "Yes! We offer complimentary consultations for new clients or anyone considering a major change. Just stop by or give us a call — we're happy to help you figure out the best look.",
   },
   {
     question: "What products do you use?",
@@ -33,7 +33,7 @@ const faqs = [
   {
     question: "Is parking available?",
     answer:
-      "Yes! We offer a free parking lot right at the salon for our customers, plus free street parking is available on South Central Avenue. We're easily accessible from the 134 and 2 freeways.",
+      "Yes! We have a free parking lot right at the salon for our customers, plus free street parking on South Central Avenue. We're easily accessible from the 134 and 2 freeways.",
   },
   {
     question: "Do you offer gift cards?",
@@ -52,27 +52,23 @@ function FAQItem({
   onToggle: () => void;
 }) {
   return (
-    <div className="border-b border-navy/10">
+    <div className="border-b border-navy/8">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between py-5 text-left"
+        className="w-full flex items-center justify-between py-6 text-left group"
       >
-        <span className="font-heading text-lg pr-4">{faq.question}</span>
-        <motion.svg
+        <span className="font-heading text-lg pr-6 group-hover:text-rose transition-colors">
+          {faq.question}
+        </span>
+        <motion.div
           animate={{ rotate: isOpen ? 45 : 0 }}
           transition={{ duration: 0.2 }}
-          className="w-5 h-5 text-rose shrink-0"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+          className="w-6 h-6 flex items-center justify-center shrink-0 border border-navy/15 rounded-full group-hover:border-rose/30 transition-colors"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 4v16m8-8H4"
-          />
-        </motion.svg>
+          <svg className="w-3 h-3 text-rose" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </motion.div>
       </button>
       <AnimatePresence>
         {isOpen && (
@@ -83,7 +79,7 @@ function FAQItem({
             transition={{ duration: 0.3 }}
             className="overflow-hidden"
           >
-            <p className="pb-5 text-navy/60 font-body font-light leading-relaxed">
+            <p className="pb-6 text-navy/55 font-body font-light leading-relaxed pr-12">
               {faq.answer}
             </p>
           </motion.div>
@@ -97,14 +93,19 @@ export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section className="py-24 md:py-32 bg-white">
-      <div className="max-w-3xl mx-auto px-6">
-        <AnimatedSection className="text-center mb-16">
-          <p className="text-gold tracking-[0.3em] uppercase text-sm mb-4 font-body">
-            Common Questions
-          </p>
-          <h2 className="font-heading text-4xl md:text-5xl mb-6">FAQ</h2>
-          <div className="w-16 h-[1px] bg-rose mx-auto" />
+    <section className="py-24 md:py-32 bg-warm-white">
+      <div className="max-w-3xl mx-auto px-6 lg:px-12">
+        <AnimatedSection className="text-center mb-14">
+          <div className="flex items-center justify-center gap-4 mb-5">
+            <span className="w-8 h-[1px] bg-gold" />
+            <span className="text-gold text-[11px] tracking-[0.25em] uppercase font-body">
+              Common Questions
+            </span>
+            <span className="w-8 h-[1px] bg-gold" />
+          </div>
+          <h2 className="font-heading text-4xl md:text-5xl">
+            Frequently Asked
+          </h2>
         </AnimatedSection>
 
         <AnimatedSection>
