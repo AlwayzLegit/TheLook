@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -16,6 +16,8 @@ const navLinks = [
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [animating, setAnimating] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const isHome = pathname === "/";
 
@@ -35,6 +37,44 @@ export default function Navbar() {
   }, [pathname]);
 
   const showSolid = scrolled || !isHome;
+
+  const handleClose = () => {
+    setAnimating(true);
+    // Trigger exit animation, then remove from DOM
+    if (overlayRef.current) {
+      overlayRef.current.style.opacity = "0";
+      overlayRef.current.style.transform = "translateY(-20px)";
+    }
+    setTimeout(() => {
+      setIsOpen(false);
+      setAnimating(false);
+    }, 250);
+  };
+
+  const handleOpen = () => {
+    setIsOpen(true);
+    // Trigger enter animation after mount
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (overlayRef.current) {
+          overlayRef.current.style.opacity = "1";
+          overlayRef.current.style.transform = "translateY(0)";
+        }
+      });
+    });
+  };
+
+  const handleToggle = () => {
+    if (isOpen) {
+      handleClose();
+    } else {
+      handleOpen();
+    }
+  };
+
+  const handleLinkClick = () => {
+    handleClose();
+  };
 
   return (
     <>
@@ -81,9 +121,10 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* Mobile hamburger / X — inside nav so it's always above overlay */}
+            {/* Mobile hamburger / X */}
             <button
-              onClick={() => setIsOpen(!isOpen)}
+              onClick={handleToggle}
+              disabled={animating}
               className="lg:hidden w-10 h-10 flex items-center justify-center"
               aria-label="Toggle menu"
             >
@@ -101,9 +142,10 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile overlay — z-index 90, BELOW the nav (100) so the X button works */}
+      {/* Mobile overlay — z-90, below nav (z-100) so X button is clickable */}
       {isOpen && (
         <div
+          ref={overlayRef}
           className="lg:hidden"
           style={{
             position: "fixed",
@@ -113,18 +155,26 @@ export default function Navbar() {
             bottom: 0,
             zIndex: 90,
             background: "#000000",
+            opacity: 0,
+            transform: "translateY(-20px)",
+            transition: "opacity 0.3s ease, transform 0.3s ease",
           }}
         >
           <div
-            className="flex flex-col items-center justify-center gap-7"
+            className="flex flex-col items-center justify-center gap-8"
             style={{ height: "100vh" }}
           >
-            {navLinks.map((link) => (
+            {navLinks.map((link, i) => (
               <Link
                 key={link.href}
                 href={link.href}
-                onClick={() => setIsOpen(false)}
+                onClick={handleLinkClick}
                 className="text-white text-lg tracking-[0.3em] uppercase font-body hover:text-gold transition-colors"
+                style={{
+                  opacity: 0,
+                  transform: "translateY(10px)",
+                  animation: `fadeSlideIn 0.3s ease forwards ${0.1 + i * 0.05}s`,
+                }}
               >
                 {link.label}
               </Link>
@@ -132,8 +182,12 @@ export default function Navbar() {
 
             <Link
               href="/book"
-              onClick={() => setIsOpen(false)}
+              onClick={handleLinkClick}
               className="mt-4 inline-block bg-rose text-white text-[12px] tracking-[0.2em] uppercase px-10 py-4 hover:bg-rose-light transition-colors"
+              style={{
+                opacity: 0,
+                animation: `fadeSlideIn 0.3s ease forwards ${0.1 + navLinks.length * 0.05}s`,
+              }}
             >
               Book Now
             </Link>
@@ -145,6 +199,20 @@ export default function Navbar() {
               (818) 662-5665
             </p>
           </div>
+
+          {/* CSS animation keyframes */}
+          <style jsx>{`
+            @keyframes fadeSlideIn {
+              from {
+                opacity: 0;
+                transform: translateY(10px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+          `}</style>
         </div>
       )}
     </>
