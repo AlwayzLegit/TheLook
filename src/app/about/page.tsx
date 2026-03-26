@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import About from "@/components/About";
 import Team from "@/components/Team";
-import Testimonials from "@/components/Testimonials";
+import YelpReviews from "@/components/YelpReviews";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
 
@@ -19,7 +19,7 @@ export default function AboutPage() {
       <main className="pt-20">
         <About />
         <Team />
-        <Testimonials />
+        <YelpReviews />
       </main>
       <Footer />
       <MobileBookButton />

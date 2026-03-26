@@ -1,7 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import About from "@/components/About";
-import Testimonials from "@/components/Testimonials";
+import YelpReviews from "@/components/YelpReviews";
 import InstagramFeed from "@/components/InstagramFeed";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
@@ -13,7 +13,7 @@ export default function Home() {
       <main>
         <Hero />
         <About />
-        <Testimonials />
+        <YelpReviews />
         <InstagramFeed />
       </main>
       <Footer />
