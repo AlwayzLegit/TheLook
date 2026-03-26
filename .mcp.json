@@ -7,7 +7,10 @@
         "stitch-mcp",
         "--api-key",
         "AQ.Ab8RN6IpuYO8x1QEuhpOREKgqhHmBjGDaAXf7yi3bjWHtwN7TQ"
-      ]
+      ],
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": "jetnine-n8n"
+      }
     }
   }
 }
