@@ -81,8 +81,8 @@ export default function Footer() {
                 </a>
               </p>
               <p>
-                <a href="mailto:thelook_hairsalon@yahoo.com" className="hover:text-gold transition-colors">
-                  thelook_hairsalon@yahoo.com
+                <a href="mailto:look_hairsalon@yahoo.com" className="hover:text-gold transition-colors">
+                  look_hairsalon@yahoo.com
                 </a>
               </p>
             </div>

@@ -5,7 +5,7 @@ function getResend() {
 }
 
 const FROM = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-const SALON_EMAIL = process.env.ADMIN_EMAIL || "thelook_hairsalon@yahoo.com";
+const SALON_EMAIL = process.env.ADMIN_EMAIL || "look_hairsalon@yahoo.com";
 
 interface AppointmentDetails {
   clientName: string;
