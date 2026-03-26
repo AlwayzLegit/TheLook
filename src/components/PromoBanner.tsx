@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function PromoBanner() {
@@ -14,37 +15,24 @@ export default function PromoBanner() {
         initial={{ height: 0, opacity: 0 }}
         animate={{ height: "auto", opacity: 1 }}
         exit={{ height: 0, opacity: 0 }}
-        className="bg-rose text-white relative z-50"
+        className="bg-navy-light text-white relative z-50"
       >
-        <div className="max-w-7xl mx-auto px-6 py-2.5 flex items-center justify-center gap-3 text-sm font-body">
-          <span className="text-gold">&#10038;</span>
-          <p>
-            <span className="font-bold">New Client Special:</span> 20% off your
-            first visit!{" "}
-            <a
-              href="#contact"
-              className="underline underline-offset-2 hover:text-gold transition-colors"
-            >
+        <div className="max-w-7xl mx-auto px-8 py-2.5 flex items-center justify-center gap-4 text-[11px] tracking-[0.15em] uppercase font-body">
+          <span className="text-gold">&#9670;</span>
+          <p className="text-white/50">
+            New Client Special: <span className="text-white/80">20% off your first visit</span>
+            {" "}&middot;{" "}
+            <Link href="/book" className="text-gold hover:text-gold-light transition-colors">
               Book now
-            </a>
+            </Link>
           </p>
           <button
             onClick={() => setIsVisible(false)}
-            aria-label="Dismiss promotion"
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors"
+            aria-label="Dismiss"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50 transition-colors"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>

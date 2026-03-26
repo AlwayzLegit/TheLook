@@ -1,27 +1,85 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-navy: #282936;
-  --color-navy-light: #3a3b4a;
-  --color-rose: #c2274b;
-  --color-rose-light: #d4456a;
-  --color-cream: #faf8f5;
-  --color-gold: #c9a96e;
-  --color-gold-light: #d4ba85;
-  --font-heading: "Forum", Georgia, serif;
-  --font-body: "Lato", Arial, sans-serif;
+  /* ── Core Palette ── */
+  --color-navy: #1e1f2b;
+  --color-navy-light: #2a2b3d;
+  --color-navy-lighter: #363750;
+  --color-rose: #b8243b;
+  --color-rose-light: #d03050;
+  --color-rose-dark: #8e1c2e;
+  --color-cream: #f8f6f1;
+  --color-cream-dark: #eee9df;
+  --color-gold: #c4a265;
+  --color-gold-light: #d4b87e;
+  --color-white: #ffffff;
+
+  /* ── Typography ── */
+  --font-heading: "Forum", Georgia, "Times New Roman", serif;
+  --font-body: "Lato", "Helvetica Neue", Arial, sans-serif;
 }
 
+/* ── Base ── */
 html {
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   background: var(--color-cream);
   color: var(--color-navy);
   font-family: var(--font-body);
+  line-height: 1.7;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+/* ── Selection ── */
+::selection {
+  background: var(--color-gold);
+  color: var(--color-navy);
+}
+
+/* ── Section Divider ── */
+.section-divider {
+  width: 60px;
+  height: 1px;
+  background: var(--color-gold);
+  margin: 0 auto;
+}
+
+/* ── Elegant Link Underline ── */
+.link-underline {
+  position: relative;
+  display: inline-block;
+}
+.link-underline::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--color-gold);
+  transition: width 0.3s ease;
+}
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* ── Scrollbar Styling ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-cream);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-gold);
+  border-radius: 3px;
 }

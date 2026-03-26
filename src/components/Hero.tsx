@@ -11,7 +11,8 @@ export default function Hero() {
     target: ref,
     offset: ["start start", "end start"],
   });
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "25%"]);
+  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
 
   return (
     <section
@@ -19,93 +20,119 @@ export default function Hero() {
       id="home"
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
+      {/* Parallax Background */}
       <motion.div className="absolute inset-0" style={{ y }}>
         <Image
           src="/images/hero/salon-main.jpg"
           alt="The Look Hair Salon"
           fill
-          className="object-cover scale-110"
+          className="object-cover scale-105"
           priority
         />
       </motion.div>
 
-      <div className="absolute inset-0 bg-navy/70" />
+      {/* Gradient Overlay - more sophisticated */}
+      <div className="absolute inset-0 bg-gradient-to-b from-navy/80 via-navy/60 to-navy/90" />
 
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-rose/5 rounded-full blur-3xl" />
+      {/* Subtle texture overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(30,31,43,0.4)_100%)]" />
 
-      <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+      <motion.div style={{ opacity }} className="relative z-10 text-center px-8 max-w-5xl mx-auto">
+        {/* Pre-heading */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 0.2 }}
+          className="flex items-center justify-center gap-6 mb-8"
+        >
+          <span className="w-12 h-[1px] bg-gold/60" />
+          <span className="text-gold/80 text-[11px] tracking-[0.4em] uppercase font-body">
+            Est. 2011 &middot; Glendale, California
+          </span>
+          <span className="w-12 h-[1px] bg-gold/60" />
+        </motion.div>
+
+        {/* Logo */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.1 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="mb-4"
         >
           <Image
             src="/images/logo.png"
-            alt="The Look Hair Salon Logo"
-            width={200}
-            height={107}
-            className="mx-auto mb-6 brightness-0 invert"
+            alt="The Look"
+            width={180}
+            height={96}
+            className="mx-auto brightness-0 invert"
           />
         </motion.div>
 
+        {/* Main Heading */}
         <motion.h1
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          className="font-heading text-5xl md:text-7xl text-white tracking-wider mb-6"
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="font-heading text-5xl md:text-7xl lg:text-8xl text-white tracking-[0.05em] mb-6"
         >
-          THE LOOK HAIR SALON
+          HAIR SALON
         </motion.h1>
 
+        {/* Divider */}
         <motion.div
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
-          transition={{ duration: 0.8, delay: 0.5 }}
-          className="w-24 h-[1px] bg-gold mx-auto mb-6"
+          transition={{ duration: 0.8, delay: 0.8 }}
+          className="w-20 h-[1px] bg-gold mx-auto mb-8"
         />
 
+        {/* Tagline */}
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.7 }}
-          className="text-white/70 text-lg md:text-xl font-body font-light max-w-2xl mx-auto mb-10 leading-relaxed"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 1.0 }}
+          className="text-white/50 text-base md:text-lg font-body font-light max-w-xl mx-auto mb-12 leading-relaxed tracking-wide"
         >
-          Family owned &amp; operated since 2011. Over 25 years in the beauty
-          industry &mdash; specializing in cutting, coloring, balayage,
-          ombr&eacute;, highlights, extensions &amp; styling in Glendale, CA.
+          Where artistry meets expertise. Over 25 years of beauty mastery
+          dedicated to making you look and feel extraordinary.
         </motion.p>
 
+        {/* CTAs */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.9 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center"
+          transition={{ duration: 0.8, delay: 1.2 }}
+          className="flex flex-col sm:flex-row gap-5 justify-center"
         >
-          <a
-            href="/book"
-            className="bg-rose hover:bg-rose-light text-white tracking-widest uppercase text-sm px-10 py-4 transition-colors font-body"
-          >
-            Book Online
-          </a>
           <Link
-            href="/services"
-            className="border border-white/30 hover:border-gold hover:text-gold text-white tracking-widest uppercase text-sm px-10 py-4 transition-colors font-body"
+            href="/book"
+            className="group bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.25em] uppercase px-12 py-4.5 transition-all duration-300 hover:shadow-[0_4px_30px_rgba(184,36,59,0.4)]"
           >
-            Our Services
+            Book Appointment
           </Link>
+          <a
+            href="tel:+18186625665"
+            className="group border border-white/20 hover:border-gold/60 text-white/70 hover:text-gold text-[11px] tracking-[0.25em] uppercase px-12 py-4.5 transition-all duration-300"
+          >
+            Call (818) 662-5665
+          </a>
         </motion.div>
-      </div>
+      </motion.div>
 
+      {/* Scroll Indicator */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        transition={{ delay: 2 }}
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3"
       >
+        <span className="text-white/20 text-[9px] tracking-[0.3em] uppercase font-body">
+          Scroll
+        </span>
         <motion.div
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="w-[1px] h-12 bg-gradient-to-b from-transparent to-gold/50"
+          animate={{ y: [0, 8, 0] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+          className="w-[1px] h-8 bg-gradient-to-b from-gold/40 to-transparent"
         />
       </motion.div>
     </section>
