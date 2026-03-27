@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import About from "@/components/About";
+import ServicesPreview from "@/components/ServicesPreview";
 import YelpReviews from "@/components/YelpReviews";
 import InstagramFeed from "@/components/InstagramFeed";
 import Footer from "@/components/Footer";
@@ -13,6 +14,7 @@ export default function Home() {
       <main>
         <Hero />
         <About />
+        <ServicesPreview />
         <YelpReviews />
         <InstagramFeed />
       </main>

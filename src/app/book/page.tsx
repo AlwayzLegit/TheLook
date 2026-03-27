@@ -10,6 +10,33 @@ import DateTimePicker from "@/components/booking/DateTimePicker";
 import ClientInfoForm from "@/components/booking/ClientInfoForm";
 import BookingConfirmation from "@/components/booking/BookingConfirmation";
 
+const FALLBACK_SERVICES: Record<string, Service[]> = {
+  Haircuts: [
+    { id: "f-1", category: "Haircuts", name: "Wash + Cut + Style", priceText: "$80+", duration: 70 },
+    { id: "f-2", category: "Haircuts", name: "Clipper Cut", priceText: "$28", duration: 25 },
+    { id: "f-3", category: "Haircuts", name: "Scissor Cut", priceText: "$40", duration: 25 },
+  ],
+  Color: [
+    { id: "f-4", category: "Color", name: "Single Process Root Touch-Up", priceText: "$50+", duration: 65 },
+    { id: "f-5", category: "Color", name: "Balayage (incl. toner)", priceText: "$220+", duration: 180 },
+    { id: "f-6", category: "Color", name: "Full Highlights (incl. toner)", priceText: "$150+", duration: 180 },
+  ],
+  Styling: [
+    { id: "f-7", category: "Styling", name: "Blow-Out", priceText: "$40+", duration: 40 },
+    { id: "f-8", category: "Styling", name: "Formal Updo", priceText: "$90+", duration: 90 },
+  ],
+  Treatments: [
+    { id: "f-9", category: "Treatments", name: "Keratin Straightening", priceText: "$250+", duration: 120 },
+    { id: "f-10", category: "Treatments", name: "Deep Conditioning", priceText: "$30+", duration: 40 },
+  ],
+};
+
+const FALLBACK_STYLISTS: Stylist[] = [
+  { id: "fs-1", name: "Armen P.", bio: "17+ years, trained in Moscow", imageUrl: "/images/gallery/gallery-02.jpg", specialties: ["Coloring", "Cutting"], serviceIds: ["f-1","f-2","f-3","f-4","f-5","f-6","f-7","f-8","f-9","f-10"] },
+  { id: "fs-2", name: "Kristina G.", bio: "15 years, trained in Armenia", imageUrl: "/images/gallery/gallery-03.jpg", specialties: ["Cutting", "Coloring"], serviceIds: ["f-1","f-2","f-3","f-4","f-5","f-6","f-7","f-8","f-9","f-10"] },
+  { id: "fs-3", name: "Alisa (Liz) H.", bio: "30+ years experience", imageUrl: "/images/gallery/gallery-04.jpg", specialties: ["Cutting", "Coloring"], serviceIds: ["f-1","f-2","f-3","f-4","f-5","f-6","f-7","f-8","f-9","f-10"] },
+];
+
 interface Service {
   id: string;
   category: string;
@@ -49,8 +76,28 @@ export default function BookPage() {
   const [result, setResult] = useState<BookingResult | null>(null);
 
   useEffect(() => {
-    fetch("/api/services").then((r) => r.json()).then(setServices);
-    fetch("/api/stylists").then((r) => r.json()).then(setAllStylists);
+    fetch("/api/services")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && Object.keys(data).length > 0) {
+          setServices(data);
+        } else {
+          // Fallback services when DB isn't connected
+          setServices(FALLBACK_SERVICES);
+        }
+      })
+      .catch(() => setServices(FALLBACK_SERVICES));
+
+    fetch("/api/stylists")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setAllStylists(data);
+        } else {
+          setAllStylists(FALLBACK_STYLISTS);
+        }
+      })
+      .catch(() => setAllStylists(FALLBACK_STYLISTS));
   }, []);
 
   const canProceed = () => {

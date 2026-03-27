@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Services from "@/components/Services";
-import BeforeAfter from "@/components/BeforeAfter";
 import FAQ from "@/components/FAQ";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
@@ -18,7 +17,6 @@ export default function ServicesPage() {
       <Navbar />
       <main className="pt-20">
         <Services />
-        <BeforeAfter />
         <FAQ />
       </main>
       <Footer />

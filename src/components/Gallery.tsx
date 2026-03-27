@@ -99,7 +99,8 @@ export default function Gallery() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/90 flex items-center justify-center p-4"
+            style={{ zIndex: 200 }}
             onClick={closeLightbox}
           >
             <button onClick={closeLightbox} aria-label="Close lightbox" className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-10">

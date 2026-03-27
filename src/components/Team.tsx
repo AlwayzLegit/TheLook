@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import AnimatedSection from "./AnimatedSection";
 
@@ -9,21 +8,21 @@ const team = [
     name: "Armen P.",
     role: "Stylist &middot; 17+ Years",
     bio: "Trained in Moscow. World-class expertise in coloring, cutting & styling. Specialist in barber fades for men & women.",
-    image: "/images/gallery/gallery-02.jpg",
+    initials: "AP",
     specialties: ["Coloring", "Barber Fades", "Cutting"],
   },
   {
     name: "Kristina G.",
     role: "Stylist &middot; 15 Years",
     bio: "Trained in Armenia. 15 years of expertise in cutting & coloring for both men's & women's hair.",
-    image: "/images/gallery/gallery-03.jpg",
+    initials: "KG",
     specialties: ["Cutting", "Coloring", "Men & Women"],
   },
   {
     name: "Alisa (Liz) H.",
     role: "Stylist &middot; 30+ Years",
     bio: "Over 30 years in the industry. Specializes in cutting & coloring. A true veteran of the craft.",
-    image: "/images/gallery/gallery-04.jpg",
+    initials: "LH",
     specialties: ["Cutting", "Coloring", "30+ Years"],
   },
 ];
@@ -47,15 +46,10 @@ export default function Team() {
           {team.map((member, index) => (
             <AnimatedSection key={member.name} delay={index * 0.15}>
               <div className="group text-center">
-                <div className="relative w-56 h-56 mx-auto mb-8 overflow-hidden">
-                  <Image
-                    src={member.image}
-                    alt={member.name}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                  {/* Subtle overlay on hover */}
-                  <div className="absolute inset-0 bg-navy/0 group-hover:bg-navy/10 transition-colors duration-500" />
+                <div className="w-32 h-32 mx-auto mb-8 rounded-full bg-navy/8 flex items-center justify-center">
+                  <span className="font-heading text-3xl text-navy/30">
+                    {member.initials}
+                  </span>
                 </div>
 
                 <h3 className="font-heading text-xl mb-1">{member.name}</h3>
