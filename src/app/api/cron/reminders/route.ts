@@ -24,14 +24,16 @@ export async function GET(request: NextRequest) {
       and(
         eq(appointments.date, tomorrowStr),
         eq(appointments.status, "confirmed"),
-        eq(appointments.reminderSent, 0)
+        eq(appointments.reminderSent, false)
       )
     );
 
   const allServices = await db.select().from(services);
   const allStylists = await db.select().from(stylists);
-  const serviceMap = Object.fromEntries(allServices.map((s) => [s.id, s]));
-  const stylistMap = Object.fromEntries(allStylists.map((s) => [s.id, s]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const serviceMap = Object.fromEntries(allServices.map((s: any) => [s.id, s]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stylistMap = Object.fromEntries(allStylists.map((s: any) => [s.id, s]));
 
   const baseUrl = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
   let sent = 0;
@@ -51,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     await db
       .update(appointments)
-      .set({ reminderSent: 1 })
+      .set({ reminderSent: true })
       .where(eq(appointments.id, appt.id));
 
     sent++;

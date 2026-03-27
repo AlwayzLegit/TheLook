@@ -7,18 +7,16 @@ export async function GET() {
   const allServices = await db
     .select()
     .from(services)
-    .where(eq(services.active, 1))
+    .where(eq(services.active, true))
     .orderBy(asc(services.sortOrder));
 
   // Group by category
-  const grouped = allServices.reduce(
-    (acc, s) => {
-      if (!acc[s.category]) acc[s.category] = [];
-      acc[s.category].push(s);
-      return acc;
-    },
-    {} as Record<string, typeof allServices>
-  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const grouped: Record<string, any[]> = {};
+  for (const s of allServices) {
+    if (!grouped[s.category]) grouped[s.category] = [];
+    grouped[s.category].push(s);
+  }
 
   return NextResponse.json(grouped);
 }

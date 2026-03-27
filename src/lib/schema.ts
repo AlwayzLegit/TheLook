@@ -1,88 +1,71 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { sql } from "drizzle-orm";
+import { pgTable, text, integer, timestamp, uuid, boolean, varchar } from "drizzle-orm/pg-core";
 
-const id = () =>
-  text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID().replace(/-/g, "").slice(0, 16));
-
-const timestamp = (name: string) =>
-  text(name).default(sql`(datetime('now'))`);
-
-export const services = sqliteTable("services", {
-  id: id(),
-  category: text("category").notNull(),
-  name: text("name").notNull(),
-  priceText: text("price_text").notNull(),
+export const services = pgTable("services", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  category: varchar("category", { length: 100 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  priceText: varchar("price_text", { length: 50 }).notNull(),
   priceMin: integer("price_min").notNull(),
   duration: integer("duration").notNull(),
-  active: integer("active").default(1),
+  active: boolean("active").default(true),
   sortOrder: integer("sort_order").default(0),
-  createdAt: timestamp("created_at"),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const stylists = sqliteTable("stylists", {
-  id: id(),
-  name: text("name").notNull(),
-  slug: text("slug").unique().notNull(),
+export const stylists = pgTable("stylists", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  slug: varchar("slug", { length: 100 }).unique().notNull(),
   bio: text("bio"),
-  imageUrl: text("image_url"),
-  specialties: text("specialties"),
-  active: integer("active").default(1),
+  imageUrl: varchar("image_url", { length: 500 }),
+  specialties: text("specialties"), // JSON string
+  active: boolean("active").default(true),
   sortOrder: integer("sort_order").default(0),
-  createdAt: timestamp("created_at"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const stylistServices = sqliteTable("stylist_services", {
-  stylistId: text("stylist_id")
-    .notNull()
-    .references(() => stylists.id),
-  serviceId: text("service_id")
-    .notNull()
-    .references(() => services.id),
+export const stylistServices = pgTable("stylist_services", {
+  stylistId: uuid("stylist_id").notNull().references(() => stylists.id),
+  serviceId: uuid("service_id").notNull().references(() => services.id),
 });
 
-export const scheduleRules = sqliteTable("schedule_rules", {
-  id: id(),
-  stylistId: text("stylist_id").references(() => stylists.id),
-  ruleType: text("rule_type").notNull(),
+export const scheduleRules = pgTable("schedule_rules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  stylistId: uuid("stylist_id").references(() => stylists.id),
+  ruleType: varchar("rule_type", { length: 20 }).notNull(),
   dayOfWeek: integer("day_of_week"),
-  specificDate: text("specific_date"),
-  startTime: text("start_time"),
-  endTime: text("end_time"),
-  isClosed: integer("is_closed").default(0),
-  note: text("note"),
-  createdAt: timestamp("created_at"),
+  specificDate: varchar("specific_date", { length: 10 }),
+  startTime: varchar("start_time", { length: 5 }),
+  endTime: varchar("end_time", { length: 5 }),
+  isClosed: boolean("is_closed").default(false),
+  note: varchar("note", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const appointments = sqliteTable("appointments", {
-  id: id(),
-  serviceId: text("service_id")
-    .notNull()
-    .references(() => services.id),
-  stylistId: text("stylist_id")
-    .notNull()
-    .references(() => stylists.id),
-  date: text("date").notNull(),
-  startTime: text("start_time").notNull(),
-  endTime: text("end_time").notNull(),
-  status: text("status").notNull().default("pending"),
-  clientName: text("client_name").notNull(),
-  clientEmail: text("client_email").notNull(),
-  clientPhone: text("client_phone"),
+export const appointments = pgTable("appointments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  serviceId: uuid("service_id").notNull().references(() => services.id),
+  stylistId: uuid("stylist_id").notNull().references(() => stylists.id),
+  date: varchar("date", { length: 10 }).notNull(),
+  startTime: varchar("start_time", { length: 5 }).notNull(),
+  endTime: varchar("end_time", { length: 5 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  clientName: varchar("client_name", { length: 200 }).notNull(),
+  clientEmail: varchar("client_email", { length: 200 }).notNull(),
+  clientPhone: varchar("client_phone", { length: 20 }),
   notes: text("notes"),
   staffNotes: text("staff_notes"),
-  cancelToken: text("cancel_token").unique(),
-  reminderSent: integer("reminder_sent").default(0),
-  createdAt: timestamp("created_at"),
-  updatedAt: timestamp("updated_at"),
+  cancelToken: varchar("cancel_token", { length: 64 }).unique(),
+  reminderSent: boolean("reminder_sent").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const adminLog = sqliteTable("admin_log", {
-  id: id(),
-  action: text("action").notNull(),
-  appointmentId: text("appointment_id").references(() => appointments.id),
+export const adminLog = pgTable("admin_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  action: varchar("action", { length: 50 }).notNull(),
+  appointmentId: uuid("appointment_id").references(() => appointments.id),
   details: text("details"),
-  createdAt: timestamp("created_at"),
+  createdAt: timestamp("created_at").defaultNow(),
 });

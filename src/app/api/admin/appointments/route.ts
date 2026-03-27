@@ -30,10 +30,13 @@ export async function GET(request: NextRequest) {
   const allServices = await db.select().from(services);
   const allStylists = await db.select().from(stylists);
 
-  const serviceMap = Object.fromEntries(allServices.map((s) => [s.id, s]));
-  const stylistMap = Object.fromEntries(allStylists.map((s) => [s.id, s]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const serviceMap = Object.fromEntries(allServices.map((s: any) => [s.id, s]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stylistMap = Object.fromEntries(allStylists.map((s: any) => [s.id, s]));
 
-  const enriched = rows.map((a) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const enriched = rows.map((a: any) => ({
     ...a,
     serviceName: serviceMap[a.serviceId]?.name,
     stylistName: stylistMap[a.stylistId]?.name,

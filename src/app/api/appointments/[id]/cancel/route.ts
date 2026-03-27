@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   await db
     .update(appointments)
-    .set({ status: "cancelled", updatedAt: new Date().toISOString() })
+    .set({ status: "cancelled", updatedAt: new Date() })
     .where(eq(appointments.id, appointment.id));
 
   // Get service & stylist names for email

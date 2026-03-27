@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     specificDate: specificDate || null,
     startTime: startTime || null,
     endTime: endTime || null,
-    isClosed: isClosed ? 1 : 0,
+    isClosed: !!isClosed,
     note: note || null,
   });
 

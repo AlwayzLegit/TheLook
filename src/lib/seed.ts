@@ -1,50 +1,53 @@
-import { db } from "./db";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import { services, stylists, stylistServices, scheduleRules } from "./schema";
 import { SALON_SERVICES, SALON_STYLISTS, SALON_HOURS } from "./constants";
 
 async function seed() {
+  const sql = neon(process.env.POSTGRES_URL || process.env.DATABASE_URL || "");
+  const db = drizzle(sql);
+
   console.log("Seeding database...");
 
   // Seed services
-  const serviceIds: Record<string, string> = {};
+  const insertedServices = [];
   for (let i = 0; i < SALON_SERVICES.length; i++) {
     const s = SALON_SERVICES[i];
-    const id = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
-    serviceIds[s.name] = id;
-    await db.insert(services).values({
-      id,
+    const [row] = await db.insert(services).values({
       category: s.category,
       name: s.name,
       priceText: s.priceText,
       priceMin: s.priceMin,
       duration: s.duration,
       sortOrder: i,
-    });
+    }).returning();
+    insertedServices.push(row);
   }
-  console.log(`Seeded ${SALON_SERVICES.length} services`);
+  console.log(`Seeded ${insertedServices.length} services`);
 
   // Seed stylists
-  const stylistIds: string[] = [];
+  const insertedStylists = [];
   for (let i = 0; i < SALON_STYLISTS.length; i++) {
     const st = SALON_STYLISTS[i];
-    const id = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
-    stylistIds.push(id);
-    await db.insert(stylists).values({
-      id,
+    const [row] = await db.insert(stylists).values({
       name: st.name,
       slug: st.slug,
       bio: st.bio,
       imageUrl: st.imageUrl,
       specialties: st.specialties,
       sortOrder: i,
-    });
+    }).returning();
+    insertedStylists.push(row);
   }
-  console.log(`Seeded ${SALON_STYLISTS.length} stylists`);
+  console.log(`Seeded ${insertedStylists.length} stylists`);
 
   // All stylists can perform all services
-  for (const stylistId of stylistIds) {
-    for (const serviceId of Object.values(serviceIds)) {
-      await db.insert(stylistServices).values({ stylistId, serviceId });
+  for (const stylist of insertedStylists) {
+    for (const service of insertedServices) {
+      await db.insert(stylistServices).values({
+        stylistId: stylist.id,
+        serviceId: service.id,
+      });
     }
   }
   console.log("Seeded stylist-service mappings");
@@ -56,7 +59,7 @@ async function seed() {
       dayOfWeek: h.dayOfWeek,
       startTime: h.startTime,
       endTime: h.endTime,
-      isClosed: h.isClosed,
+      isClosed: h.isClosed === 1,
     });
   }
   console.log("Seeded schedule rules");

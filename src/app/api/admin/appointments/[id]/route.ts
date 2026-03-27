@@ -15,7 +15,7 @@ export async function PATCH(
   const body = await request.json();
   const { status, staffNotes } = body;
 
-  const updateData: Record<string, string> = { updatedAt: new Date().toISOString() };
+  const updateData: Record<string, unknown> = { updatedAt: new Date() };
   if (status) updateData.status = status;
   if (staffNotes !== undefined) updateData.staffNotes = staffNotes;
 

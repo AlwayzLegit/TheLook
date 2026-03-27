@@ -36,10 +36,12 @@ export async function getAvailableSlots(
     .where(eq(scheduleRules.ruleType, "override"));
 
   const stylistOverride = allRules.find(
-    (r) => r.specificDate === date && r.stylistId === stylistId
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (r: any) => r.specificDate === date && r.stylistId === stylistId
   );
   const salonOverride = allRules.find(
-    (r) => r.specificDate === date && !r.stylistId
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (r: any) => r.specificDate === date && !r.stylistId
   );
 
   const weeklyRules = await db
@@ -49,8 +51,10 @@ export async function getAvailableSlots(
       and(eq(scheduleRules.ruleType, "weekly"), eq(scheduleRules.dayOfWeek, dayOfWeek))
     );
 
-  const stylistWeekly = weeklyRules.find((r) => r.stylistId === stylistId);
-  const salonWeekly = weeklyRules.find((r) => !r.stylistId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stylistWeekly = weeklyRules.find((r: any) => r.stylistId === stylistId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const salonWeekly = weeklyRules.find((r: any) => !r.stylistId);
 
   const rule = stylistOverride || salonOverride || stylistWeekly || salonWeekly;
 
@@ -90,7 +94,8 @@ export async function getAvailableSlots(
     const slotStart = timeToMinutes(slotTime);
     const slotEnd = slotStart + duration;
 
-    return !existing.some((appt) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return !existing.some((appt: any) => {
       const apptStart = timeToMinutes(appt.startTime);
       const apptEnd = timeToMinutes(appt.endTime);
       return slotStart < apptEnd && slotEnd > apptStart;
