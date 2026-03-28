@@ -94,20 +94,20 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function ReviewCard({ review, className = "" }: { review: YelpReview; className?: string }) {
+function ReviewCard({ review }: { review: YelpReview }) {
   return (
-    <div className={`relative flex flex-col bg-navy p-8 border border-white/8 hover:border-gold/25 transition-all duration-500 hover:shadow-[0_8px_30px_rgba(196,162,101,0.12)] hover:-translate-y-1 group h-full ${className}`}>
+    <div className="relative flex flex-col bg-navy p-8 border border-white/8 hover:border-gold/25 transition-all duration-500 hover:shadow-[0_8px_30px_rgba(196,162,101,0.12)] group h-[320px]">
       {/* Decorative quote mark */}
       <div className="absolute top-5 right-6 font-heading text-5xl text-gold/10 leading-none group-hover:text-gold/20 transition-colors duration-500">&ldquo;</div>
 
-      {/* Bottom accent line on hover */}
-      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-rose via-gold to-rose scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
+      {/* Bottom accent line on hover — gold gradient */}
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-gold-light via-gold to-gold-light scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
 
       <StarRating rating={review.rating} />
 
-      {/* Fixed-height text area so cards are always the same height */}
-      <div className="flex-1 mt-5 mb-6">
-        <p className="text-white/60 font-body font-light text-[14px] leading-relaxed line-clamp-5">
+      {/* Scrollable text area with fixed card height */}
+      <div className="flex-1 mt-5 mb-6 overflow-y-auto min-h-0 pr-1 scrollbar-thin">
+        <p className="text-white/60 font-body font-light text-[14px] leading-relaxed">
           &ldquo;{review.text}&rdquo;
         </p>
       </div>
@@ -298,7 +298,7 @@ export default function YelpReviews() {
                   aria-label={`Review set ${i + 1}`}
                   className={`transition-all duration-500 ${
                     i === current
-                      ? "w-7 h-[3px] bg-gradient-to-r from-rose to-gold rounded-full"
+                      ? "w-7 h-[3px] bg-gradient-to-r from-gold-light to-gold rounded-full"
                       : "w-[3px] h-[3px] bg-white/15 hover:bg-gold/40 rounded-full"
                   }`}
                 />
