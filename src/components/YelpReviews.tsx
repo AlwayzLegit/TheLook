@@ -79,11 +79,11 @@ const reviews: YelpReview[] = [
 
 function StarRating({ rating }: { rating: number }) {
   return (
-    <div className="flex gap-0.5" aria-label={`${rating} out of 5 stars`}>
+    <div className="flex gap-1" aria-label={`${rating} out of 5 stars`}>
       {Array.from({ length: 5 }).map((_, i) => (
         <svg
           key={i}
-          className={`w-4 h-4 ${i < rating ? "text-[#FF1A1A]" : "text-navy/15"}`}
+          className={`w-3.5 h-3.5 ${i < rating ? "text-gold" : "text-navy/12"}`}
           fill="currentColor"
           viewBox="0 0 20 20"
         >
@@ -149,7 +149,7 @@ export default function YelpReviews() {
               href="https://www.yelp.com/biz/the-look-hair-salon-glendale"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 bg-white px-5 py-3.5 rounded-sm border border-navy/8 hover:border-rose/20 transition-all duration-300 group hover:shadow-[0_4px_15px_rgba(0,0,0,0.06)]"
+              className="flex items-center gap-3 bg-white px-5 py-3.5 border border-navy/6 hover:border-gold/30 transition-all duration-500 group hover:shadow-[0_8px_30px_rgba(196,162,101,0.1)] hover:-translate-y-0.5"
             >
               <svg className="w-5 h-5 text-[#FF1A1A] shrink-0" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M20.16 12.594l-4.995 1.433c-.96.276-1.74-.8-1.176-1.63l2.905-4.308a1.072 1.072 0 011.596-.206 7.26 7.26 0 011.96 3.164c.252.754-.09 1.478-.29 1.547zm-7.455 5.13l1.105-5.088c.226-.98 1.59-1.048 1.923-.096l1.703 4.872c.22.63-.14 1.31-.796 1.508a7.073 7.073 0 01-3.635.04c-.76-.196-.506-1.236-.3-1.236zm-3.31-4.636l4.923 1.688c.952.326.952 1.64 0 1.966l-4.923 1.688c-.632.217-1.278-.258-1.36-.928a7.09 7.09 0 010-3.486c.082-.67.728-1.145 1.36-.928zM5.7 6.705c.14-.67.86-1.016 1.468-.71l4.472 2.252c.884.445.69 1.74-.282 1.887l-5.194.8c-.645.098-1.222-.39-1.28-1.04a7.12 7.12 0 01.816-3.189zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z" />
@@ -171,7 +171,7 @@ export default function YelpReviews() {
               href="https://www.google.com/maps/place/The+Look+Hair+Salon/@34.1425,-118.2553,17z/"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 bg-white px-5 py-3.5 rounded-sm border border-navy/8 hover:border-[#4285F4]/20 transition-all duration-300 group hover:shadow-[0_4px_15px_rgba(0,0,0,0.06)]"
+              className="flex items-center gap-3 bg-white px-5 py-3.5 border border-navy/6 hover:border-gold/30 transition-all duration-500 group hover:shadow-[0_8px_30px_rgba(196,162,101,0.1)] hover:-translate-y-0.5"
             >
               <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -209,36 +209,39 @@ export default function YelpReviews() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}
                   transition={{ duration: 0.4, delay: i * 0.08 }}
-                  className="bg-white p-8 border border-navy/6 hover:border-gold/20 transition-all duration-300 hover:shadow-[0_8px_25px_rgba(0,0,0,0.06)] relative group"
+                  className="relative bg-white p-8 border border-navy/6 hover:border-gold/30 transition-all duration-500 hover:shadow-[0_8px_30px_rgba(196,162,101,0.1)] hover:-translate-y-1 group"
                 >
                   {/* Decorative quote mark */}
-                  <div className="absolute top-4 right-5 font-heading text-6xl text-gold/10 leading-none group-hover:text-gold/20 transition-colors duration-500">&ldquo;</div>
+                  <div className="absolute top-5 right-6 font-heading text-5xl text-gold/8 leading-none group-hover:text-gold/18 transition-colors duration-500">&ldquo;</div>
+
+                  {/* Bottom accent line on hover — matches ServicesPreview */}
+                  <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-rose via-gold to-rose scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
 
                   <StarRating rating={review.rating} />
-                  <p className="text-navy/70 font-body font-light text-[14px] leading-relaxed mt-5 mb-6 line-clamp-5 relative">
+                  <p className="text-navy/65 font-body font-light text-[14px] leading-relaxed mt-5 mb-6 line-clamp-5 relative">
                     &ldquo;{review.text}&rdquo;
                   </p>
-                  <div className="flex items-center justify-between pt-4 border-t border-navy/6">
+                  <div className="flex items-center justify-between pt-5 border-t border-navy/6">
                     <div className="flex items-center gap-3">
                       {/* Avatar initial */}
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gold/20 to-rose/10 flex items-center justify-center">
-                        <span className="text-navy/70 font-heading text-sm">{review.name.charAt(0)}</span>
+                      <div className="w-9 h-9 rounded-full bg-cream-dark flex items-center justify-center border border-gold/15">
+                        <span className="text-navy/60 font-heading text-sm">{review.name.charAt(0)}</span>
                       </div>
                       <div>
-                        <p className="font-body font-medium text-sm text-navy">
+                        <p className="font-body font-medium text-sm text-navy group-hover:text-rose transition-colors duration-300">
                           {review.name}
                         </p>
                         {review.service && (
-                          <p className="text-navy/45 text-[11px] font-body mt-0.5">
+                          <p className="text-navy/40 text-[10px] tracking-wider uppercase font-body mt-0.5">
                             {review.service}
                           </p>
                         )}
                       </div>
                     </div>
-                    <span className={`text-[10px] font-body font-medium px-2.5 py-1 rounded-full ${
+                    <span className={`text-[10px] font-body tracking-wider uppercase px-2.5 py-1 rounded-sm ${
                       review.date === "Yelp"
-                        ? "bg-[#FF1A1A]/8 text-[#FF1A1A]"
-                        : "bg-[#4285F4]/8 text-[#4285F4]"
+                        ? "bg-cream-dark text-rose/70"
+                        : "bg-cream-dark text-navy/50"
                     }`}>
                       {review.date}
                     </span>
@@ -257,33 +260,34 @@ export default function YelpReviews() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -30 }}
                 transition={{ duration: 0.3 }}
-                className="bg-white p-8 border border-navy/6 relative"
+                className="relative bg-white p-8 border border-navy/6"
               >
-                <div className="absolute top-4 right-5 font-heading text-6xl text-gold/10 leading-none">&ldquo;</div>
+                <div className="absolute top-5 right-6 font-heading text-5xl text-gold/8 leading-none">&ldquo;</div>
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-rose via-gold to-rose" />
                 <StarRating rating={reviews[current].rating} />
-                <p className="text-navy/70 font-body font-light text-[14px] leading-relaxed mt-5 mb-6">
+                <p className="text-navy/65 font-body font-light text-[14px] leading-relaxed mt-5 mb-6">
                   &ldquo;{reviews[current].text}&rdquo;
                 </p>
-                <div className="flex items-center justify-between pt-4 border-t border-navy/6">
+                <div className="flex items-center justify-between pt-5 border-t border-navy/6">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gold/20 to-rose/10 flex items-center justify-center">
-                      <span className="text-navy/70 font-heading text-sm">{reviews[current].name.charAt(0)}</span>
+                    <div className="w-9 h-9 rounded-full bg-cream-dark flex items-center justify-center border border-gold/15">
+                      <span className="text-navy/60 font-heading text-sm">{reviews[current].name.charAt(0)}</span>
                     </div>
                     <div>
                       <p className="font-body font-medium text-sm text-navy">
                         {reviews[current].name}
                       </p>
                       {reviews[current].service && (
-                        <p className="text-navy/45 text-[11px] font-body mt-0.5">
+                        <p className="text-navy/40 text-[10px] tracking-wider uppercase font-body mt-0.5">
                           {reviews[current].service}
                         </p>
                       )}
                     </div>
                   </div>
-                  <span className={`text-[10px] font-body font-medium px-2.5 py-1 rounded-full ${
+                  <span className={`text-[10px] font-body tracking-wider uppercase px-2.5 py-1 rounded-sm ${
                     reviews[current].date === "Yelp"
-                      ? "bg-[#FF1A1A]/8 text-[#FF1A1A]"
-                      : "bg-[#4285F4]/8 text-[#4285F4]"
+                      ? "bg-cream-dark text-rose/70"
+                      : "bg-cream-dark text-navy/50"
                   }`}>
                     {reviews[current].date}
                   </span>
@@ -297,23 +301,23 @@ export default function YelpReviews() {
             <button
               onClick={prev}
               aria-label="Previous reviews"
-              className="w-10 h-10 flex items-center justify-center border border-navy/10 rounded-full text-navy/40 hover:text-rose hover:border-rose/30 transition-all duration-300"
+              className="w-10 h-10 flex items-center justify-center border border-navy/8 text-navy/35 hover:text-gold hover:border-gold/30 transition-all duration-500 hover:-translate-y-0.5"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
 
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               {reviews.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setCurrent(i)}
                   aria-label={`Review set ${i + 1}`}
-                  className={`transition-all duration-300 rounded-full ${
+                  className={`transition-all duration-500 ${
                     i === current
-                      ? "w-7 h-1.5 bg-rose"
-                      : "w-1.5 h-1.5 bg-navy/15 hover:bg-navy/30"
+                      ? "w-7 h-[3px] bg-gradient-to-r from-rose to-gold rounded-full"
+                      : "w-[3px] h-[3px] bg-navy/12 hover:bg-gold/40 rounded-full"
                   }`}
                 />
               ))}
@@ -322,7 +326,7 @@ export default function YelpReviews() {
             <button
               onClick={next}
               aria-label="Next reviews"
-              className="w-10 h-10 flex items-center justify-center border border-navy/10 rounded-full text-navy/40 hover:text-rose hover:border-rose/30 transition-all duration-300"
+              className="w-10 h-10 flex items-center justify-center border border-navy/8 text-navy/35 hover:text-gold hover:border-gold/30 transition-all duration-500 hover:-translate-y-0.5"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
