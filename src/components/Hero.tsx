@@ -31,8 +31,11 @@ export default function Hero() {
         />
       </motion.div>
 
-      {/* Warm gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-navy/75 via-navy/55 to-navy/80" />
+      {/* Rich gradient overlay with warmth */}
+      <div className="absolute inset-0 bg-gradient-to-b from-charcoal/80 via-navy/50 to-charcoal/85" />
+
+      {/* Subtle radial glow behind content */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(196,162,101,0.08)_0%,transparent_70%)]" />
 
       <motion.div style={{ opacity }} className="relative z-10 text-center px-6 max-w-4xl mx-auto">
         {/* Badge */}
@@ -42,11 +45,11 @@ export default function Hero() {
           transition={{ duration: 1, delay: 0.2 }}
           className="flex items-center justify-center gap-5 mb-8"
         >
-          <span className="w-10 h-[1px] bg-gold/50" />
+          <span className="w-12 h-[1px] bg-gradient-to-r from-transparent to-gold/60" />
           <span className="text-gold text-[11px] tracking-[0.35em] uppercase font-body">
             Est. 2011 &middot; Glendale, CA
           </span>
-          <span className="w-10 h-[1px] bg-gold/50" />
+          <span className="w-12 h-[1px] bg-gradient-to-l from-transparent to-gold/60" />
         </motion.div>
 
         {/* Logo */}
@@ -59,36 +62,42 @@ export default function Hero() {
           <Image
             src="/images/logo.png"
             alt="The Look"
-            width={160}
-            height={85}
-            className="mx-auto brightness-0 invert"
+            width={170}
+            height={90}
+            className="mx-auto brightness-0 invert drop-shadow-[0_2px_10px_rgba(196,162,101,0.3)]"
           />
         </motion.div>
 
-        {/* Heading */}
+        {/* Heading with shimmer */}
         <motion.h1
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
-          className="font-heading text-5xl md:text-7xl text-white tracking-wide mb-5"
+          className="font-heading text-5xl md:text-7xl lg:text-8xl text-white tracking-wider mb-5"
         >
-          HAIR SALON
+          <span className="text-shimmer">HAIR SALON</span>
         </motion.h1>
 
-        {/* Divider */}
+        {/* Ornamental divider */}
         <motion.div
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
           transition={{ duration: 0.6, delay: 0.8 }}
-          className="w-16 h-[1px] bg-gold mx-auto mb-7"
-        />
+          className="flex items-center justify-center gap-3 mb-8"
+        >
+          <span className="w-12 h-[1px] bg-gradient-to-r from-transparent to-gold/60" />
+          <svg className="w-3 h-3 text-gold/60" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+          </svg>
+          <span className="w-12 h-[1px] bg-gradient-to-l from-transparent to-gold/60" />
+        </motion.div>
 
-        {/* Tagline — warm and welcoming, not pretentious */}
+        {/* Tagline */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1.0 }}
-          className="text-white/70 text-base md:text-lg font-body font-light max-w-lg mx-auto mb-11 leading-relaxed"
+          className="text-white/65 text-base md:text-lg font-body font-light max-w-lg mx-auto mb-12 leading-relaxed"
         >
           Family owned with over 25 years of experience. The highest quality
           hair services in Glendale at unbeatable prices.
@@ -103,13 +112,13 @@ export default function Hero() {
         >
           <Link
             href="/book"
-            className="bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 rounded-sm transition-all duration-300 hover:shadow-[0_4px_24px_rgba(194,39,75,0.35)]"
+            className="cta-glow bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-11 py-4 rounded-sm transition-all duration-300 hover:shadow-[0_4px_24px_rgba(194,39,75,0.45)] hover:-translate-y-0.5"
           >
             Book Your Appointment
           </Link>
           <a
             href="tel:+18186625665"
-            className="border border-white/25 hover:border-gold text-white/80 hover:text-gold text-[11px] tracking-[0.2em] uppercase px-10 py-4 rounded-sm transition-all duration-300"
+            className="border border-white/20 hover:border-gold/60 text-white/75 hover:text-gold text-[11px] tracking-[0.2em] uppercase px-11 py-4 rounded-sm transition-all duration-300 hover:-translate-y-0.5"
           >
             Call (818) 662-5665
           </a>
@@ -121,8 +130,9 @@ export default function Hero() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 2 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
       >
+        <span className="text-white/30 text-[9px] tracking-[0.3em] uppercase font-body">Scroll</span>
         <motion.div
           animate={{ y: [0, 8, 0] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
