@@ -49,16 +49,22 @@ export default function Contact() {
   };
 
   return (
-    <section id="contact" className="py-24 md:py-32 bg-white">
-      <div className="max-w-7xl mx-auto px-6">
+    <section id="contact" className="py-24 md:py-32 bg-white relative overflow-hidden">
+      {/* Background accent */}
+      <div className="absolute top-0 left-0 w-80 h-80 bg-[radial-gradient(circle,rgba(196,162,101,0.04)_0%,transparent_70%)]" />
+
+      <div className="max-w-7xl mx-auto px-6 relative">
         <AnimatedSection className="text-center mb-16">
-          <p className="text-gold tracking-[0.3em] uppercase text-sm mb-4 font-body">
-            Get in Touch
-          </p>
+          <div className="flex items-center justify-center gap-4 mb-5">
+            <span className="w-10 h-[1px] bg-gradient-to-r from-transparent to-gold" />
+            <span className="text-gold text-[11px] tracking-[0.3em] uppercase font-body">
+              Get in Touch
+            </span>
+            <span className="w-10 h-[1px] bg-gradient-to-l from-transparent to-gold" />
+          </div>
           <h2 className="font-heading text-4xl md:text-5xl mb-6">
             Contact Us
           </h2>
-          <div className="w-16 h-[1px] bg-rose mx-auto mb-4" />
           <p className="text-navy/60 font-body font-light max-w-xl mx-auto">
             The absolute best way to reach us is by calling the salon directly.
             We will be glad to assist you with any questions you may have.
@@ -179,7 +185,7 @@ export default function Contact() {
               <button
                 type="submit"
                 disabled={status === "submitting"}
-                className="bg-rose hover:bg-rose-light disabled:opacity-60 text-white tracking-widest uppercase text-sm px-10 py-4 transition-colors font-body w-full sm:w-auto"
+                className="bg-rose hover:bg-rose-light disabled:opacity-60 text-white tracking-widest uppercase text-sm px-10 py-4 transition-all duration-300 font-body w-full sm:w-auto hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)] hover:-translate-y-0.5"
               >
                 {status === "submitting" ? "Sending..." : "Send Message"}
               </button>

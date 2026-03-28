@@ -15,6 +15,11 @@
   --color-warm-white: #fffefa;
   --color-white: #ffffff;
 
+  /* ── Extended Palette ── */
+  --color-charcoal: #1a1a2e;
+  --color-blush: #f5e6e0;
+  --color-sage: #e8ede4;
+
   /* ── Typography ── */
   --font-heading: "Forum", Georgia, "Times New Roman", serif;
   --font-body: "Lato", "Helvetica Neue", Arial, sans-serif;
@@ -56,4 +61,68 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb {
   background: var(--color-gold);
   border-radius: 3px;
+}
+
+/* ── Shimmer animation ── */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-gold) 0%,
+    var(--color-gold-light) 25%,
+    #e8d5a8 50%,
+    var(--color-gold-light) 75%,
+    var(--color-gold) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+
+/* ── Glow pulse for CTAs ── */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(194, 39, 75, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(194, 39, 75, 0.4); }
+}
+
+.cta-glow {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* ── Decorative divider ── */
+.ornament-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ornament-divider::before,
+.ornament-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+}
+
+/* ── Glassmorphism card ── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(196, 162, 101, 0.15);
+}
+
+/* ── Subtle float animation ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }
