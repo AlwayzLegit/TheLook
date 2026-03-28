@@ -17,8 +17,8 @@ export default function About() {
             <div className="relative">
               <div className="aspect-[4/5] relative overflow-hidden rounded-sm shadow-[0_20px_60px_rgba(40,41,54,0.15)]">
                 <Image
-                  src="/images/hero/salon-main.jpg"
-                  alt="The Look Hair Salon interior"
+                  src="/images/our-story.png"
+                  alt="Balayage hair styling at The Look Hair Salon"
                   fill
                   className="object-cover"
                 />
