@@ -1,26 +1,72 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* ── Core Palette — Warm Professional ── */
-  --color-navy: #282936;
-  --color-navy-light: #353647;
-  --color-navy-lighter: #454660;
-  --color-rose: #c2274b;
-  --color-rose-light: #d44068;
-  --color-rose-dark: #9e1f3d;
-  --color-cream: #faf8f3;
-  --color-cream-dark: #f0ece3;
+  /* ══════════════════════════════════════════════════════════════════════════
+     VELVET & GILT — The Ethereal Atelier Design System
+     Dark mode, glassmorphism, tonal layering, no borders
+  ══════════════════════════════════════════════════════════════════════════ */
+
+  /* ── Surface Hierarchy (Tonal Layering) ── */
+  --color-surface: #131317;              /* Base canvas */
+  --color-surface-dim: #0e0e12;          /* Recessed/inset elements */
+  --color-surface-container-low: #1b1b1f;    /* Secondary sections */
+  --color-surface-container: #1f1f23;        /* Default containers */
+  --color-surface-container-high: #2a2a2e;   /* Interactive cards */
+  --color-surface-container-highest: #353439; /* Active/selected states */
+  --color-surface-variant: #353439;          /* Glassmorphism base */
+  --color-surface-bright: #39393d;
+
+  /* ── Primary: Gold ── */
+  --color-primary: #e6c181;
+  --color-primary-dim: #c4a265;
+  --color-primary-container: #392700;
+  --color-on-primary: #412d00;
+  --color-on-primary-container: #ad8c52;
+  --color-on-primary-fixed: #271900;
+
+  /* ── Secondary: Rose ── */
+  --color-secondary: #ffb2b9;
+  --color-secondary-dim: #c2274b;
+  --color-secondary-container: #9e0034;
+  --color-on-secondary: #67001f;
+
+  /* ── Tertiary: Muted Purple ── */
+  --color-tertiary: #c6c5d6;
+  --color-tertiary-container: #282936;
+
+  /* ── Text & Outlines ── */
+  --color-on-surface: #e4e1e7;
+  --color-on-surface-variant: #c8c5cc;
+  --color-outline: #919096;
+  --color-outline-variant: #47464c;
+
+  /* ── Error ── */
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+
+  /* ── Legacy aliases for compatibility ── */
+  --color-navy: #131317;
   --color-gold: #c4a265;
-  --color-gold-light: #d4b87e;
-  --color-warm-white: #fffefa;
+  --color-gold-light: #e6c181;
+  --color-rose: #c2274b;
+  --color-rose-light: #ffb2b9;
+  --color-cream: #e4e1e7;
   --color-white: #ffffff;
 
   /* ── Typography ── */
-  --font-heading: "Forum", Georgia, "Times New Roman", serif;
-  --font-body: "Lato", "Helvetica Neue", Arial, sans-serif;
+  --font-heading: "Noto Serif", Georgia, "Times New Roman", serif;
+  --font-body: "Manrope", "Helvetica Neue", Arial, sans-serif;
+  --font-label: "Manrope", "Helvetica Neue", Arial, sans-serif;
+
+  /* ── Spacing Scale (Ethereal breathing room) ── */
+  --spacing-section: 7rem;
+  --spacing-content: 4rem;
 }
 
-/* ── Base ── */
+/* ══════════════════════════════════════════════════════════════════════════
+   BASE STYLES
+══════════════════════════════════════════════════════════════════════════ */
+
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
@@ -28,32 +74,140 @@ html {
 }
 
 body {
-  background: var(--color-cream);
-  color: var(--color-navy);
+  background: var(--color-surface);
+  color: var(--color-on-surface);
   font-family: var(--font-body);
-  line-height: 1.7;
+  line-height: 1.6;
+  font-size: 1rem;
 }
 
+/* ── Headings: Editorial Authority ── */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   line-height: 1.2;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.02em; /* High-fashion density */
+  color: var(--color-on-surface);
 }
 
-/* ── Selection ── */
+/* ── Labels (stamps of quality) ── */
+.label {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.1rem;
+  font-size: 0.75rem;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SELECTION & SCROLLBAR
+══════════════════════════════════════════════════════════════════════════ */
+
 ::selection {
-  background: var(--color-gold-light);
-  color: var(--color-navy);
+  background: var(--color-primary);
+  color: var(--color-on-primary-fixed);
 }
 
-/* ── Scrollbar ── */
 ::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-cream);
+  background: var(--color-surface);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-gold);
+  background: var(--color-primary-dim);
   border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+══════════════════════════════════════════════════════════════════════════ */
+
+/* Glassmorphism effect */
+.glass {
+  background: rgba(53, 52, 57, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Ghost border (felt, not seen) */
+.ghost-border {
+  border: 1px solid rgba(71, 70, 76, 0.15);
+}
+
+/* Ambient shadow (diffused, navy-tinted) */
+.shadow-ambient {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Gradient gold button */
+.btn-gold {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-on-primary-container) 100%);
+  color: var(--color-on-primary-fixed);
+  transition: all 0.4s ease;
+}
+.btn-gold:hover {
+  box-shadow: 0 8px 32px rgba(196, 162, 101, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Ghost outline button */
+.btn-ghost {
+  background: transparent;
+  color: var(--color-primary-dim);
+  border: 1px solid rgba(196, 162, 101, 0.2);
+  transition: all 0.4s ease;
+}
+.btn-ghost:hover {
+  border-color: var(--color-primary-dim);
+  color: var(--color-primary);
+}
+
+/* Rose accent button */
+.btn-rose {
+  background: var(--color-secondary-dim);
+  color: white;
+  transition: all 0.4s ease;
+}
+.btn-rose:hover {
+  background: var(--color-secondary);
+  color: var(--color-on-secondary);
+  box-shadow: 0 8px 32px rgba(194, 39, 75, 0.3);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Slow, graceful transitions (400ms+) */
+.transition-graceful {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }

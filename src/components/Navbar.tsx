@@ -36,11 +36,11 @@ export default function Navbar() {
     setIsOpen(false);
   }, [pathname]);
 
-  const showSolid = scrolled || !isHome;
+  // Glassmorphism when scrolled or not on home
+  const showGlass = scrolled || !isHome;
 
   const handleClose = () => {
     setAnimating(true);
-    // Trigger exit animation, then remove from DOM
     if (overlayRef.current) {
       overlayRef.current.style.opacity = "0";
       overlayRef.current.style.transform = "translateY(-20px)";
@@ -53,7 +53,6 @@ export default function Navbar() {
 
   const handleOpen = () => {
     setIsOpen(true);
-    // Trigger enter animation after mount
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (overlayRef.current) {
@@ -65,36 +64,32 @@ export default function Navbar() {
   };
 
   const handleToggle = () => {
-    if (isOpen) {
-      handleClose();
-    } else {
-      handleOpen();
-    }
-  };
-
-  const handleLinkClick = () => {
-    handleClose();
+    if (isOpen) handleClose();
+    else handleOpen();
   };
 
   return (
     <>
-      {/* Navbar */}
+      {/* Navbar — Glassmorphism on scroll */}
       <nav
-        className="fixed top-0 left-0 right-0 transition-colors duration-500"
+        className="fixed top-0 left-0 right-0 transition-all duration-500"
         style={{
-          backgroundColor: showSolid ? "#000000" : "transparent",
+          backgroundColor: showGlass ? "rgba(19, 19, 23, 0.85)" : "transparent",
+          backdropFilter: showGlass ? "blur(20px)" : "none",
+          WebkitBackdropFilter: showGlass ? "blur(20px)" : "none",
           zIndex: 100,
         }}
       >
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex items-center justify-between h-20">
-            <Link href="/">
+            {/* Logo */}
+            <Link href="/" className="transition-opacity duration-300 hover:opacity-80">
               <Image
                 src="/images/logo.png"
                 alt="The Look Hair Salon"
                 width={100}
                 height={53}
-                className="brightness-0 invert opacity-90 hover:opacity-100 transition-opacity"
+                className="brightness-0 invert opacity-90"
               />
             </Link>
 
@@ -105,23 +100,44 @@ export default function Navbar() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="relative px-5 py-2 text-white/75 hover:text-gold text-[11px] tracking-[0.25em] uppercase font-body transition-colors duration-300"
+                    className="relative px-5 py-2 text-[11px] tracking-[0.25em] uppercase transition-all duration-400"
+                    style={{ 
+                      fontFamily: "var(--font-label)",
+                      color: pathname === link.href 
+                        ? "var(--color-primary)" 
+                        : "var(--color-on-surface-variant)"
+                    }}
+                    onMouseEnter={(e) => {
+                      if (pathname !== link.href) {
+                        e.currentTarget.style.color = "var(--color-primary-dim)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (pathname !== link.href) {
+                        e.currentTarget.style.color = "var(--color-on-surface-variant)";
+                      }
+                    }}
                   >
                     {link.label}
                   </Link>
                 ))}
               </div>
-              <div className="ml-8 pl-8 border-l border-white/10">
+              
+              {/* CTA Button — separated */}
+              <div 
+                className="ml-8 pl-8"
+                style={{ borderLeft: "1px solid rgba(71, 70, 76, 0.3)" }}
+              >
                 <Link
                   href="/book"
-                  className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-7 py-3 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)]"
+                  className="btn-rose inline-flex items-center gap-2 text-[11px] tracking-[0.2em] uppercase px-7 py-3 rounded-sm"
                 >
                   Book Now
                 </Link>
               </div>
             </div>
 
-            {/* Mobile hamburger / X */}
+            {/* Mobile hamburger */}
             <button
               onClick={handleToggle}
               disabled={animating}
@@ -129,12 +145,22 @@ export default function Navbar() {
               aria-label="Toggle menu"
             >
               {isOpen ? (
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg 
+                  className="w-6 h-6" 
+                  fill="none" 
+                  stroke="var(--color-on-surface)" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               ) : (
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <svg 
+                  className="w-6 h-6" 
+                  fill="none" 
+                  stroke="var(--color-on-surface)" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               )}
             </button>
@@ -142,7 +168,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile overlay — z-90, below nav (z-100) so X button is clickable */}
+      {/* Mobile overlay — full dark with glassmorphism */}
       {isOpen && (
         <div
           ref={overlayRef}
@@ -154,7 +180,9 @@ export default function Navbar() {
             right: 0,
             bottom: 0,
             zIndex: 90,
-            background: "#000000",
+            background: "rgba(19, 19, 23, 0.98)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
             opacity: 0,
             transform: "translateY(-20px)",
             transition: "opacity 0.3s ease, transform 0.3s ease",
@@ -168,9 +196,13 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                onClick={handleLinkClick}
-                className="text-white text-lg tracking-[0.3em] uppercase font-body hover:text-gold transition-colors"
+                onClick={handleClose}
+                className="text-lg tracking-[0.3em] uppercase transition-colors duration-400"
                 style={{
+                  fontFamily: "var(--font-label)",
+                  color: pathname === link.href 
+                    ? "var(--color-primary)" 
+                    : "var(--color-on-surface)",
                   opacity: 0,
                   transform: "translateY(10px)",
                   animation: `fadeSlideIn 0.3s ease forwards ${0.1 + i * 0.05}s`,
@@ -182,8 +214,8 @@ export default function Navbar() {
 
             <Link
               href="/book"
-              onClick={handleLinkClick}
-              className="mt-4 inline-block bg-rose text-white text-[12px] tracking-[0.2em] uppercase px-10 py-4 hover:bg-rose-light transition-colors"
+              onClick={handleClose}
+              className="btn-rose mt-6 text-[12px] tracking-[0.2em] uppercase px-10 py-4 rounded-sm"
               style={{
                 opacity: 0,
                 animation: `fadeSlideIn 0.3s ease forwards ${0.1 + navLinks.length * 0.05}s`,
@@ -193,26 +225,17 @@ export default function Navbar() {
             </Link>
 
             <p
-              className="text-white/40 text-xs font-body tracking-wider"
-              style={{ position: "absolute", bottom: 40 }}
+              className="text-xs tracking-wider"
+              style={{ 
+                fontFamily: "var(--font-label)",
+                color: "var(--color-outline)",
+                position: "absolute", 
+                bottom: 40 
+              }}
             >
               (818) 662-5665
             </p>
           </div>
-
-          {/* CSS animation keyframes */}
-          <style jsx>{`
-            @keyframes fadeSlideIn {
-              from {
-                opacity: 0;
-                transform: translateY(10px);
-              }
-              to {
-                opacity: 1;
-                transform: translateY(0);
-              }
-            }
-          `}</style>
         </div>
       )}
     </>

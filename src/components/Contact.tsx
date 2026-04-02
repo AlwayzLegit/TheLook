@@ -48,18 +48,43 @@ export default function Contact() {
     }
   };
 
+  const inputStyles = {
+    background: "transparent",
+    borderBottom: "1px solid var(--color-outline-variant)",
+    color: "var(--color-on-surface)",
+    fontFamily: "var(--font-body)",
+  };
+
+  const inputFocusStyles = "focus:outline-none focus:border-b-2";
+
   return (
-    <section id="contact" className="py-24 md:py-32 bg-white">
+    <section 
+      id="contact" 
+      className="py-24 md:py-32"
+      style={{ background: "var(--color-surface-container-low)" }}
+    >
       <div className="max-w-7xl mx-auto px-6">
         <AnimatedSection className="text-center mb-16">
-          <p className="text-gold tracking-[0.3em] uppercase text-sm mb-4 font-body">
+          <p 
+            className="tracking-[0.3em] uppercase text-sm mb-4"
+            style={{ fontFamily: "var(--font-label)", color: "var(--color-primary-dim)" }}
+          >
             Get in Touch
           </p>
-          <h2 className="font-heading text-4xl md:text-5xl mb-6">
+          <h2 
+            className="text-4xl md:text-5xl mb-6"
+            style={{ fontFamily: "var(--font-heading)", color: "var(--color-on-surface)" }}
+          >
             Contact Us
           </h2>
-          <div className="w-16 h-[1px] bg-rose mx-auto mb-4" />
-          <p className="text-navy/60 font-body font-light max-w-xl mx-auto">
+          <div 
+            className="w-16 h-[2px] mx-auto mb-4"
+            style={{ background: "var(--color-secondary-dim)" }}
+          />
+          <p 
+            className="font-light max-w-xl mx-auto"
+            style={{ fontFamily: "var(--font-body)", color: "var(--color-on-surface-variant)" }}
+          >
             The absolute best way to reach us is by calling the salon directly.
             We will be glad to assist you with any questions you may have.
           </p>
@@ -68,158 +93,210 @@ export default function Contact() {
         <div className="grid md:grid-cols-2 gap-16">
           {/* Contact Form */}
           <AnimatedSection>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid sm:grid-cols-2 gap-6">
-                <div>
-                  <label
-                    htmlFor="name"
-                    className="block text-sm text-navy/60 mb-2 font-body"
-                  >
-                    Full Name *
-                  </label>
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors"
-                  />
+            <div 
+              className="p-8 rounded-sm"
+              style={{ background: "var(--color-surface-container)" }}
+            >
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid sm:grid-cols-2 gap-6">
+                  <div>
+                    <label
+                      htmlFor="name"
+                      className="block text-sm mb-2"
+                      style={{ fontFamily: "var(--font-label)", color: "var(--color-outline)" }}
+                    >
+                      Full Name *
+                    </label>
+                    <input
+                      id="name"
+                      name="name"
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      className={`w-full py-3 transition-colors ${inputFocusStyles}`}
+                      style={{
+                        ...inputStyles,
+                      }}
+                      onFocus={(e) => e.currentTarget.style.borderBottomColor = "var(--color-primary)"}
+                      onBlur={(e) => e.currentTarget.style.borderBottomColor = "var(--color-outline-variant)"}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block text-sm mb-2"
+                      style={{ fontFamily: "var(--font-label)", color: "var(--color-outline)" }}
+                    >
+                      Email *
+                    </label>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      className={`w-full py-3 transition-colors ${inputFocusStyles}`}
+                      style={inputStyles}
+                      onFocus={(e) => e.currentTarget.style.borderBottomColor = "var(--color-primary)"}
+                      onBlur={(e) => e.currentTarget.style.borderBottomColor = "var(--color-outline-variant)"}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm text-navy/60 mb-2 font-body"
-                  >
-                    Email *
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors"
-                  />
-                </div>
-              </div>
 
-              <div className="grid sm:grid-cols-2 gap-6">
+                <div className="grid sm:grid-cols-2 gap-6">
+                  <div>
+                    <label
+                      htmlFor="phone"
+                      className="block text-sm mb-2"
+                      style={{ fontFamily: "var(--font-label)", color: "var(--color-outline)" }}
+                    >
+                      Phone
+                    </label>
+                    <input
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
+                      className={`w-full py-3 transition-colors ${inputFocusStyles}`}
+                      style={inputStyles}
+                      onFocus={(e) => e.currentTarget.style.borderBottomColor = "var(--color-primary)"}
+                      onBlur={(e) => e.currentTarget.style.borderBottomColor = "var(--color-outline-variant)"}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="service"
+                      className="block text-sm mb-2"
+                      style={{ fontFamily: "var(--font-label)", color: "var(--color-outline)" }}
+                    >
+                      Service Interested In
+                    </label>
+                    <select
+                      id="service"
+                      name="service"
+                      value={formData.service}
+                      onChange={(e) =>
+                        setFormData({ ...formData, service: e.target.value })
+                      }
+                      className={`w-full py-3 transition-colors ${inputFocusStyles}`}
+                      style={inputStyles}
+                      onFocus={(e) => e.currentTarget.style.borderBottomColor = "var(--color-primary)"}
+                      onBlur={(e) => e.currentTarget.style.borderBottomColor = "var(--color-outline-variant)"}
+                    >
+                      <option value="">Select a service</option>
+                      <option value="cutting">Cutting</option>
+                      <option value="styling">Styling & Blowout</option>
+                      <option value="color">Color & Perms</option>
+                      <option value="treatment">Hair Treatments</option>
+                      <option value="keratin">Keratin Straightening</option>
+                      <option value="extensions">Extensions</option>
+                      <option value="threading">Threading & Waxing</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
                   <label
-                    htmlFor="phone"
-                    className="block text-sm text-navy/60 mb-2 font-body"
+                    htmlFor="message"
+                    className="block text-sm mb-2"
+                    style={{ fontFamily: "var(--font-label)", color: "var(--color-outline)" }}
                   >
-                    Phone
+                    Message
                   </label>
-                  <input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={formData.phone}
+                  <textarea
+                    id="message"
+                    name="message"
+                    rows={4}
+                    value={formData.message}
                     onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
+                      setFormData({ ...formData, message: e.target.value })
                     }
-                    className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors"
+                    className={`w-full py-3 transition-colors resize-none ${inputFocusStyles}`}
+                    style={inputStyles}
+                    onFocus={(e) => e.currentTarget.style.borderBottomColor = "var(--color-primary)"}
+                    onBlur={(e) => e.currentTarget.style.borderBottomColor = "var(--color-outline-variant)"}
                   />
                 </div>
-                <div>
-                  <label
-                    htmlFor="service"
-                    className="block text-sm text-navy/60 mb-2 font-body"
-                  >
-                    Service Interested In
-                  </label>
-                  <select
-                    id="service"
-                    name="service"
-                    value={formData.service}
-                    onChange={(e) =>
-                      setFormData({ ...formData, service: e.target.value })
-                    }
-                    className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors"
-                  >
-                    <option value="">Select a service</option>
-                    <option value="cutting">Cutting</option>
-                    <option value="styling">Styling & Blowout</option>
-                    <option value="color">Color & Perms</option>
-                    <option value="treatment">Hair Treatments</option>
-                    <option value="keratin">Keratin Straightening</option>
-                    <option value="extensions">Extensions</option>
-                    <option value="threading">Threading & Waxing</option>
-                  </select>
-                </div>
-              </div>
 
-              <div>
-                <label
-                  htmlFor="message"
-                  className="block text-sm text-navy/60 mb-2 font-body"
+                <button
+                  type="submit"
+                  disabled={status === "submitting"}
+                  className="btn-rose tracking-widest uppercase text-sm px-10 py-4 w-full sm:w-auto disabled:opacity-60 rounded-sm"
                 >
-                  Message
-                </label>
-                <textarea
-                  id="message"
-                  name="message"
-                  rows={4}
-                  value={formData.message}
-                  onChange={(e) =>
-                    setFormData({ ...formData, message: e.target.value })
-                  }
-                  className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors resize-none"
-                />
-              </div>
+                  {status === "submitting" ? "Sending..." : "Send Message"}
+                </button>
 
-              <button
-                type="submit"
-                disabled={status === "submitting"}
-                className="bg-rose hover:bg-rose-light disabled:opacity-60 text-white tracking-widest uppercase text-sm px-10 py-4 transition-colors font-body w-full sm:w-auto"
-              >
-                {status === "submitting" ? "Sending..." : "Send Message"}
-              </button>
-
-              {status === "success" && (
-                <p className="text-green-600 text-sm font-body">
-                  Thank you! We&apos;ll get back to you shortly.
-                </p>
-              )}
-              {status === "error" && (
-                <p className="text-red-600 text-sm font-body">
-                  Something went wrong. Please try again or call us directly.
-                </p>
-              )}
-            </form>
+                {status === "success" && (
+                  <p 
+                    className="text-sm"
+                    style={{ fontFamily: "var(--font-body)", color: "#4ade80" }}
+                  >
+                    Thank you! We&apos;ll get back to you shortly.
+                  </p>
+                )}
+                {status === "error" && (
+                  <p 
+                    className="text-sm"
+                    style={{ fontFamily: "var(--font-body)", color: "var(--color-error)" }}
+                  >
+                    Something went wrong. Please try again or call us directly.
+                  </p>
+                )}
+              </form>
+            </div>
           </AnimatedSection>
 
           {/* Info & Map */}
           <AnimatedSection delay={0.2}>
             <div className="space-y-8">
               <div>
-                <h3 className="font-heading text-2xl mb-4">Visit Us</h3>
-                <div className="text-navy/60 font-body font-light space-y-2">
+                <h3 
+                  className="text-2xl mb-4"
+                  style={{ fontFamily: "var(--font-heading)", color: "var(--color-on-surface)" }}
+                >
+                  Visit Us
+                </h3>
+                <div 
+                  className="font-light space-y-2"
+                  style={{ fontFamily: "var(--font-body)", color: "var(--color-on-surface-variant)" }}
+                >
                   <p>919 South Central Ave Suite #E</p>
                   <p>Glendale, CA 91204</p>
-                  <p className="text-navy/50 text-sm mt-2">
+                  <p 
+                    className="text-sm mt-2"
+                    style={{ color: "var(--color-outline)" }}
+                  >
                     Free parking lot &amp; free street parking available.
                   </p>
                 </div>
               </div>
 
               <div>
-                <h3 className="font-heading text-2xl mb-4">
+                <h3 
+                  className="text-2xl mb-4"
+                  style={{ fontFamily: "var(--font-heading)", color: "var(--color-on-surface)" }}
+                >
                   Call or Text Us
                 </h3>
-                <div className="text-navy/60 font-body font-light space-y-2">
+                <div 
+                  className="font-light space-y-2"
+                  style={{ fontFamily: "var(--font-body)", color: "var(--color-on-surface-variant)" }}
+                >
                   <p>
                     <a
                       href="tel:+18186625665"
-                      className="hover:text-rose transition-colors text-lg"
+                      className="text-lg transition-all duration-400"
+                      onMouseEnter={(e) => e.currentTarget.style.color = "var(--color-primary)"}
+                      onMouseLeave={(e) => e.currentTarget.style.color = "var(--color-on-surface-variant)"}
                     >
                       (818) 662-5665
                     </a>
@@ -227,7 +304,9 @@ export default function Contact() {
                   <p>
                     <a
                       href="mailto:look_hairsalon@yahoo.com"
-                      className="hover:text-rose transition-colors"
+                      className="transition-all duration-400"
+                      onMouseEnter={(e) => e.currentTarget.style.color = "var(--color-primary)"}
+                      onMouseLeave={(e) => e.currentTarget.style.color = "var(--color-on-surface-variant)"}
                     >
                       look_hairsalon@yahoo.com
                     </a>
@@ -236,13 +315,21 @@ export default function Contact() {
               </div>
 
               <div>
-                <h3 className="font-heading text-2xl mb-4">Salon Hours</h3>
-                <div className="text-navy/60 font-body font-light space-y-2">
+                <h3 
+                  className="text-2xl mb-4"
+                  style={{ fontFamily: "var(--font-heading)", color: "var(--color-on-surface)" }}
+                >
+                  Salon Hours
+                </h3>
+                <div 
+                  className="font-light space-y-2"
+                  style={{ fontFamily: "var(--font-body)", color: "var(--color-on-surface-variant)" }}
+                >
                   <div className="flex justify-between">
                     <span>Monday</span>
                     <span>10 AM &ndash; 6 PM</span>
                   </div>
-                  <div className="flex justify-between text-navy/45">
+                  <div className="flex justify-between" style={{ color: "var(--color-secondary-dim)" }}>
                     <span>Tuesday</span>
                     <span>CLOSED</span>
                   </div>

@@ -52,51 +52,91 @@ const serviceCategories = [
 
 export default function Services() {
   return (
-    <section id="services" className="py-28 md:py-36 bg-white">
+    <section 
+      id="services" 
+      className="py-28 md:py-36"
+      style={{ background: "var(--color-surface-container-low)" }}
+    >
       <div className="max-w-7xl mx-auto px-8 lg:px-12">
+        {/* Header */}
         <AnimatedSection className="text-center mb-8">
           <div className="flex items-center justify-center gap-4 mb-6">
-            <span className="w-8 h-[1px] bg-gold" />
-            <span className="text-gold text-[11px] tracking-[0.3em] uppercase font-body">
+            <span className="w-8 h-[1px]" style={{ background: "var(--color-primary-dim)" }} />
+            <span 
+              className="text-[11px] tracking-[0.3em] uppercase"
+              style={{ fontFamily: "var(--font-label)", color: "var(--color-primary-dim)" }}
+            >
               Our Menu
             </span>
-            <span className="w-8 h-[1px] bg-gold" />
+            <span className="w-8 h-[1px]" style={{ background: "var(--color-primary-dim)" }} />
           </div>
-          <h2 className="font-heading text-4xl md:text-5xl mb-6">
+          <h2 
+            className="text-4xl md:text-5xl mb-6"
+            style={{ fontFamily: "var(--font-heading)", color: "var(--color-on-surface)" }}
+          >
             Services &amp; Pricing
           </h2>
-          <p className="text-navy/60 font-body font-light max-w-lg mx-auto text-[15px]">
+          <p 
+            className="max-w-lg mx-auto text-[15px] font-light"
+            style={{ fontFamily: "var(--font-body)", color: "var(--color-on-surface-variant)" }}
+          >
             The highest quality hair salon services in Glendale at unbeatable prices.
           </p>
         </AnimatedSection>
 
+        {/* CTA */}
         <AnimatedSection className="text-center mb-16">
           <Link
             href="/book"
-            className="inline-block bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)]"
+            className="btn-rose inline-block text-[11px] tracking-[0.2em] uppercase px-10 py-4 rounded-sm"
           >
             Book Online
           </Link>
         </AnimatedSection>
 
+        {/* Service Grid */}
         <div className="grid md:grid-cols-2 gap-x-16 gap-y-14">
           {serviceCategories.map((cat, catIndex) => (
             <AnimatedSection key={cat.title} delay={catIndex * 0.1}>
-              <div>
-                <h3 className="font-heading text-2xl mb-6 pb-3 border-b border-navy/10">
+              <div 
+                className="p-8 rounded-sm"
+                style={{ background: "var(--color-surface-container)" }}
+              >
+                <h3 
+                  className="text-2xl mb-6 pb-3"
+                  style={{ 
+                    fontFamily: "var(--font-heading)", 
+                    color: "var(--color-on-surface)",
+                    borderBottom: "1px solid var(--color-outline-variant)"
+                  }}
+                >
                   {cat.title}
                 </h3>
                 <div className="space-y-4">
                   {cat.items.map((item) => (
                     <div key={item.name} className="flex items-baseline gap-3">
-                      <span className="text-navy/70 text-[14px] font-body">
+                      <span 
+                        className="text-[14px]"
+                        style={{ fontFamily: "var(--font-body)", color: "var(--color-on-surface)" }}
+                      >
                         {item.name}
                       </span>
-                      <span className="flex-1 border-b border-dotted border-navy/10 min-w-[20px] translate-y-[-3px]" />
-                      <span className="text-navy/50 text-xs font-body shrink-0">
+                      <span 
+                        className="flex-1 min-w-[20px] translate-y-[-3px]"
+                        style={{ 
+                          borderBottom: "1px dotted var(--color-outline-variant)" 
+                        }}
+                      />
+                      <span 
+                        className="text-xs shrink-0"
+                        style={{ fontFamily: "var(--font-body)", color: "var(--color-outline)" }}
+                      >
                         {item.duration}
                       </span>
-                      <span className="text-gold font-heading text-base shrink-0">
+                      <span 
+                        className="text-base shrink-0"
+                        style={{ fontFamily: "var(--font-heading)", color: "var(--color-primary)" }}
+                      >
                         {item.price}
                       </span>
                     </div>
@@ -107,8 +147,12 @@ export default function Services() {
           ))}
         </div>
 
+        {/* Disclaimer */}
         <AnimatedSection className="text-center mt-14">
-          <p className="text-navy/45 text-xs font-body font-light max-w-xl mx-auto leading-relaxed">
+          <p 
+            className="text-xs font-light max-w-xl mx-auto leading-relaxed"
+            style={{ fontFamily: "var(--font-body)", color: "var(--color-outline)" }}
+          >
             All prices are based upon consultation &amp; subject to change.
             Pricing depends on hair length, thickness &amp; texture. $50 deposit
             required for select services.
