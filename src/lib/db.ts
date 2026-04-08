@@ -1,5 +1,5 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "./schema";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -11,7 +11,9 @@ export function getDb() {
   if (!url) {
     throw new Error("POSTGRES_URL environment variable is not set");
   }
-  _db = drizzle(neon(url), { schema });
+  // postgres-js for Supabase and other PostgreSQL providers
+  const client = postgres(url, { prepare: false });
+  _db = drizzle(client, { schema });
   return _db;
 }
 

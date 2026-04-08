@@ -1,11 +1,16 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { services, stylists, stylistServices, scheduleRules } from "./schema";
 import { SALON_SERVICES, SALON_STYLISTS, SALON_HOURS } from "./constants";
 
 async function seed() {
-  const sql = neon(process.env.POSTGRES_URL || process.env.DATABASE_URL || "");
-  const db = drizzle(sql);
+  const url = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error("POSTGRES_URL environment variable is not set");
+  }
+  
+  const client = postgres(url, { prepare: false });
+  const db = drizzle(client);
 
   console.log("Seeding database...");
 
@@ -65,6 +70,7 @@ async function seed() {
   console.log("Seeded schedule rules");
 
   console.log("Done!");
+  await client.end();
 }
 
 seed().catch(console.error);
