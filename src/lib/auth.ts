@@ -9,11 +9,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       authorize(credentials) {
+        const email =
+          typeof credentials?.email === "string" ? credentials.email : "";
+        const password =
+          typeof credentials?.password === "string" ? credentials.password : "";
+        const inputEmail = email.toLowerCase().trim();
+        const adminPassword = process.env.ADMIN_PASSWORD;
+        const configuredAdminEmail = process.env.ADMIN_EMAIL?.toLowerCase().trim();
+        const allowedEmails = new Set<string>([
+          "anna@jetnine.com",
+          ...(process.env.ADMIN_EMAILS || "")
+            .split(",")
+            .map((e) => e.toLowerCase().trim())
+            .filter(Boolean),
+        ]);
+        if (configuredAdminEmail) allowedEmails.add(configuredAdminEmail);
+
         if (
-          credentials?.email === process.env.ADMIN_EMAIL &&
-          credentials?.password === process.env.ADMIN_PASSWORD
+          inputEmail &&
+          adminPassword &&
+          password === adminPassword &&
+          allowedEmails.has(inputEmail)
         ) {
-          return { id: "1", name: "Admin", email: process.env.ADMIN_EMAIL };
+          return { id: "1", name: "Admin", email: inputEmail };
         }
         return null;
       },
