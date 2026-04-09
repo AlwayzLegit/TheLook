@@ -1,26 +1,30 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
 
 // For server-side operations, use service role key if available
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "public-anon-key-placeholder";
 
-if (!supabaseUrl || !supabaseKey) {
+export const hasSupabaseConfig = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+);
+
+if (!hasSupabaseConfig) {
   console.warn("Supabase URL or API Key not set. Database features will not work.");
 }
 
-// Create a single supabase client for interacting with your database
+// Create a single supabase client for interacting with your database.
+// We always return a client instance to keep type safety/simple call sites.
+// `hasSupabaseConfig` controls whether DB-backed features should run.
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: false, // Server-side only
   },
 });
-
-// Helper type for database responses
-type SupabaseResponse<T> = {
-  data: T | null;
-  error: Error | null;
-};
 
 // Database types based on schema
 export type Service = {
@@ -30,6 +34,7 @@ export type Service = {
   price_text: string;
   price_min: number;
   duration: number;
+  image_url: string | null;
   active: boolean;
   sort_order: number;
   created_at: string;

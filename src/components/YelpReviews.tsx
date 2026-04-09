@@ -283,7 +283,7 @@ export default function YelpReviews() {
             <button
               onClick={prev}
               aria-label="Previous reviews"
-              className="w-10 h-10 flex items-center justify-center border border-white/10 text-white/30 hover:text-gold hover:border-gold/30 transition-all duration-500 hover:-translate-y-0.5"
+              className="w-10 h-10 flex items-center justify-center rounded-full border border-white/10 text-white/30 hover:text-gold hover:border-gold/30 transition-all duration-500 hover:-translate-y-0.5"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
@@ -308,7 +308,7 @@ export default function YelpReviews() {
             <button
               onClick={next}
               aria-label="Next reviews"
-              className="w-10 h-10 flex items-center justify-center border border-white/10 text-white/30 hover:text-gold hover:border-gold/30 transition-all duration-500 hover:-translate-y-0.5"
+              className="w-10 h-10 flex items-center justify-center rounded-full border border-white/10 text-white/30 hover:text-gold hover:border-gold/30 transition-all duration-500 hover:-translate-y-0.5"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />

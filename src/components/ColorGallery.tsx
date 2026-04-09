@@ -1,14 +1,14 @@
 import ServiceGallery from "./ServiceGallery";
 
 const colorImages = [
-  { src: "/images/services/Color & Highlights/color-01.jpg", alt: "Blonde balayage" },
-  { src: "/images/services/Color & Highlights/color-02.jpg", alt: "Warm highlights" },
-  { src: "/images/services/Color & Highlights/color-03.jpg", alt: "Dimensional color" },
-  { src: "/images/services/Color & Highlights/color-04.jpg", alt: "Sun-kissed balayage" },
-  { src: "/images/services/Color & Highlights/color-05.jpg", alt: "Ash blonde tones" },
-  { src: "/images/services/Color & Highlights/color-06.jpg", alt: "Golden highlights" },
-  { src: "/images/services/Color & Highlights/color-07.jpg", alt: "Platinum blonde" },
-  { src: "/images/services/Color & Highlights/color-08.jpg", alt: "Root smudge blend" },
+  { src: "/images/gallery/color/color-01.jpg", alt: "Blonde balayage" },
+  { src: "/images/gallery/color/color-02.jpg", alt: "Warm highlights" },
+  { src: "/images/gallery/color/color-03.jpg", alt: "Dimensional color" },
+  { src: "/images/gallery/color/color-04.jpg", alt: "Sun-kissed balayage" },
+  { src: "/images/gallery/color/color-05.jpg", alt: "Ash blonde tones" },
+  { src: "/images/gallery/color/color-06.jpg", alt: "Golden highlights" },
+  { src: "/images/gallery/color/color-07.jpg", alt: "Platinum blonde" },
+  { src: "/images/gallery/color/color-08.jpg", alt: "Root smudge blend" },
 ];
 
 export default function ColorGallery() {

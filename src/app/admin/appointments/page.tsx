@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useRealtimeAppointments } from "@/hooks/useRealtimeAppointments";
+import AdminToast from "@/components/admin/AdminToast";
 
 interface Service {
   id: string;
@@ -46,12 +47,19 @@ function formatDate(date: string) {
 export default function AppointmentsPage() {
   const { status } = useSession();
   const router = useRouter();
-  const { appointments: realtimeAppts, lastUpdate, refresh } = useRealtimeAppointments();
+  const { appointments: realtimeAppts, loading, error, lastUpdate, refresh } = useRealtimeAppointments({
+    enabled: status === "authenticated",
+  });
   const [services, setServices] = useState<Service[]>([]);
   const [stylists, setStylists] = useState<Stylist[]>([]);
-  const [dateFrom, setDateFrom] = useState(new Date().toISOString().split("T")[0]);
+  const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [serviceFilter, setServiceFilter] = useState("");
+  const [stylistFilter, setStylistFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -60,11 +68,11 @@ export default function AppointmentsPage() {
   useEffect(() => {
     if (status !== "authenticated") return;
     
-    fetch("/api/services")
+    fetch("/api/admin/services")
       .then((r) => r.json())
       .then((data) => setServices(Array.isArray(data) ? data : []));
     
-    fetch("/api/stylists")
+    fetch("/api/admin/stylists")
       .then((r) => r.json())
       .then((data) => setStylists(Array.isArray(data) ? data : []));
   }, [status]);
@@ -81,6 +89,35 @@ export default function AppointmentsPage() {
     stylistName: stylistMap[a.stylist_id]?.name || "Unknown Stylist",
   }));
 
+  const applyDatePreset = (preset: "today" | "tomorrow" | "thisWeek" | "clear") => {
+    const today = new Date();
+    const toIso = (d: Date) => d.toISOString().split("T")[0];
+    if (preset === "today") {
+      const d = toIso(today);
+      setDateFrom(d);
+      setDateTo(d);
+      return;
+    }
+    if (preset === "tomorrow") {
+      const d = new Date(today);
+      d.setDate(today.getDate() + 1);
+      const iso = toIso(d);
+      setDateFrom(iso);
+      setDateTo(iso);
+      return;
+    }
+    if (preset === "thisWeek") {
+      const start = new Date(today);
+      const end = new Date(today);
+      end.setDate(today.getDate() + 7);
+      setDateFrom(toIso(start));
+      setDateTo(toIso(end));
+      return;
+    }
+    setDateFrom("");
+    setDateTo("");
+  };
+
   // Apply filters
   let filteredAppts = enrichedAppts;
   if (dateFrom) {
@@ -92,14 +129,39 @@ export default function AppointmentsPage() {
   if (statusFilter) {
     filteredAppts = filteredAppts.filter((a) => a.status === statusFilter);
   }
+  if (serviceFilter) {
+    filteredAppts = filteredAppts.filter((a) => a.service_id === serviceFilter);
+  }
+  if (stylistFilter) {
+    filteredAppts = filteredAppts.filter((a) => a.stylist_id === stylistFilter);
+  }
+  if (search.trim()) {
+    const q = search.toLowerCase();
+    filteredAppts = filteredAppts.filter(
+      (a) =>
+        a.client_name.toLowerCase().includes(q) ||
+        a.client_email.toLowerCase().includes(q) ||
+        (a.client_phone || "").toLowerCase().includes(q)
+    );
+  }
 
   const updateStatus = async (id: string, newStatus: string) => {
-    await fetch(`/api/admin/appointments/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    refresh();
+    try {
+      setPendingStatusId(id);
+      const res = await fetch(`/api/admin/appointments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) {
+        setToast({ type: "error", message: "Failed to update appointment status." });
+        return;
+      }
+      setToast({ type: "success", message: `Appointment marked as ${newStatus}.` });
+      refresh();
+    } finally {
+      setPendingStatusId(null);
+    }
   };
 
   return (
@@ -119,7 +181,45 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
+      {error ? (
+        <p className="mb-4 text-sm font-body text-red-600">{error}</p>
+      ) : null}
+
+      <div className="flex flex-wrap gap-3 mb-4">
+        <button
+          onClick={() => applyDatePreset("today")}
+          className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
+        >
+          Today
+        </button>
+        <button
+          onClick={() => applyDatePreset("tomorrow")}
+          className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
+        >
+          Tomorrow
+        </button>
+        <button
+          onClick={() => applyDatePreset("thisWeek")}
+          className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
+        >
+          Next 7 Days
+        </button>
+        <button
+          onClick={() => applyDatePreset("clear")}
+          className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
+        >
+          Clear Dates
+        </button>
+      </div>
+
       <div className="flex flex-wrap gap-4 mb-6">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search client name, email, phone"
+          className="border border-navy/20 px-3 py-2 text-sm font-body min-w-[260px]"
+        />
         <input 
           type="date" 
           value={dateFrom} 
@@ -145,6 +245,26 @@ export default function AppointmentsPage() {
           <option value="completed">Completed</option>
           <option value="no_show">No Show</option>
         </select>
+        <select
+          value={serviceFilter}
+          onChange={(e) => setServiceFilter(e.target.value)}
+          className="border border-navy/20 px-3 py-2 text-sm font-body"
+        >
+          <option value="">All services</option>
+          {services.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+        <select
+          value={stylistFilter}
+          onChange={(e) => setStylistFilter(e.target.value)}
+          className="border border-navy/20 px-3 py-2 text-sm font-body"
+        >
+          <option value="">All stylists</option>
+          {stylists.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
         
         <button
           onClick={refresh}
@@ -154,7 +274,9 @@ export default function AppointmentsPage() {
         </button>
       </div>
 
-      {filteredAppts.length === 0 ? (
+      {loading ? (
+        <p className="text-navy/40 font-body text-sm">Loading appointments...</p>
+      ) : filteredAppts.length === 0 ? (
         <p className="text-navy/40 font-body text-sm">No appointments found.</p>
       ) : (
         <div className="bg-white border border-navy/10 divide-y divide-navy/5">
@@ -189,28 +311,32 @@ export default function AppointmentsPage() {
                   {appt.status === "pending" && (
                     <button 
                       onClick={() => updateStatus(appt.id, "confirmed")} 
+                      disabled={pendingStatusId === appt.id}
                       className="text-xs font-body text-green-600 border border-green-200 px-3 py-1 hover:bg-green-50"
                     >
-                      Confirm
+                      {pendingStatusId === appt.id ? "Updating..." : "Confirm"}
                     </button>
                   )}
                   <button 
                     onClick={() => updateStatus(appt.id, "completed")} 
+                    disabled={pendingStatusId === appt.id}
                     className="text-xs font-body text-blue-600 border border-blue-200 px-3 py-1 hover:bg-blue-50"
                   >
-                    Complete
+                    {pendingStatusId === appt.id ? "Updating..." : "Complete"}
                   </button>
                   <button 
                     onClick={() => updateStatus(appt.id, "no_show")} 
+                    disabled={pendingStatusId === appt.id}
                     className="text-xs font-body text-gray-600 border border-gray-200 px-3 py-1 hover:bg-gray-50"
                   >
-                    No Show
+                    {pendingStatusId === appt.id ? "Updating..." : "No Show"}
                   </button>
                   <button 
                     onClick={() => updateStatus(appt.id, "cancelled")} 
+                    disabled={pendingStatusId === appt.id}
                     className="text-xs font-body text-red-600 border border-red-200 px-3 py-1 hover:bg-red-50"
                   >
-                    Cancel
+                    {pendingStatusId === appt.id ? "Updating..." : "Cancel"}
                   </button>
                 </div>
               )}
@@ -218,6 +344,13 @@ export default function AppointmentsPage() {
           ))}
         </div>
       )}
+      {toast ? (
+        <AdminToast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      ) : null}
     </div>
   );
 }

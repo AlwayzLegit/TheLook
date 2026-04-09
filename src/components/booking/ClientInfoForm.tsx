@@ -1,5 +1,7 @@
 "use client";
 
+import TurnstileField from "@/components/TurnstileField";
+
 interface ClientInfo {
   name: string;
   email: string;
@@ -10,9 +12,16 @@ interface ClientInfo {
 interface Props {
   info: ClientInfo;
   onChange: (info: ClientInfo) => void;
+  turnstileSiteKey?: string;
+  onTurnstileChange?: (token: string | null) => void;
 }
 
-export default function ClientInfoForm({ info, onChange }: Props) {
+export default function ClientInfoForm({
+  info,
+  onChange,
+  turnstileSiteKey,
+  onTurnstileChange,
+}: Props) {
   return (
     <div>
       <h2 className="font-heading text-3xl mb-2 text-center">Your Information</h2>
@@ -72,6 +81,15 @@ export default function ClientInfoForm({ info, onChange }: Props) {
             className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors resize-none"
           />
         </div>
+
+        {turnstileSiteKey && onTurnstileChange ? (
+          <div className="pt-2">
+            <TurnstileField
+              siteKey={turnstileSiteKey}
+              onTokenChange={onTurnstileChange}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
+import { adminAppointmentPatchSchema } from "@/lib/validation";
 import { NextRequest, NextResponse } from "next/server";
 
 // UPDATE appointment
@@ -12,14 +13,19 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
+  const parsed = adminAppointmentPatchSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid appointment payload" }, { status: 400 });
+  }
+  const payload = parsed.data;
   
   const updateData: Record<string, unknown> = {};
   
-  if (body.status) updateData.status = body.status;
-  if (body.staff_notes !== undefined) updateData.staff_notes = body.staff_notes;
-  if (body.date) updateData.date = body.date;
-  if (body.start_time) updateData.start_time = body.start_time;
-  if (body.end_time) updateData.end_time = body.end_time;
+  if (payload.status) updateData.status = payload.status;
+  if (payload.staff_notes !== undefined) updateData.staff_notes = payload.staff_notes;
+  if (payload.date) updateData.date = payload.date;
+  if (payload.start_time) updateData.start_time = payload.start_time;
+  if (payload.end_time) updateData.end_time = payload.end_time;
   
   updateData.updated_at = new Date().toISOString();
   

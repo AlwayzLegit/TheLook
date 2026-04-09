@@ -63,6 +63,7 @@ interface BookingResult {
 }
 
 export default function BookPage() {
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const [step, setStep] = useState(0);
   const [services, setServices] = useState<Record<string, Service[]>>({});
   const [allStylists, setAllStylists] = useState<Stylist[]>([]);
@@ -74,6 +75,7 @@ export default function BookPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BookingResult | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/services")
@@ -105,7 +107,7 @@ export default function BookPage() {
       case 0: return !!selectedService;
       case 1: return !!selectedStylist;
       case 2: return !!selectedDate && !!selectedTime;
-      case 3: return !!clientInfo.name && !!clientInfo.email;
+      case 3: return !!clientInfo.name && !!clientInfo.email && (!turnstileSiteKey || !!turnstileToken);
       default: return false;
     }
   };
@@ -128,6 +130,7 @@ export default function BookPage() {
           clientEmail: clientInfo.email,
           clientPhone: clientInfo.phone || undefined,
           notes: clientInfo.notes || undefined,
+          turnstileToken: turnstileToken || undefined,
         }),
       });
 
@@ -188,7 +191,12 @@ export default function BookPage() {
 
           {/* Step 3: Client Info */}
           {step === 3 && (
-            <ClientInfoForm info={clientInfo} onChange={setClientInfo} />
+            <ClientInfoForm
+              info={clientInfo}
+              onChange={setClientInfo}
+              turnstileSiteKey={turnstileSiteKey}
+              onTurnstileChange={setTurnstileToken}
+            />
           )}
 
           {/* Step 4: Review & Confirm */}

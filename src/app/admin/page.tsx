@@ -41,7 +41,9 @@ function formatTime(time: string) {
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { appointments: realtimeAppts, lastUpdate } = useRealtimeAppointments();
+  const { appointments: realtimeAppts, loading, error, lastUpdate } = useRealtimeAppointments({
+    enabled: status === "authenticated",
+  });
   const [services, setServices] = useState<Service[]>([]);
   const [stylists, setStylists] = useState<Stylist[]>([]);
 
@@ -53,11 +55,11 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (status !== "authenticated") return;
     
-    fetch("/api/services")
+    fetch("/api/admin/services")
       .then((r) => r.json())
       .then((data) => setServices(Array.isArray(data) ? data : []));
     
-    fetch("/api/stylists")
+    fetch("/api/admin/stylists")
       .then((r) => r.json())
       .then((data) => setStylists(Array.isArray(data) ? data : []));
   }, [status]);
@@ -133,7 +135,11 @@ export default function AdminDashboard() {
             </Link>
           </div>
 
-          {todayAppts.length === 0 ? (
+          {loading ? (
+            <p className="text-navy/40 font-body text-sm">Loading appointments...</p>
+          ) : error ? (
+            <p className="text-red-600 font-body text-sm">{error}</p>
+          ) : todayAppts.length === 0 ? (
             <p className="text-navy/40 font-body text-sm">No appointments today.</p>
           ) : (
             <div className="bg-white border border-navy/10 divide-y divide-navy/5">
@@ -167,7 +173,11 @@ export default function AdminDashboard() {
             <h2 className="font-heading text-xl">Upcoming (Next 7 Days)</h2>
           </div>
 
-          {upcomingAppts.length === 0 ? (
+          {loading ? (
+            <p className="text-navy/40 font-body text-sm">Loading appointments...</p>
+          ) : error ? (
+            <p className="text-red-600 font-body text-sm">{error}</p>
+          ) : upcomingAppts.length === 0 ? (
             <p className="text-navy/40 font-body text-sm">No upcoming appointments.</p>
           ) : (
             <div className="bg-white border border-navy/10 divide-y divide-navy/5">

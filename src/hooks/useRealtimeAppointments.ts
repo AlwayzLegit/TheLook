@@ -1,14 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: { persistSession: false },
-});
 
 interface Appointment {
   id: string;
@@ -25,73 +17,61 @@ interface Appointment {
   created_at: string;
 }
 
-export function useRealtimeAppointments() {
+interface UseRealtimeAppointmentsOptions {
+  enabled?: boolean;
+  pollMs?: number;
+}
+
+export function useRealtimeAppointments(options: UseRealtimeAppointmentsOptions = {}) {
+  const { enabled = true, pollMs = 15000 } = options;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  // Initial fetch
   const fetchAppointments = useCallback(async () => {
-    const today = new Date().toISOString().split("T")[0];
-    const { data, error } = await supabase
-      .from("appointments")
-      .select("*")
-      .gte("date", today)
-      .order("date", { ascending: true })
-      .order("start_time", { ascending: true });
-
-    if (error) {
-      console.error("Error fetching appointments:", error);
+    if (!enabled) {
+      setLoading(false);
+      setError(null);
       return;
     }
 
-    setAppointments(data || []);
-    setLoading(false);
-    setLastUpdate(new Date());
-  }, []);
+    setLoading(true);
+    const today = new Date().toISOString().split("T")[0];
+    const res = await fetch(`/api/admin/appointments?from=${today}`);
+    if (!res.ok) {
+      setError("Failed to fetch appointments.");
+      setLoading(false);
+      return;
+    }
+    try {
+      const data = (await res.json()) as Appointment[];
+      setAppointments(data || []);
+      setError(null);
+      setLastUpdate(new Date());
+    } catch {
+      setError("Invalid appointments response.");
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled]);
 
   useEffect(() => {
+    if (!enabled) {
+      setAppointments([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     fetchAppointments();
 
-    // Subscribe to realtime changes
-    const subscription = supabase
-      .channel("appointments-channel")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "appointments",
-        },
-        (payload) => {
-          console.log("Realtime appointment update:", payload);
-          
-          if (payload.eventType === "INSERT") {
-            setAppointments((prev) => {
-              // Check if already exists (avoid duplicates)
-              if (prev.some((a) => a.id === payload.new.id)) return prev;
-              return [...prev, payload.new as Appointment];
-            });
-          } else if (payload.eventType === "UPDATE") {
-            setAppointments((prev) =>
-              prev.map((a) =>
-                a.id === payload.new.id ? (payload.new as Appointment) : a
-              )
-            );
-          } else if (payload.eventType === "DELETE") {
-            setAppointments((prev) =>
-              prev.filter((a) => a.id !== payload.old.id)
-            );
-          }
-          setLastUpdate(new Date());
-        }
-      )
-      .subscribe();
+    const interval = setInterval(fetchAppointments, pollMs);
 
     return () => {
-      subscription.unsubscribe();
+      clearInterval(interval);
     };
-  }, [fetchAppointments]);
+  }, [enabled, fetchAppointments, pollMs]);
 
-  return { appointments, loading, lastUpdate, refresh: fetchAppointments };
+  return { appointments, loading, error, lastUpdate, refresh: fetchAppointments };
 }

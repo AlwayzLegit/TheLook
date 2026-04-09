@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import AdminToast from "@/components/admin/AdminToast";
 
 interface Service {
   id: string;
@@ -11,6 +12,7 @@ interface Service {
   price_text: string;
   price_min: number;
   duration: number;
+  image_url?: string | null;
   active: boolean;
   sort_order: number;
 }
@@ -30,12 +32,16 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Service | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [formData, setFormData] = useState({
     category: "Haircuts",
     name: "",
     price_text: "",
     price_min: 0,
     duration: 30,
+    image_url: "",
     active: true,
     sort_order: 0,
   });
@@ -45,10 +51,18 @@ export default function ServicesPage() {
   }, [status, router]);
 
   const fetchServices = async () => {
-    const res = await fetch("/api/admin/services");
-    const data = await res.json();
-    setServices(Array.isArray(data) ? data : []);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const res = await fetch("/api/admin/services");
+      if (!res.ok) {
+        setToast({ type: "error", message: "Failed to load services." });
+        return;
+      }
+      const data = await res.json();
+      setServices(Array.isArray(data) ? data : []);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -61,25 +75,34 @@ export default function ServicesPage() {
     const url = editing ? `/api/admin/services/${editing.id}` : "/api/admin/services";
     const method = editing ? "PATCH" : "POST";
     
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
-
-    if (res.ok) {
-      setShowForm(false);
-      setEditing(null);
-      setFormData({
-        category: "Haircuts",
-        name: "",
-        price_text: "",
-        price_min: 0,
-        duration: 30,
-        active: true,
-        sort_order: 0,
+    try {
+      setSaving(true);
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
       });
-      fetchServices();
+
+      if (res.ok) {
+        setShowForm(false);
+        setEditing(null);
+        setFormData({
+          category: "Haircuts",
+          name: "",
+          price_text: "",
+          price_min: 0,
+          duration: 30,
+          image_url: "",
+          active: true,
+          sort_order: 0,
+        });
+        setToast({ type: "success", message: editing ? "Service updated." : "Service created." });
+        fetchServices();
+      } else {
+        setToast({ type: "error", message: "Failed to save service." });
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -91,6 +114,7 @@ export default function ServicesPage() {
       price_text: service.price_text,
       price_min: service.price_min,
       duration: service.duration,
+      image_url: service.image_url || "",
       active: service.active,
       sort_order: service.sort_order,
     });
@@ -100,8 +124,18 @@ export default function ServicesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this service?")) return;
     
-    const res = await fetch(`/api/admin/services/${id}`, { method: "DELETE" });
-    if (res.ok) fetchServices();
+    try {
+      setDeletingId(id);
+      const res = await fetch(`/api/admin/services/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setToast({ type: "success", message: "Service deleted." });
+        fetchServices();
+      } else {
+        setToast({ type: "error", message: "Failed to delete service." });
+      }
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleAddNew = () => {
@@ -112,6 +146,7 @@ export default function ServicesPage() {
       price_text: "",
       price_min: 0,
       duration: 30,
+      image_url: "",
       active: true,
       sort_order: 0,
     });
@@ -207,6 +242,17 @@ export default function ServicesPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-body text-navy/60 mb-1">Image URL / Path</label>
+                <input
+                  type="text"
+                  value={formData.image_url}
+                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                  className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
+                  placeholder="/images/services/Haircuts/clipper-cut.png"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-body text-navy/60 mb-1">Sort Order</label>
@@ -240,9 +286,10 @@ export default function ServicesPage() {
                 </button>
                 <button
                   type="submit"
+                  disabled={saving}
                   className="flex-1 px-4 py-2 bg-navy text-white text-sm font-body hover:bg-navy/90"
                 >
-                  {editing ? "Save Changes" : "Create Service"}
+                  {saving ? "Saving..." : editing ? "Save Changes" : "Create Service"}
                 </button>
               </div>
             </form>
@@ -270,6 +317,11 @@ export default function ServicesPage() {
                       <p className="text-navy/50 text-xs font-body">
                         {service.price_text} • {service.duration} min
                       </p>
+                      {service.image_url ? (
+                        <p className="text-navy/40 text-[11px] font-body mt-1 break-all">
+                          {service.image_url}
+                        </p>
+                      ) : null}
                       {!service.active && (
                         <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5">
                           Inactive
@@ -285,9 +337,10 @@ export default function ServicesPage() {
                       </button>
                       <button
                         onClick={() => handleDelete(service.id)}
+                        disabled={deletingId === service.id}
                         className="text-xs font-body text-red-600 border border-red-200 px-3 py-1 hover:bg-red-50"
                       >
-                        Delete
+                        {deletingId === service.id ? "Deleting..." : "Delete"}
                       </button>
                     </div>
                   </div>
@@ -297,6 +350,13 @@ export default function ServicesPage() {
           ))}
         </div>
       )}
+      {toast ? (
+        <AdminToast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      ) : null}
     </div>
   );
 }

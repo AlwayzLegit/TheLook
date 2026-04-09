@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS services (
   price_text VARCHAR(50) NOT NULL,
   price_min INTEGER NOT NULL,
   duration INTEGER NOT NULL,
+  image_url VARCHAR(500),
   active BOOLEAN DEFAULT TRUE,
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

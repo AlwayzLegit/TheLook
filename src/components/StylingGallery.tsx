@@ -1,11 +1,11 @@
 import ServiceGallery from "./ServiceGallery";
 
 const stylingImages = [
-  { src: "/images/services/Styling/styling-01.jpg", alt: "Blowout styling" },
-  { src: "/images/services/Styling/styling-02.jpg", alt: "Updo hairstyle" },
-  { src: "/images/services/Styling/styling-03.jpg", alt: "Event styling" },
-  { src: "/images/services/Styling/styling-04.jpg", alt: "Braided style" },
-  { src: "/images/services/Styling/styling-05.jpg", alt: "Glamorous waves" },
+  { src: "/images/services/Styling/Blow-Out.jpg", alt: "Blowout styling" },
+  { src: "/images/services/Styling/Thermal Styling.jpg", alt: "Thermal styling" },
+  { src: "/images/services/Styling/Formal Updo.jpg", alt: "Formal updo hairstyle" },
+  { src: "/images/services/Styling/Braid.jpg", alt: "Braided style" },
+  { src: "/images/services/Styling/Individual Extensions.jpg", alt: "Individual extensions" },
 ];
 
 export default function StylingGallery() {
@@ -13,7 +13,7 @@ export default function StylingGallery() {
     <ServiceGallery
       title="Styling"
       subtitle="Blowouts & Updos"
-      description="From everyday blowouts to special occasion updos, our stylists create looks that turn heads. Whether it's a wedding, prom, or just because — we'll have you looking your absolute best."
+      description="From polished everyday blowouts to elevated event styling, our team creates looks that feel effortless and photograph beautifully. Whether you're heading to brunch, a wedding, or a night out, you'll leave confident and camera-ready."
       images={stylingImages}
       ctaText="Book Styling"
       ctaHref="/book"

@@ -2,10 +2,10 @@
 
 import { useState, FormEvent } from "react";
 import AnimatedSection from "./AnimatedSection";
-
-const FORMSPREE_ENDPOINT = "https://formspree.io/f/YOUR_FORM_ID";
+import TurnstileField from "./TurnstileField";
 
 export default function Contact() {
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -16,16 +16,17 @@ export default function Contact() {
   const [status, setStatus] = useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setStatus("submitting");
 
     try {
-      const res = await fetch(FORMSPREE_ENDPOINT, {
+      const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, turnstileToken }),
       });
 
       if (res.ok) {
@@ -184,11 +185,20 @@ export default function Contact() {
 
               <button
                 type="submit"
-                disabled={status === "submitting"}
+                disabled={status === "submitting" || (!!turnstileSiteKey && !turnstileToken)}
                 className="bg-rose hover:bg-rose-light disabled:opacity-60 text-white tracking-widest uppercase text-sm px-10 py-4 transition-all duration-300 font-body w-full sm:w-auto hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)] hover:-translate-y-0.5"
               >
                 {status === "submitting" ? "Sending..." : "Send Message"}
               </button>
+
+              {turnstileSiteKey ? (
+                <div className="pt-2">
+                  <TurnstileField
+                    siteKey={turnstileSiteKey}
+                    onTokenChange={setTurnstileToken}
+                  />
+                </div>
+              ) : null}
 
               {status === "success" && (
                 <p className="text-green-600 text-sm font-body">

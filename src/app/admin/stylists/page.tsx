@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import AdminToast from "@/components/admin/AdminToast";
 
 interface Stylist {
   id: string;
@@ -22,6 +23,9 @@ export default function StylistsPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Stylist | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     bio: "",
@@ -36,10 +40,18 @@ export default function StylistsPage() {
   }, [status, router]);
 
   const fetchStylists = async () => {
-    const res = await fetch("/api/admin/stylists");
-    const data = await res.json();
-    setStylists(Array.isArray(data) ? data : []);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const res = await fetch("/api/admin/stylists");
+      if (!res.ok) {
+        setToast({ type: "error", message: "Failed to load stylists." });
+        return;
+      }
+      const data = await res.json();
+      setStylists(Array.isArray(data) ? data : []);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -52,24 +64,32 @@ export default function StylistsPage() {
     const url = editing ? `/api/admin/stylists/${editing.id}` : "/api/admin/stylists";
     const method = editing ? "PATCH" : "POST";
     
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
-
-    if (res.ok) {
-      setShowForm(false);
-      setEditing(null);
-      setFormData({
-        name: "",
-        bio: "",
-        image_url: "",
-        specialties: "",
-        active: true,
-        sort_order: 0,
+    try {
+      setSaving(true);
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
       });
-      fetchStylists();
+
+      if (res.ok) {
+        setShowForm(false);
+        setEditing(null);
+        setFormData({
+          name: "",
+          bio: "",
+          image_url: "",
+          specialties: "",
+          active: true,
+          sort_order: 0,
+        });
+        setToast({ type: "success", message: editing ? "Stylist updated." : "Stylist created." });
+        fetchStylists();
+      } else {
+        setToast({ type: "error", message: "Failed to save stylist." });
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -89,8 +109,18 @@ export default function StylistsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this stylist?")) return;
     
-    const res = await fetch(`/api/admin/stylists/${id}`, { method: "DELETE" });
-    if (res.ok) fetchStylists();
+    try {
+      setDeletingId(id);
+      const res = await fetch(`/api/admin/stylists/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setToast({ type: "success", message: "Stylist deleted." });
+        fetchStylists();
+      } else {
+        setToast({ type: "error", message: "Failed to delete stylist." });
+      }
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleAddNew = () => {
@@ -209,9 +239,10 @@ export default function StylistsPage() {
                 </button>
                 <button
                   type="submit"
+                  disabled={saving}
                   className="flex-1 px-4 py-2 bg-navy text-white text-sm font-body hover:bg-navy/90"
                 >
-                  {editing ? "Save Changes" : "Create Stylist"}
+                  {saving ? "Saving..." : editing ? "Save Changes" : "Create Stylist"}
                 </button>
               </div>
             </form>
@@ -261,9 +292,10 @@ export default function StylistsPage() {
                       </button>
                       <button
                         onClick={() => handleDelete(stylist.id)}
+                        disabled={deletingId === stylist.id}
                         className="text-xs font-body text-red-600 border border-red-200 px-3 py-1 hover:bg-red-50"
                       >
-                        Delete
+                        {deletingId === stylist.id ? "Deleting..." : "Delete"}
                       </button>
                     </div>
                   </div>
@@ -310,9 +342,10 @@ export default function StylistsPage() {
                       </button>
                       <button
                         onClick={() => handleDelete(stylist.id)}
+                        disabled={deletingId === stylist.id}
                         className="text-xs font-body text-red-600 border border-red-200 px-3 py-1 hover:bg-red-50"
                       >
-                        Delete
+                        {deletingId === stylist.id ? "Deleting..." : "Delete"}
                       </button>
                     </div>
                   </div>
@@ -322,6 +355,13 @@ export default function StylistsPage() {
           )}
         </div>
       )}
+      {toast ? (
+        <AdminToast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      ) : null}
     </div>
   );
 }

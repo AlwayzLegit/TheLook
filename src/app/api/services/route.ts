@@ -1,7 +1,11 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 export async function GET() {
+  if (!hasSupabaseConfig) {
+    return NextResponse.json({});
+  }
+
   const { data: allServices, error } = await supabase
     .from("services")
     .select("*")

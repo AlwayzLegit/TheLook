@@ -7,6 +7,7 @@ export const services = pgTable("services", {
   priceText: varchar("price_text", { length: 50 }).notNull(),
   priceMin: integer("price_min").notNull(),
   duration: integer("duration").notNull(),
+  imageUrl: varchar("image_url", { length: 500 }),
   active: boolean("active").default(true),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),

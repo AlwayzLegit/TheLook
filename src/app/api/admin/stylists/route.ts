@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
+import { adminStylistSchema } from "@/lib/validation";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET all stylists
@@ -26,20 +27,25 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
+  const parsed = adminStylistSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid stylist payload" }, { status: 400 });
+  }
+  const payload = parsed.data;
   
   // Generate slug from name
-  const slug = body.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const slug = payload.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   
   const { data, error } = await supabase
     .from("stylists")
     .insert({
-      name: body.name,
+      name: payload.name,
       slug: slug,
-      bio: body.bio,
-      image_url: body.image_url,
-      specialties: body.specialties,
-      active: body.active ?? true,
-      sort_order: body.sort_order ?? 0,
+      bio: payload.bio,
+      image_url: payload.image_url,
+      specialties: payload.specialties,
+      active: payload.active ?? true,
+      sort_order: payload.sort_order ?? 0,
     })
     .select()
     .single();

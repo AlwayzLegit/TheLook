@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
+import { adminStylistSchema } from "@/lib/validation";
 import { NextRequest, NextResponse } from "next/server";
 
 // UPDATE stylist
@@ -12,20 +13,25 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
+  const parsed = adminStylistSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid stylist payload" }, { status: 400 });
+  }
+  const payload = parsed.data;
   
   const updateData: Record<string, unknown> = {
-    name: body.name,
-    bio: body.bio,
-    image_url: body.image_url,
-    specialties: body.specialties,
-    active: body.active,
-    sort_order: body.sort_order,
+    name: payload.name,
+    bio: payload.bio,
+    image_url: payload.image_url,
+    specialties: payload.specialties,
+    active: payload.active,
+    sort_order: payload.sort_order,
     updated_at: new Date().toISOString(),
   };
   
   // Regenerate slug if name changed
-  if (body.name) {
-    updateData.slug = body.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  if (payload.name) {
+    updateData.slug = payload.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   }
   
   const { data, error } = await supabase
