@@ -18,12 +18,32 @@ export const hasSupabaseConfig = Boolean(
   supabaseKey
 );
 
-// Create a single supabase client for interacting with your database.
-// We always return a client instance to keep type safety/simple call sites.
-// `hasSupabaseConfig` controls whether DB-backed features should run.
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    persistSession: false, // Server-side only
+let _supabase: ReturnType<typeof createClient> | null = null;
+
+function getSupabaseClient() {
+  if (_supabase) return _supabase;
+  if (!hasSupabaseConfig) {
+    throw new Error(
+      "Supabase is not configured. Set SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY/SUPABASE_ANON_KEY."
+    );
+  }
+  _supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: false, // Server-side only
+    },
+  });
+  return _supabase;
+}
+
+// Lazy proxy avoids build-time crashes when env vars are not present.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const supabase = new Proxy({} as any, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get(_target, prop: string | symbol): any {
+    const client = getSupabaseClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const value = (client as any)[prop];
+    return typeof value === "function" ? value.bind(client) : value;
   },
 });
 
