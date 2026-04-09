@@ -24,7 +24,7 @@ export async function GET() {
     if (error) {
       return NextResponse.json({ error: "Failed to load schedule." }, { status: 500 });
     }
-    const mapped = (data || []).map((r) => ({
+    const mapped = (data || []).map((r: Record<string, unknown>) => ({
       id: r.id,
       stylistId: r.stylist_id,
       ruleType: r.rule_type,
