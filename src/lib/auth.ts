@@ -2,6 +2,11 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  // NextAuth v5 expects AUTH_SECRET in many deployments; keep compatibility
+  // with NEXTAUTH_SECRET used by older setups.
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+  // Vercel/edge deployments commonly require trusting forwarded host headers.
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {
