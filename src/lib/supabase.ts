@@ -1,21 +1,22 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+// Resolve from both public and server env names used across providers/tooling.
+const supabaseUrl =
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "";
 
-// For server-side operations, use service role key if available
+// For server-side operations prefer service role, fallback to anon/public key.
 const supabaseKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  "public-anon-key-placeholder";
+  "";
 
 export const hasSupabaseConfig = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL &&
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  supabaseUrl &&
+  supabaseKey
 );
-
-if (!hasSupabaseConfig) {
-  console.warn("Supabase URL or API Key not set. Database features will not work.");
-}
 
 // Create a single supabase client for interacting with your database.
 // We always return a client instance to keep type safety/simple call sites.
