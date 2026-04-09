@@ -1,6 +1,4 @@
-import { db } from "./db";
-import { scheduleRules, appointments, services } from "./schema";
-import { eq, and, ne } from "drizzle-orm";
+import { supabase } from "./supabase";
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
@@ -29,46 +27,61 @@ export async function getAvailableSlots(
 
   const dayOfWeek = dateObj.getUTCDay();
 
-  // Get schedule: check overrides first, then weekly rules
-  const allRules = await db
-    .select()
-    .from(scheduleRules)
-    .where(eq(scheduleRules.ruleType, "override"));
+  // Get all schedule rules
+  const { data: allRules, error: rulesError } = await supabase
+    .from("schedule_rules")
+    .select("*")
+    .eq("rule_type", "override");
 
-  const stylistOverride = allRules.find(
+  if (rulesError) {
+    console.error("Error fetching schedule rules:", rulesError);
+    return [];
+  }
+
+  const stylistOverride = (allRules || []).find(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (r: any) => r.specificDate === date && r.stylistId === stylistId
+    (r: any) => r.specific_date === date && r.stylist_id === stylistId
   );
-  const salonOverride = allRules.find(
+  const salonOverride = (allRules || []).find(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (r: any) => r.specificDate === date && !r.stylistId
+    (r: any) => r.specific_date === date && !r.stylist_id
   );
 
-  const weeklyRules = await db
-    .select()
-    .from(scheduleRules)
-    .where(
-      and(eq(scheduleRules.ruleType, "weekly"), eq(scheduleRules.dayOfWeek, dayOfWeek))
-    );
+  // Get weekly rules
+  const { data: weeklyRules, error: weeklyError } = await supabase
+    .from("schedule_rules")
+    .select("*")
+    .eq("rule_type", "weekly")
+    .eq("day_of_week", dayOfWeek);
+
+  if (weeklyError) {
+    console.error("Error fetching weekly rules:", weeklyError);
+    return [];
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stylistWeekly = weeklyRules.find((r: any) => r.stylistId === stylistId);
+  const stylistWeekly = (weeklyRules || []).find((r: any) => r.stylist_id === stylistId);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const salonWeekly = weeklyRules.find((r: any) => !r.stylistId);
+  const salonWeekly = (weeklyRules || []).find((r: any) => !r.stylist_id);
 
   const rule = stylistOverride || salonOverride || stylistWeekly || salonWeekly;
 
-  if (!rule || rule.isClosed || !rule.startTime || !rule.endTime) return [];
+  if (!rule || rule.is_closed || !rule.start_time || !rule.end_time) return [];
 
   // Get service duration
-  const [service] = await db
-    .select()
-    .from(services)
-    .where(eq(services.id, serviceId));
-  if (!service) return [];
+  const { data: service, error: serviceError } = await supabase
+    .from("services")
+    .select("*")
+    .eq("id", serviceId)
+    .single();
 
-  const openMins = timeToMinutes(rule.startTime);
-  const closeMins = timeToMinutes(rule.endTime);
+  if (serviceError || !service) {
+    console.error("Error fetching service:", serviceError);
+    return [];
+  }
+
+  const openMins = timeToMinutes(rule.start_time);
+  const closeMins = timeToMinutes(rule.end_time);
   const duration = service.duration;
 
   // Generate 30-min aligned slots
@@ -78,16 +91,17 @@ export async function getAvailableSlots(
   }
 
   // Get existing appointments for this stylist on this date
-  const existing = await db
-    .select()
-    .from(appointments)
-    .where(
-      and(
-        eq(appointments.stylistId, stylistId),
-        eq(appointments.date, date),
-        ne(appointments.status, "cancelled")
-      )
-    );
+  const { data: existing, error: apptError } = await supabase
+    .from("appointments")
+    .select("*")
+    .eq("stylist_id", stylistId)
+    .eq("date", date)
+    .neq("status", "cancelled");
+
+  if (apptError) {
+    console.error("Error fetching appointments:", apptError);
+    return [];
+  }
 
   // Filter out conflicting slots
   return allSlots.filter((slotTime) => {
@@ -95,9 +109,9 @@ export async function getAvailableSlots(
     const slotEnd = slotStart + duration;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return !existing.some((appt: any) => {
-      const apptStart = timeToMinutes(appt.startTime);
-      const apptEnd = timeToMinutes(appt.endTime);
+    return !(existing || []).some((appt: any) => {
+      const apptStart = timeToMinutes(appt.start_time);
+      const apptEnd = timeToMinutes(appt.end_time);
       return slotStart < apptEnd && slotEnd > apptStart;
     });
   });

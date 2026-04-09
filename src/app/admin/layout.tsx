@@ -7,6 +7,8 @@ import { SessionProvider } from "next-auth/react";
 const navItems = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/appointments", label: "Appointments" },
+  { href: "/admin/services", label: "Services" },
+  { href: "/admin/stylists", label: "Stylists" },
   { href: "/admin/schedule", label: "Schedule" },
 ];
 

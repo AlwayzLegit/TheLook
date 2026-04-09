@@ -1,26 +1,38 @@
-import { db } from "@/lib/db";
-import { stylists, stylistServices } from "@/lib/schema";
-import { eq, asc } from "drizzle-orm";
+import { supabase } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const allStylists = await db
-    .select()
-    .from(stylists)
-    .where(eq(stylists.active, true))
-    .orderBy(asc(stylists.sortOrder));
+  // Fetch stylists
+  const { data: allStylists, error: stylistsError } = await supabase
+    .from("stylists")
+    .select("*")
+    .eq("active", true)
+    .order("sort_order", { ascending: true });
 
-  const allMappings = await db.select().from(stylistServices);
+  if (stylistsError) {
+    console.error("Error fetching stylists:", stylistsError);
+    return NextResponse.json([], { status: 500 });
+  }
+
+  // Fetch stylist-service mappings
+  const { data: allMappings, error: mappingsError } = await supabase
+    .from("stylist_services")
+    .select("*");
+
+  if (mappingsError) {
+    console.error("Error fetching stylist services:", mappingsError);
+    return NextResponse.json([], { status: 500 });
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result = allStylists.map((s: any) => ({
+  const result = (allStylists || []).map((s: any) => ({
     ...s,
     specialties: s.specialties ? JSON.parse(s.specialties) : [],
-    serviceIds: allMappings
+    serviceIds: (allMappings || [])
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((m: any) => m.stylistId === s.id)
+      .filter((m: any) => m.stylist_id === s.id)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((m: any) => m.serviceId),
+      .map((m: any) => m.service_id),
   }));
 
   return NextResponse.json(result);

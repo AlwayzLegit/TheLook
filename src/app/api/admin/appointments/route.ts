@@ -1,7 +1,5 @@
-import { db } from "@/lib/db";
-import { appointments, services, stylists } from "@/lib/schema";
+import { supabase } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -14,32 +12,39 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status");
   const stylistId = searchParams.get("stylistId");
 
-  const conditions = [];
-  if (dateFrom) conditions.push(gte(appointments.date, dateFrom));
-  if (dateTo) conditions.push(lte(appointments.date, dateTo));
-  if (status) conditions.push(eq(appointments.status, status));
-  if (stylistId) conditions.push(eq(appointments.stylistId, stylistId));
+  // Build query
+  let query = supabase
+    .from("appointments")
+    .select("*")
+    .order("date", { ascending: false })
+    .order("start_time", { ascending: false });
 
-  const rows = await db
-    .select()
-    .from(appointments)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(appointments.date), desc(appointments.startTime));
+  if (dateFrom) query = query.gte("date", dateFrom);
+  if (dateTo) query = query.lte("date", dateTo);
+  if (status) query = query.eq("status", status);
+  if (stylistId) query = query.eq("stylist_id", stylistId);
 
-  // Enrich with service and stylist names
-  const allServices = await db.select().from(services);
-  const allStylists = await db.select().from(stylists);
+  const { data: rows, error } = await query;
+
+  if (error) {
+    console.error("Error fetching appointments:", error);
+    return NextResponse.json([], { status: 500 });
+  }
+
+  // Fetch services and stylists for enrichment
+  const { data: allServices } = await supabase.from("services").select("*");
+  const { data: allStylists } = await supabase.from("stylists").select("*");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serviceMap = Object.fromEntries(allServices.map((s: any) => [s.id, s]));
+  const serviceMap = Object.fromEntries((allServices || []).map((s: any) => [s.id, s]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stylistMap = Object.fromEntries(allStylists.map((s: any) => [s.id, s]));
+  const stylistMap = Object.fromEntries((allStylists || []).map((s: any) => [s.id, s]));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const enriched = rows.map((a: any) => ({
+  const enriched = (rows || []).map((a: any) => ({
     ...a,
-    serviceName: serviceMap[a.serviceId]?.name,
-    stylistName: stylistMap[a.stylistId]?.name,
+    serviceName: serviceMap[a.service_id]?.name,
+    stylistName: stylistMap[a.stylist_id]?.name,
   }));
 
   return NextResponse.json(enriched);

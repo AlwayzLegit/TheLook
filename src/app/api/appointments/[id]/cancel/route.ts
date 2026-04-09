@@ -1,7 +1,5 @@
-import { db } from "@/lib/db";
-import { appointments, services, stylists } from "@/lib/schema";
+import { supabase } from "@/lib/supabase";
 import { sendCancellationEmail } from "@/lib/email";
-import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -12,12 +10,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Cancel token required" }, { status: 400 });
   }
 
-  const [appointment] = await db
-    .select()
-    .from(appointments)
-    .where(eq(appointments.cancelToken, token));
+  // Find appointment by cancel token
+  const { data: appointment, error: findError } = await supabase
+    .from("appointments")
+    .select("*")
+    .eq("cancel_token", token)
+    .single();
 
-  if (!appointment) {
+  if (findError || !appointment) {
     return NextResponse.json({ error: "Invalid cancel token" }, { status: 404 });
   }
 
@@ -25,22 +25,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Already cancelled" });
   }
 
-  await db
-    .update(appointments)
-    .set({ status: "cancelled", updatedAt: new Date() })
-    .where(eq(appointments.id, appointment.id));
+  // Update appointment status
+  const { error: updateError } = await supabase
+    .from("appointments")
+    .update({ status: "cancelled", updated_at: new Date().toISOString() })
+    .eq("id", appointment.id);
+
+  if (updateError) {
+    console.error("Error cancelling appointment:", updateError);
+    return NextResponse.json({ error: "Failed to cancel appointment" }, { status: 500 });
+  }
 
   // Get service & stylist names for email
-  const [service] = await db.select().from(services).where(eq(services.id, appointment.serviceId));
-  const [stylist] = await db.select().from(stylists).where(eq(stylists.id, appointment.stylistId));
+  const { data: service } = await supabase
+    .from("services")
+    .select("*")
+    .eq("id", appointment.service_id)
+    .single();
+  
+  const { data: stylist } = await supabase
+    .from("stylists")
+    .select("*")
+    .eq("id", appointment.stylist_id)
+    .single();
 
   sendCancellationEmail({
-    clientName: appointment.clientName,
-    clientEmail: appointment.clientEmail,
+    clientName: appointment.client_name,
+    clientEmail: appointment.client_email,
     serviceName: service?.name || "Your Service",
     stylistName: stylist?.name || "Your Stylist",
     date: appointment.date,
-    startTime: appointment.startTime,
+    startTime: appointment.start_time,
   }).catch(console.error);
 
   return NextResponse.json({ message: "Appointment cancelled" });

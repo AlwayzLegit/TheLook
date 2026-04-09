@@ -1,0 +1,26 @@
+import ServiceGallery from "./ServiceGallery";
+
+const colorImages = [
+  { src: "/images/services/Color & Highlights/color-01.jpg", alt: "Blonde balayage" },
+  { src: "/images/services/Color & Highlights/color-02.jpg", alt: "Warm highlights" },
+  { src: "/images/services/Color & Highlights/color-03.jpg", alt: "Dimensional color" },
+  { src: "/images/services/Color & Highlights/color-04.jpg", alt: "Sun-kissed balayage" },
+  { src: "/images/services/Color & Highlights/color-05.jpg", alt: "Ash blonde tones" },
+  { src: "/images/services/Color & Highlights/color-06.jpg", alt: "Golden highlights" },
+  { src: "/images/services/Color & Highlights/color-07.jpg", alt: "Platinum blonde" },
+  { src: "/images/services/Color & Highlights/color-08.jpg", alt: "Root smudge blend" },
+];
+
+export default function ColorGallery() {
+  return (
+    <ServiceGallery
+      title="Color & Highlights"
+      subtitle="Dimensional Color"
+      description="From sun-kissed balayage to bold fashion colors, our color specialists create dimensional, head-turning results. We use premium products to ensure vibrant, long-lasting color that keeps your hair healthy and luminous."
+      images={colorImages}
+      ctaText="Book Color Service"
+      ctaHref="/book"
+      reversed={true}
+    />
+  );
+}

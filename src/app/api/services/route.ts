@@ -1,19 +1,22 @@
-import { db } from "@/lib/db";
-import { services } from "@/lib/schema";
-import { eq, asc } from "drizzle-orm";
+import { supabase } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const allServices = await db
-    .select()
-    .from(services)
-    .where(eq(services.active, true))
-    .orderBy(asc(services.sortOrder));
+  const { data: allServices, error } = await supabase
+    .from("services")
+    .select("*")
+    .eq("active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching services:", error);
+    return NextResponse.json({}, { status: 500 });
+  }
 
   // Group by category
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const grouped: Record<string, any[]> = {};
-  for (const s of allServices) {
+  for (const s of allServices || []) {
     if (!grouped[s.category]) grouped[s.category] = [];
     grouped[s.category].push(s);
   }

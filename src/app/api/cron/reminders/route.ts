@@ -1,7 +1,5 @@
-import { db } from "@/lib/db";
-import { appointments, services, stylists } from "@/lib/schema";
+import { supabase } from "@/lib/supabase";
 import { sendReminderEmail } from "@/lib/email";
-import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -17,44 +15,48 @@ export async function GET(request: NextRequest) {
   const tomorrowStr = tomorrow.toISOString().split("T")[0];
 
   // Find confirmed appointments for tomorrow that haven't been reminded
-  const upcoming = await db
-    .select()
-    .from(appointments)
-    .where(
-      and(
-        eq(appointments.date, tomorrowStr),
-        eq(appointments.status, "confirmed"),
-        eq(appointments.reminderSent, false)
-      )
-    );
+  const { data: upcoming, error } = await supabase
+    .from("appointments")
+    .select("*")
+    .eq("date", tomorrowStr)
+    .eq("status", "confirmed")
+    .eq("reminder_sent", false);
 
-  const allServices = await db.select().from(services);
-  const allStylists = await db.select().from(stylists);
+  if (error) {
+    console.error("Error fetching appointments:", error);
+    return NextResponse.json({ error: "Failed to fetch appointments" }, { status: 500 });
+  }
+
+  // Fetch services and stylists
+  const { data: allServices } = await supabase.from("services").select("*");
+  const { data: allStylists } = await supabase.from("stylists").select("*");
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serviceMap = Object.fromEntries(allServices.map((s: any) => [s.id, s]));
+  const serviceMap = Object.fromEntries((allServices || []).map((s: any) => [s.id, s]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stylistMap = Object.fromEntries(allStylists.map((s: any) => [s.id, s]));
+  const stylistMap = Object.fromEntries((allStylists || []).map((s: any) => [s.id, s]));
 
   const baseUrl = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
   let sent = 0;
 
-  for (const appt of upcoming) {
+  for (const appt of upcoming || []) {
     await sendReminderEmail({
-      clientName: appt.clientName,
-      clientEmail: appt.clientEmail,
-      serviceName: serviceMap[appt.serviceId]?.name || "Your Service",
-      stylistName: stylistMap[appt.stylistId]?.name || "Your Stylist",
+      clientName: appt.client_name,
+      clientEmail: appt.client_email,
+      serviceName: serviceMap[appt.service_id]?.name || "Your Service",
+      stylistName: stylistMap[appt.stylist_id]?.name || "Your Stylist",
       date: appt.date,
-      startTime: appt.startTime,
-      cancelUrl: appt.cancelToken
-        ? `${baseUrl}/book/cancel?token=${appt.cancelToken}`
+      startTime: appt.start_time,
+      cancelUrl: appt.cancel_token
+        ? `${baseUrl}/book/cancel?token=${appt.cancel_token}`
         : undefined,
     });
 
-    await db
-      .update(appointments)
-      .set({ reminderSent: true })
-      .where(eq(appointments.id, appt.id));
+    // Mark as reminded
+    await supabase
+      .from("appointments")
+      .update({ reminder_sent: true })
+      .eq("id", appt.id);
 
     sent++;
   }
