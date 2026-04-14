@@ -36,6 +36,7 @@ describe("appointmentCreateSchema", () => {
   });
 
   it("rejects missing serviceId", () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { serviceId: _serviceId, ...rest } = valid;
     expect(appointmentCreateSchema.safeParse(rest).success).toBe(false);
   });

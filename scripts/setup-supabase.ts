@@ -32,7 +32,7 @@ async function setupDatabase() {
     console.log("⚠️  exec_sql not available, using REST API...");
     
     // Check if tables exist by trying to query them
-    const { data: servicesData, error: servicesError } = await supabase
+    const { error: servicesError } = await supabase
       .from("services")
       .select("count", { count: "exact", head: true });
     
