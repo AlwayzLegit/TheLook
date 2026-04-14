@@ -269,8 +269,9 @@ export default function StylistsPage() {
                   <div key={stylist.id} className="px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       {stylist.image_url ? (
-                        <img 
-                          src={stylist.image_url} 
+                        /* eslint-disable-next-line @next/next/no-img-element -- Admin-uploaded URLs may not match remotePatterns */
+                        <img
+                          src={stylist.image_url}
                           alt={stylist.name}
                           className="w-12 h-12 rounded-full object-cover"
                         />
@@ -316,8 +317,9 @@ export default function StylistsPage() {
                   <div key={stylist.id} className="px-6 py-4 flex items-center justify-between opacity-60">
                     <div className="flex items-center gap-4">
                       {stylist.image_url ? (
-                        <img 
-                          src={stylist.image_url} 
+                        /* eslint-disable-next-line @next/next/no-img-element -- Admin-uploaded URLs may not match remotePatterns */
+                        <img
+                          src={stylist.image_url}
                           alt={stylist.name}
                           className="w-12 h-12 rounded-full object-cover grayscale"
                         />

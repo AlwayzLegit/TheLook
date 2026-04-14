@@ -159,7 +159,7 @@ export default function Services() {
                     <div key={item.id} className="flex items-center gap-3 group">
                       {image && !failedImages[imageKey] ? (
                         <div className="relative w-[100px] h-[100px] rounded-md overflow-hidden border border-navy/10 shrink-0">
-                          {/* Use native img to avoid runtime crashes from invalid/unconfigured remote URLs. */}
+                          {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic URLs from DB may not match next/image remotePatterns */}
                           <img
                             src={image}
                             alt={item.name}
