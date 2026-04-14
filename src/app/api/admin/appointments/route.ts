@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
@@ -6,6 +6,10 @@ import { NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+
+  if (!hasSupabaseConfig) {
+    return apiSuccess([]);
+  }
 
   const { searchParams } = request.nextUrl;
   const dateFrom = searchParams.get("from");

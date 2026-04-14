@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
 import { adminServiceSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
@@ -11,6 +11,7 @@ export async function PATCH(
 ) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { id } = await params;
   const body = await request.json();
@@ -68,6 +69,7 @@ export async function DELETE(
 ) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { id } = await params;
 

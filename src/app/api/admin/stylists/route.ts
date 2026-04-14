@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
 import { adminStylistSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
@@ -8,6 +8,10 @@ import { NextRequest } from "next/server";
 export async function GET() {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+
+  if (!hasSupabaseConfig) {
+    return apiSuccess([]);
+  }
 
   const { data, error } = await supabase
     .from("stylists")
@@ -30,6 +34,9 @@ export async function POST(request: NextRequest) {
   const parsed = adminStylistSchema.safeParse(body);
   if (!parsed.success) {
     return apiError("Invalid stylist payload.", 400);
+  }
+  if (!hasSupabaseConfig) {
+    return apiError("Database not configured.", 503);
   }
   const payload = parsed.data;
 
