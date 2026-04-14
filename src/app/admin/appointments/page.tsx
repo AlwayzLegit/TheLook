@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useRealtimeAppointments } from "@/hooks/useRealtimeAppointments";
+import { usePolledAppointments } from "@/hooks/usePolledAppointments";
 import AdminToast from "@/components/admin/AdminToast";
 
 interface Service {
@@ -47,7 +47,7 @@ function formatDate(date: string) {
 export default function AppointmentsPage() {
   const { status } = useSession();
   const router = useRouter();
-  const { appointments: realtimeAppts, loading, error, lastUpdate, refresh } = useRealtimeAppointments({
+  const { appointments: realtimeAppts, loading, error, lastUpdate, refresh } = usePolledAppointments({
     enabled: status === "authenticated",
   });
   const [services, setServices] = useState<Service[]>([]);

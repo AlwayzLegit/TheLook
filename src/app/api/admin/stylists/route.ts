@@ -1,12 +1,13 @@
 import { supabase } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
 import { adminStylistSchema } from "@/lib/validation";
-import { NextRequest, NextResponse } from "next/server";
+import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { logAdminAction } from "@/lib/auditLog";
+import { NextRequest } from "next/server";
 
-// GET all stylists
 export async function GET() {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return apiError("Unauthorized", 401);
 
   const { data, error } = await supabase
     .from("stylists")
@@ -14,28 +15,26 @@ export async function GET() {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    console.error("Error fetching stylists:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logError("admin/stylists GET", error);
+    return apiError("Failed to fetch stylists.", 500);
   }
 
-  return NextResponse.json(data);
+  return apiSuccess(data);
 }
 
-// CREATE new stylist
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return apiError("Unauthorized", 401);
 
   const body = await request.json();
   const parsed = adminStylistSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid stylist payload" }, { status: 400 });
+    return apiError("Invalid stylist payload.", 400);
   }
   const payload = parsed.data;
-  
-  // Generate slug from name
+
   const slug = payload.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  
+
   const { data, error } = await supabase
     .from("stylists")
     .insert({
@@ -51,9 +50,11 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    console.error("Error creating stylist:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logError("admin/stylists POST", error);
+    return apiError("Failed to create stylist.", 500);
   }
 
-  return NextResponse.json(data, { status: 201 });
+  logAdminAction("stylist.create", JSON.stringify({ name: payload.name }));
+
+  return apiSuccess(data, 201);
 }

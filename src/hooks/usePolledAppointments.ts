@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { POLLING } from "@/lib/constants";
 
 interface Appointment {
   id: string;
@@ -17,13 +18,13 @@ interface Appointment {
   created_at: string;
 }
 
-interface UseRealtimeAppointmentsOptions {
+interface UsePolledAppointmentsOptions {
   enabled?: boolean;
   pollMs?: number;
 }
 
-export function useRealtimeAppointments(options: UseRealtimeAppointmentsOptions = {}) {
-  const { enabled = true, pollMs = 15000 } = options;
+export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}) {
+  const { enabled = true, pollMs = POLLING.APPOINTMENTS_MS } = options;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

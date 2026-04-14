@@ -6,21 +6,21 @@ import AnimatedSection from "./AnimatedSection";
 const team = [
   {
     name: "Armen P.",
-    role: "Stylist &middot; 17+ Years",
+    role: "Stylist \u00B7 17+ Years",
     bio: "Trained in Moscow. World-class expertise in coloring, cutting & styling. Specialist in barber fades for men & women.",
     initials: "AP",
     specialties: ["Coloring", "Barber Fades", "Cutting"],
   },
   {
     name: "Kristina G.",
-    role: "Stylist &middot; 15 Years",
+    role: "Stylist \u00B7 15 Years",
     bio: "Trained in Armenia. 15 years of expertise in cutting & coloring for both men's & women's hair.",
     initials: "KG",
     specialties: ["Cutting", "Coloring", "Men & Women"],
   },
   {
     name: "Alisa (Liz) H.",
-    role: "Stylist &middot; 30+ Years",
+    role: "Stylist \u00B7 30+ Years",
     bio: "Over 30 years in the industry. Specializes in cutting & coloring. A true veteran of the craft.",
     initials: "LH",
     specialties: ["Cutting", "Coloring", "30+ Years"],
@@ -53,10 +53,9 @@ export default function Team() {
                 </div>
 
                 <h3 className="font-heading text-xl mb-1">{member.name}</h3>
-                <p
-                  className="text-rose text-[11px] tracking-[0.15em] uppercase font-body mb-4"
-                  dangerouslySetInnerHTML={{ __html: member.role }}
-                />
+                <p className="text-rose text-[11px] tracking-[0.15em] uppercase font-body mb-4">
+                  {member.role}
+                </p>
                 <p className="text-navy/60 text-sm font-body font-light leading-relaxed mb-5 max-w-xs mx-auto">
                   {member.bio}
                 </p>

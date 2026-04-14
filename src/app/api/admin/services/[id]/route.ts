@@ -1,21 +1,22 @@
 import { supabase } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
 import { adminServiceSchema } from "@/lib/validation";
-import { NextRequest, NextResponse } from "next/server";
+import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { logAdminAction } from "@/lib/auditLog";
+import { NextRequest } from "next/server";
 
-// UPDATE service
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return apiError("Unauthorized", 401);
 
   const { id } = await params;
   const body = await request.json();
   const parsed = adminServiceSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid service payload" }, { status: 400 });
+    return apiError("Invalid service payload.", 400);
   }
   const payload = parsed.data;
   const basePayload = {
@@ -52,32 +53,35 @@ export async function PATCH(
   }
 
   if (error) {
-    console.error("Error updating service:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logError("admin/services PATCH", error);
+    return apiError("Failed to update service.", 500);
   }
 
-  return NextResponse.json(data);
+  logAdminAction("service.update", JSON.stringify({ id, name: payload.name }));
+
+  return apiSuccess(data);
 }
 
-// DELETE service
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return apiError("Unauthorized", 401);
 
   const { id } = await params;
-  
+
   const { error } = await supabase
     .from("services")
     .delete()
     .eq("id", id);
 
   if (error) {
-    console.error("Error deleting service:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logError("admin/services DELETE", error);
+    return apiError("Failed to delete service.", 500);
   }
 
-  return NextResponse.json({ success: true });
+  logAdminAction("service.delete", JSON.stringify({ id }));
+
+  return apiSuccess({ success: true });
 }

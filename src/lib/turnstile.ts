@@ -5,7 +5,12 @@ interface TurnstileResult {
 
 export async function verifyTurnstileToken(token: string | undefined, ip?: string) {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return { ok: true };
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      return { ok: false, error: "Captcha service is not configured." };
+    }
+    return { ok: true };
+  }
   if (!token) return { ok: false, error: "Captcha verification is required." };
 
   const formData = new URLSearchParams();

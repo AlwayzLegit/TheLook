@@ -1,20 +1,18 @@
 import { supabase } from "@/lib/supabase";
 import { sendReminderEmail } from "@/lib/email";
-import { NextRequest, NextResponse } from "next/server";
+import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
-  // Verify cron secret
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return apiError("Unauthorized", 401);
   }
 
-  // Get tomorrow's date
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split("T")[0];
 
-  // Find confirmed appointments for tomorrow that haven't been reminded
   const { data: upcoming, error } = await supabase
     .from("appointments")
     .select("*")
@@ -23,11 +21,10 @@ export async function GET(request: NextRequest) {
     .eq("reminder_sent", false);
 
   if (error) {
-    console.error("Error fetching appointments:", error);
-    return NextResponse.json({ error: "Failed to fetch appointments" }, { status: 500 });
+    logError("cron/reminders GET", error);
+    return apiError("Failed to fetch appointments.", 500);
   }
 
-  // Fetch services and stylists
   const { data: allServices } = await supabase.from("services").select("*");
   const { data: allStylists } = await supabase.from("stylists").select("*");
 
@@ -52,7 +49,6 @@ export async function GET(request: NextRequest) {
         : undefined,
     });
 
-    // Mark as reminded
     await supabase
       .from("appointments")
       .update({ reminder_sent: true })
@@ -61,5 +57,5 @@ export async function GET(request: NextRequest) {
     sent++;
   }
 
-  return NextResponse.json({ sent, date: tomorrowStr });
+  return apiSuccess({ sent, date: tomorrowStr });
 }

@@ -1,9 +1,9 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { NextResponse } from "next/server";
+import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 
 export async function GET() {
   if (!hasSupabaseConfig) {
-    return NextResponse.json({});
+    return apiSuccess({});
   }
 
   const { data: allServices, error } = await supabase
@@ -13,8 +13,8 @@ export async function GET() {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    console.error("Error fetching services:", error);
-    return NextResponse.json({}, { status: 500 });
+    logError("services GET", error);
+    return apiError("Failed to fetch services.", 500);
   }
 
   // Group by category
@@ -25,5 +25,5 @@ export async function GET() {
     grouped[s.category].push(s);
   }
 
-  return NextResponse.json(grouped);
+  return apiSuccess(grouped);
 }

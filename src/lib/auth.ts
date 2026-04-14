@@ -21,13 +21,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const inputEmail = email.toLowerCase().trim();
         const adminPassword = process.env.ADMIN_PASSWORD;
         const configuredAdminEmail = process.env.ADMIN_EMAIL?.toLowerCase().trim();
-        const allowedEmails = new Set<string>([
-          "anna@jetnine.com",
-          ...(process.env.ADMIN_EMAILS || "")
+        const allowedEmails = new Set<string>(
+          (process.env.ADMIN_EMAILS || "")
             .split(",")
             .map((e) => e.toLowerCase().trim())
             .filter(Boolean),
-        ]);
+        );
         if (configuredAdminEmail) allowedEmails.add(configuredAdminEmail);
 
         if (

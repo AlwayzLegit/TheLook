@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedSection from "./AnimatedSection";
@@ -23,7 +23,13 @@ const galleryItems = [
 export default function Gallery() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  const closeLightbox = () => setLightboxIndex(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const closeLightbox = useCallback(() => {
+    setLightboxIndex(null);
+    triggerRef.current?.focus();
+  }, []);
 
   const goNext = useCallback(() => {
     setLightboxIndex((prev) =>
@@ -38,6 +44,19 @@ export default function Gallery() {
         : null
     );
   }, []);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowRight") goNext();
+      else if (e.key === "ArrowLeft") goPrev();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxIndex, closeLightbox, goNext, goPrev]);
 
   return (
     <section id="gallery" className="py-24 md:py-32 bg-cream relative overflow-hidden">
@@ -63,7 +82,8 @@ export default function Gallery() {
           {galleryItems.map((item, index) => (
             <AnimatedSection key={index} delay={index * 0.04}>
               <button
-                onClick={() => setLightboxIndex(index)}
+                ref={(el) => { if (lightboxIndex === null) triggerRef.current = el; }}
+                onClick={() => { triggerRef.current = document.activeElement as HTMLButtonElement; setLightboxIndex(index); }}
                 className="group relative aspect-square overflow-hidden cursor-pointer w-full rounded-sm"
               >
                 <Image
@@ -104,11 +124,14 @@ export default function Gallery() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Image lightbox"
             className="fixed inset-0 bg-charcoal/95 backdrop-blur-sm flex items-center justify-center p-4"
             style={{ zIndex: 200 }}
             onClick={closeLightbox}
           >
-            <button onClick={closeLightbox} aria-label="Close lightbox" className="absolute top-6 right-6 text-white/60 hover:text-white transition-colors z-10">
+            <button ref={closeButtonRef} onClick={closeLightbox} aria-label="Close lightbox" className="absolute top-6 right-6 text-white/60 hover:text-white transition-colors z-10">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
               </svg>

@@ -1,10 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
 export default function MobileBookButton() {
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    const footer = document.querySelector("footer");
+    if (!footer) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setHidden(entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(footer);
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 lg:hidden">
+    <div
+      className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-40 lg:hidden transition-all duration-300 ${hidden ? "opacity-0 translate-y-4 pointer-events-none" : "opacity-100 translate-y-0"}`}
+    >
       <Link
         href="/book"
         className="flex items-center gap-2.5 bg-rose hover:bg-rose-light text-white font-body text-[11px] tracking-[0.2em] uppercase px-8 py-3.5 shadow-[0_4px_20px_rgba(184,36,59,0.4)] transition-all duration-300 cta-glow rounded-full"

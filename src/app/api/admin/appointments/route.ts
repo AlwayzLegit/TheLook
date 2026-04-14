@@ -1,10 +1,11 @@
 import { supabase } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
-import { NextRequest, NextResponse } from "next/server";
+import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return apiError("Unauthorized", 401);
 
   const { searchParams } = request.nextUrl;
   const dateFrom = searchParams.get("from");
@@ -12,7 +13,6 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status");
   const stylistId = searchParams.get("stylistId");
 
-  // Build query
   let query = supabase
     .from("appointments")
     .select("*")
@@ -27,11 +27,10 @@ export async function GET(request: NextRequest) {
   const { data: rows, error } = await query;
 
   if (error) {
-    console.error("Error fetching appointments:", error);
-    return NextResponse.json([], { status: 500 });
+    logError("admin/appointments GET", error);
+    return apiError("Failed to fetch appointments.", 500);
   }
 
-  // Fetch services and stylists for enrichment
   const { data: allServices } = await supabase.from("services").select("*");
   const { data: allStylists } = await supabase.from("stylists").select("*");
 
@@ -47,5 +46,5 @@ export async function GET(request: NextRequest) {
     stylistName: stylistMap[a.stylist_id]?.name,
   }));
 
-  return NextResponse.json(enriched);
+  return apiSuccess(enriched);
 }

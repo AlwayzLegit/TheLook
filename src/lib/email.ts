@@ -1,7 +1,11 @@
 import { Resend } from "resend";
 
 function getResend() {
-  return new Resend(process.env.RESEND_API_KEY || "re_placeholder");
+  const key = process.env.RESEND_API_KEY;
+  if (!key && process.env.NODE_ENV === "production") {
+    throw new Error("RESEND_API_KEY is required in production");
+  }
+  return new Resend(key || "re_placeholder");
 }
 
 const FROM = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";

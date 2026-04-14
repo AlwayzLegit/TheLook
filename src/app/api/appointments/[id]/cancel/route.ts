@@ -1,16 +1,16 @@
 import { supabase } from "@/lib/supabase";
 import { sendCancellationEmail } from "@/lib/email";
-import { NextRequest, NextResponse } from "next/server";
+import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const token = searchParams.get("token");
 
   if (!token) {
-    return NextResponse.json({ error: "Cancel token required" }, { status: 400 });
+    return apiError("Cancel token required.", 400);
   }
 
-  // Find appointment by cancel token
   const { data: appointment, error: findError } = await supabase
     .from("appointments")
     .select("*")
@@ -18,31 +18,29 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (findError || !appointment) {
-    return NextResponse.json({ error: "Invalid cancel token" }, { status: 404 });
+    return apiError("Invalid cancel token.", 404);
   }
 
   if (appointment.status === "cancelled") {
-    return NextResponse.json({ message: "Already cancelled" });
+    return apiSuccess({ message: "Already cancelled" });
   }
 
-  // Update appointment status
   const { error: updateError } = await supabase
     .from("appointments")
     .update({ status: "cancelled", updated_at: new Date().toISOString() })
     .eq("id", appointment.id);
 
   if (updateError) {
-    console.error("Error cancelling appointment:", updateError);
-    return NextResponse.json({ error: "Failed to cancel appointment" }, { status: 500 });
+    logError("appointments/cancel POST", updateError);
+    return apiError("Failed to cancel appointment.", 500);
   }
 
-  // Get service & stylist names for email
   const { data: service } = await supabase
     .from("services")
     .select("*")
     .eq("id", appointment.service_id)
     .single();
-  
+
   const { data: stylist } = await supabase
     .from("stylists")
     .select("*")
@@ -56,7 +54,7 @@ export async function POST(request: NextRequest) {
     stylistName: stylist?.name || "Your Stylist",
     date: appointment.date,
     startTime: appointment.start_time,
-  }).catch(console.error);
+  }).catch((err) => logError("appointments/cancel email", err));
 
-  return NextResponse.json({ message: "Appointment cancelled" });
+  return apiSuccess({ message: "Appointment cancelled" });
 }

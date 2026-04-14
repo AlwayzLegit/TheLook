@@ -92,6 +92,7 @@ CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
 CREATE INDEX IF NOT EXISTS idx_appointments_cancel_token ON appointments(cancel_token);
 CREATE INDEX IF NOT EXISTS idx_schedule_rules_type ON schedule_rules(rule_type);
 CREATE INDEX IF NOT EXISTS idx_schedule_rules_day ON schedule_rules(day_of_week);
+CREATE INDEX IF NOT EXISTS idx_appointments_client_email ON appointments(client_email);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;

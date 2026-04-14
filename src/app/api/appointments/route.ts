@@ -4,7 +4,9 @@ import { sendBookingConfirmation } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { appointmentCreateSchema } from "@/lib/validation";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { NextRequest, NextResponse } from "next/server";
+import { RATE_LIMITS } from "@/lib/constants";
+import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { NextRequest } from "next/server";
 
 function minutesToTime(mins: number): string {
   const h = Math.floor(mins / 60);
@@ -21,20 +23,17 @@ export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const rl = await checkRateLimit({
     key: `book:${ip}`,
-    limit: 8,
-    windowMs: 15 * 60 * 1000,
+    limit: RATE_LIMITS.BOOKING.limit,
+    windowMs: RATE_LIMITS.BOOKING.windowMs,
   });
   if (!rl.ok) {
-    return NextResponse.json(
-      { error: "Too many booking attempts. Please wait a few minutes and try again." },
-      { status: 429 }
-    );
+    return apiError("Too many booking attempts. Please wait a few minutes and try again.", 429);
   }
 
   const body = await request.json();
   const parsed = appointmentCreateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid booking request." }, { status: 400 });
+    return apiError("Invalid booking request.", 400);
   }
   const {
     serviceId,
@@ -50,23 +49,17 @@ export async function POST(request: NextRequest) {
 
   const turnstile = await verifyTurnstileToken(turnstileToken, ip);
   if (!turnstile.ok) {
-    return NextResponse.json({ error: turnstile.error }, { status: 400 });
+    return apiError(turnstile.error || "Captcha verification failed.", 400);
   }
 
   if (!hasSupabaseConfig) {
-    return NextResponse.json(
-      { error: "Booking backend is not configured locally. Add Supabase env vars to enable real bookings." },
-      { status: 503 }
-    );
+    return apiError("Booking backend is not configured locally. Add Supabase env vars to enable real bookings.", 503);
   }
 
   // Verify the slot is still available (prevent double-booking)
   const available = await getAvailableSlots(stylistId, serviceId, date);
   if (!available.includes(startTime)) {
-    return NextResponse.json(
-      { error: "This time slot is no longer available. Please choose another." },
-      { status: 409 }
-    );
+    return apiError("This time slot is no longer available. Please choose another.", 409);
   }
 
   // Get service duration to calculate end time
@@ -77,7 +70,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (serviceError || !service) {
-    return NextResponse.json({ error: "Service not found" }, { status: 404 });
+    return apiError("Service not found.", 404);
   }
 
   const endTime = minutesToTime(timeToMinutes(startTime) + service.duration);
@@ -103,8 +96,8 @@ export async function POST(request: NextRequest) {
     });
 
   if (insertError) {
-    console.error("Error creating appointment:", insertError);
-    return NextResponse.json({ error: "Failed to create appointment" }, { status: 500 });
+    logError("appointments POST", insertError);
+    return apiError("Failed to create appointment.", 500);
   }
 
   // Get stylist name for email
@@ -126,7 +119,7 @@ export async function POST(request: NextRequest) {
     cancelUrl: `${baseUrl}/book/cancel?token=${cancelToken}`,
   }).catch(console.error);
 
-  return NextResponse.json({
+  return apiSuccess({
     id: appointmentId,
     service: service.name,
     stylist: stylist?.name,

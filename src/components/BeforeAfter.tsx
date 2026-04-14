@@ -48,7 +48,22 @@ function BeforeAfterSlider({
   return (
     <div className="space-y-3">
       <div
-        className="relative aspect-[3/4] overflow-hidden cursor-col-resize select-none"
+        className="relative aspect-[3/4] overflow-hidden cursor-col-resize select-none focus:outline-2 focus:outline-gold focus:outline-offset-2"
+        role="slider"
+        aria-label={`Before and after comparison: ${title}`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(sliderPosition)}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            setSliderPosition((p) => Math.max(0, p - 5));
+          } else if (e.key === "ArrowRight") {
+            e.preventDefault();
+            setSliderPosition((p) => Math.min(100, p + 5));
+          }
+        }}
         onMouseDown={() => setIsDragging(true)}
         onMouseUp={() => setIsDragging(false)}
         onMouseLeave={() => setIsDragging(false)}

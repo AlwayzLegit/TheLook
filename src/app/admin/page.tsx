@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useRealtimeAppointments } from "@/hooks/useRealtimeAppointments";
+import { usePolledAppointments } from "@/hooks/usePolledAppointments";
 
 interface Service {
   id: string;
@@ -41,7 +41,7 @@ function formatTime(time: string) {
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { appointments: realtimeAppts, loading, error, lastUpdate } = useRealtimeAppointments({
+  const { appointments: realtimeAppts, loading, error, lastUpdate } = usePolledAppointments({
     enabled: status === "authenticated",
   });
   const [services, setServices] = useState<Service[]>([]);
@@ -210,7 +210,7 @@ export default function AdminDashboard() {
       {/* Real-time indicator */}
       <div className="mt-8 flex items-center gap-2 text-xs text-navy/40 font-body">
         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-        Live updates enabled — new bookings appear instantly
+        Auto-refreshing every 15 seconds
       </div>
     </div>
   );
