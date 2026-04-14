@@ -19,36 +19,37 @@ const securityHeaders: Record<string, string> = {
   ].join("; "),
 };
 
-export default async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Protect admin routes (except login page and auth API)
-  const isAdminPage = pathname.startsWith("/admin") && pathname !== "/admin/login";
-  const isAdminApi = pathname.startsWith("/api/admin");
-
-  if (isAdminPage || isAdminApi) {
-    const session = await auth();
-
-    if (!session) {
-      if (isAdminApi) {
-        return addSecurityHeaders(
-          NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-        );
-      }
-      const loginUrl = new URL("/admin/login", request.url);
-      return addSecurityHeaders(NextResponse.redirect(loginUrl));
-    }
-  }
-
-  return addSecurityHeaders(NextResponse.next());
-}
-
 function addSecurityHeaders(response: NextResponse): NextResponse {
   for (const [key, value] of Object.entries(securityHeaders)) {
     response.headers.set(key, value);
   }
   return response;
 }
+
+// NextAuth v5 middleware: `auth` wraps the handler and injects `req.auth`.
+export default auth((req) => {
+  const { pathname } = req.nextUrl;
+
+  const isAdminPage = pathname.startsWith("/admin") && pathname !== "/admin/login";
+  const isAdminApi = pathname.startsWith("/api/admin");
+
+  if (isAdminPage || isAdminApi) {
+    if (!req.auth) {
+      if (isAdminApi) {
+        return addSecurityHeaders(
+          new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+      const loginUrl = new URL("/admin/login", req.url);
+      return addSecurityHeaders(NextResponse.redirect(loginUrl));
+    }
+  }
+
+  return addSecurityHeaders(NextResponse.next());
+}) as unknown as (request: NextRequest) => Promise<NextResponse>;
 
 export const config = {
   matcher: [
