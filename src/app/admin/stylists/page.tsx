@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface Stylist {
   id: string;
@@ -26,6 +27,7 @@ export default function StylistsPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     bio: "",
@@ -107,8 +109,6 @@ export default function StylistsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this stylist?")) return;
-    
     try {
       setDeletingId(id);
       const res = await fetch(`/api/admin/stylists/${id}`, { method: "DELETE" });
@@ -215,6 +215,7 @@ export default function StylistsPage() {
                     onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
                     className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
                   />
+                  <p className="text-xs text-navy/40 mt-1">Lower numbers appear first in booking</p>
                 </div>
                 <div className="flex items-center">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -291,7 +292,7 @@ export default function StylistsPage() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(stylist.id)}
+                        onClick={() => setConfirmDeleteId(stylist.id)}
                         disabled={deletingId === stylist.id}
                         className="text-xs font-body text-red-600 border border-red-200 px-3 py-1 hover:bg-red-50"
                       >
@@ -341,7 +342,7 @@ export default function StylistsPage() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(stylist.id)}
+                        onClick={() => setConfirmDeleteId(stylist.id)}
                         disabled={deletingId === stylist.id}
                         className="text-xs font-body text-red-600 border border-red-200 px-3 py-1 hover:bg-red-50"
                       >
@@ -354,6 +355,17 @@ export default function StylistsPage() {
             </div>
           )}
         </div>
+      )}
+      {confirmDeleteId && (
+        <ConfirmModal
+          title="Delete Stylist"
+          message="Are you sure you want to delete this stylist? This action cannot be undone."
+          onConfirm={() => {
+            handleDelete(confirmDeleteId);
+            setConfirmDeleteId(null);
+          }}
+          onCancel={() => setConfirmDeleteId(null)}
+        />
       )}
       {toast ? (
         <AdminToast

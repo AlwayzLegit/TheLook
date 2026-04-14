@@ -4,6 +4,7 @@ interface Props {
   selectedDate: string | null;
   selectedTime: string | null;
   onSelectTime: (time: string) => void;
+  error?: boolean;
 }
 
 function formatTime(time: string): string {
@@ -13,7 +14,7 @@ function formatTime(time: string): string {
   return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
 }
 
-export default function TimeSlots({ slots, loading, selectedDate, selectedTime, onSelectTime }: Props) {
+export default function TimeSlots({ slots, loading, selectedDate, selectedTime, onSelectTime, error }: Props) {
   if (!selectedDate) {
     return (
       <div className="flex items-center justify-center text-navy/50 font-body text-sm">
@@ -26,6 +27,14 @@ export default function TimeSlots({ slots, loading, selectedDate, selectedTime, 
     return (
       <div className="flex items-center justify-center text-navy/50 font-body text-sm">
         Loading available times...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center text-red-600 font-body text-sm text-center">
+        Unable to load available times. Please try again or call us at (818) 662-5665.
       </div>
     );
   }

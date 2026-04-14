@@ -145,6 +145,28 @@ export default function AppointmentsPage() {
     );
   }
 
+  const exportCsv = () => {
+    const headers = ["Date", "Time", "Client", "Email", "Phone", "Service", "Stylist", "Status"];
+    const rows = filteredAppts.map((a) => [
+      a.date,
+      `${formatTime(a.start_time)} - ${formatTime(a.end_time)}`,
+      a.client_name,
+      a.client_email,
+      a.client_phone || "",
+      a.serviceName,
+      a.stylistName,
+      a.status,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `appointments-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const updateStatus = async (id: string, newStatus: string) => {
     try {
       setPendingStatusId(id);
@@ -166,9 +188,15 @@ export default function AppointmentsPage() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 className="font-heading text-3xl">Appointments</h1>
         <div className="flex items-center gap-4">
+          <button
+            onClick={exportCsv}
+            className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
+          >
+            Export CSV
+          </button>
           {lastUpdate && (
             <span className="text-xs text-navy/40 font-body">
               Last updated: {lastUpdate.toLocaleTimeString()}
@@ -267,6 +295,19 @@ export default function AppointmentsPage() {
         </select>
         
         <button
+          onClick={() => {
+            setDateFrom("");
+            setDateTo("");
+            setStatusFilter("");
+            setServiceFilter("");
+            setStylistFilter("");
+            setSearch("");
+          }}
+          className="px-4 py-2 text-sm font-body border border-navy/20 hover:bg-navy/5"
+        >
+          Clear All
+        </button>
+        <button
           onClick={refresh}
           className="px-4 py-2 text-sm font-body border border-navy/20 hover:bg-navy/5"
         >
@@ -307,7 +348,7 @@ export default function AppointmentsPage() {
               </div>
 
               {appt.status !== "cancelled" && appt.status !== "completed" && (
-                <div className="flex gap-2 mt-3">
+                <div className="flex flex-wrap gap-2 mt-3">
                   {appt.status === "pending" && (
                     <button 
                       onClick={() => updateStatus(appt.id, "confirmed")} 

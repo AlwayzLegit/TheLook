@@ -1,11 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function PromoBanner() {
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem("thelook_promo_dismissed");
+      if (!dismissed) setIsVisible(true);
+    } catch {
+      setIsVisible(true);
+    }
+  }, []);
+
+  const dismiss = () => {
+    setIsVisible(false);
+    try {
+      localStorage.setItem("thelook_promo_dismissed", Date.now().toString());
+    } catch {}
+  };
 
   if (!isVisible) return null;
 
@@ -27,7 +43,7 @@ export default function PromoBanner() {
             </Link>
           </p>
           <button
-            onClick={() => setIsVisible(false)}
+            onClick={dismiss}
             aria-label="Dismiss"
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50 transition-colors"
           >

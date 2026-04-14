@@ -77,6 +77,33 @@ export default function BookPage() {
   const [result, setResult] = useState<BookingResult | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
+  // Warn before leaving with unsaved booking progress
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (step > 0 && step < 5) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [step]);
+
+  // Auto-fill returning customer info from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("thelook_client");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setClientInfo((prev) => ({
+          ...prev,
+          name: parsed.name || "",
+          email: parsed.email || "",
+          phone: parsed.phone || "",
+        }));
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetch("/api/services")
       .then((r) => r.json())
@@ -144,6 +171,14 @@ export default function BookPage() {
       const data = await res.json();
       setResult(data);
       setStep(5);
+      // Save customer info for next visit
+      try {
+        localStorage.setItem("thelook_client", JSON.stringify({
+          name: clientInfo.name,
+          email: clientInfo.email,
+          phone: clientInfo.phone,
+        }));
+      } catch {}
     } catch {
       setError("Something went wrong. Please try again.");
     }

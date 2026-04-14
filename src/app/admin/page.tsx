@@ -78,7 +78,9 @@ export default function AdminDashboard() {
 
   // Filter for today's appointments
   const today = new Date().toISOString().split("T")[0];
-  const todayAppts = enrichedAppts.filter((a) => a.date === today);
+  const todayAppts = enrichedAppts
+    .filter((a) => a.date === today)
+    .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
   // Filter for upcoming appointments (next 7 days)
   const nextWeek = new Date();
@@ -86,7 +88,9 @@ export default function AdminDashboard() {
   const upcomingAppts = enrichedAppts.filter((a) => {
     const apptDate = new Date(a.date);
     return apptDate > new Date(today) && apptDate <= nextWeek;
-  }).slice(0, 5);
+  })
+    .sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
+    .slice(0, 5);
 
   const confirmed = todayAppts.filter((a) => a.status === "confirmed");
   const pending = todayAppts.filter((a) => a.status === "pending");

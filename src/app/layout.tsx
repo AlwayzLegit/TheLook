@@ -27,6 +27,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     siteName: "The Look Hair Salon",
+    images: [
+      {
+        url: "/images/hero/salon-main.jpg",
+        width: 1200,
+        height: 630,
+        alt: "The Look Hair Salon - Glendale, CA",
+      },
+    ],
   },
   robots: {
     index: true,

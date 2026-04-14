@@ -22,17 +22,26 @@ export default function DateTimePicker({
   const [date, setDate] = useState<string | null>(selectedDate);
   const [slots, setSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     if (!date) return;
     setLoading(true);
+    setFetchError(false);
     fetch(`/api/availability?stylistId=${stylistId}&serviceId=${serviceId}&date=${date}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch");
+        return r.json();
+      })
       .then((data) => {
         setSlots(data.slots || []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setFetchError(true);
+        setSlots([]);
+        setLoading(false);
+      });
   }, [date, stylistId, serviceId]);
 
   return (
@@ -53,6 +62,7 @@ export default function DateTimePicker({
         <TimeSlots
           slots={slots}
           loading={loading}
+          error={fetchError}
           selectedDate={date}
           selectedTime={selectedTime}
           onSelectTime={(time) => date && onSelect(date, time)}
