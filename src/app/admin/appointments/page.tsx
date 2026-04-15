@@ -59,6 +59,8 @@ export default function AppointmentsPage() {
   const [stylistFilter, setStylistFilter] = useState("");
   const [search, setSearch] = useState("");
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFields, setEditFields] = useState({ date: "", start_time: "", end_time: "", staff_notes: "" });
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
@@ -165,6 +167,37 @@ export default function AppointmentsPage() {
     a.download = `appointments-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const openEdit = (appt: EnrichedAppointment) => {
+    setEditingId(appt.id);
+    setEditFields({
+      date: appt.date,
+      start_time: appt.start_time,
+      end_time: appt.end_time,
+      staff_notes: appt.staff_notes || "",
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    try {
+      setPendingStatusId(editingId);
+      const res = await fetch(`/api/admin/appointments/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editFields),
+      });
+      if (!res.ok) {
+        setToast({ type: "error", message: "Failed to update appointment." });
+        return;
+      }
+      setToast({ type: "success", message: "Appointment updated." });
+      setEditingId(null);
+      refresh();
+    } finally {
+      setPendingStatusId(null);
+    }
   };
 
   const updateStatus = async (id: string, newStatus: string) => {
@@ -347,8 +380,53 @@ export default function AppointmentsPage() {
                 </div>
               </div>
 
+              {/* Edit form */}
+              {editingId === appt.id && (
+                <div className="mt-3 p-4 bg-cream/50 border border-navy/10 space-y-3">
+                  <div className="flex flex-wrap gap-3">
+                    <div>
+                      <label className="block text-xs font-body text-navy/40 mb-1">Date</label>
+                      <input type="date" value={editFields.date} onChange={(e) => setEditFields({ ...editFields, date: e.target.value })} className="border border-navy/20 px-2 py-1.5 text-sm font-body" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-body text-navy/40 mb-1">Start</label>
+                      <input type="time" value={editFields.start_time} onChange={(e) => setEditFields({ ...editFields, start_time: e.target.value })} className="border border-navy/20 px-2 py-1.5 text-sm font-body" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-body text-navy/40 mb-1">End</label>
+                      <input type="time" value={editFields.end_time} onChange={(e) => setEditFields({ ...editFields, end_time: e.target.value })} className="border border-navy/20 px-2 py-1.5 text-sm font-body" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-body text-navy/40 mb-1">Staff Notes</label>
+                    <textarea value={editFields.staff_notes} onChange={(e) => setEditFields({ ...editFields, staff_notes: e.target.value })} rows={2} placeholder="Internal notes (not visible to client)" className="w-full border border-navy/20 px-3 py-2 text-sm font-body resize-none" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={saveEdit} disabled={pendingStatusId === appt.id} className="text-xs font-body bg-navy text-white px-4 py-1.5 hover:bg-navy/90 disabled:opacity-60">
+                      {pendingStatusId === appt.id ? "Saving..." : "Save Changes"}
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="text-xs font-body text-navy/50 hover:text-navy px-3 py-1.5">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Staff notes display */}
+              {appt.staff_notes && editingId !== appt.id && (
+                <p className="text-navy/50 text-xs font-body mt-2 bg-cream/50 px-3 py-1.5 border-l-2 border-gold/40">
+                  Staff: {appt.staff_notes}
+                </p>
+              )}
+
               {appt.status !== "cancelled" && appt.status !== "completed" && (
                 <div className="flex flex-wrap gap-2 mt-3">
+                  <button
+                    onClick={() => editingId === appt.id ? setEditingId(null) : openEdit(appt)}
+                    className="text-xs font-body text-navy border border-navy/20 px-3 py-1 hover:bg-navy/5"
+                  >
+                    {editingId === appt.id ? "Close Edit" : "Edit"}
+                  </button>
                   {appt.status === "pending" && (
                     <button 
                       onClick={() => updateStatus(appt.id, "confirmed")} 
