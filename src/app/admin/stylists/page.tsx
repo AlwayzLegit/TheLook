@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
+import ImageUpload from "@/components/admin/ImageUpload";
 
 interface Stylist {
   id: string;
@@ -346,10 +347,11 @@ export default function StylistsPage() {
                 <label className="block text-sm font-body text-navy/60 mb-1">Bio</label>
                 <textarea value={formData.bio} onChange={(e) => setFormData({ ...formData, bio: e.target.value })} className="w-full border border-navy/20 px-3 py-2 text-sm font-body h-24" placeholder="Short bio about the stylist..." />
               </div>
-              <div>
-                <label className="block text-sm font-body text-navy/60 mb-1">Image URL</label>
-                <input type="url" value={formData.image_url} onChange={(e) => setFormData({ ...formData, image_url: e.target.value })} className="w-full border border-navy/20 px-3 py-2 text-sm font-body" placeholder="https://..." />
-              </div>
+              <ImageUpload
+                value={formData.image_url}
+                onChange={(url) => setFormData({ ...formData, image_url: url })}
+                name={formData.name}
+              />
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-body text-navy/60 mb-1">Sort Order</label>
