@@ -157,6 +157,16 @@ export default function AdminDashboard() {
   }).filter((s) => s.revenue > 0)
     .sort((a, b) => b.revenue - a.revenue);
 
+  // ── Popular services (this month) ──
+  const servicePopularity = services.map((s) => {
+    const count = enrichedAppts.filter(
+      (a) => a.service_id === s.id && a.date >= monthStart && billable(a)
+    ).length;
+    return { ...s, count };
+  }).filter((s) => s.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
   return (
     <div className="p-4 sm:p-8">
       <div className="flex items-center justify-between mb-2">
@@ -270,6 +280,24 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* ── Popular Services ── */}
+      {servicePopularity.length > 0 && (
+        <div className="mb-8">
+          <h3 className="font-heading text-sm mb-3">Popular Services (This Month)</h3>
+          <div className="flex flex-wrap gap-3">
+            {servicePopularity.map((s, i) => (
+              <div key={s.id} className="bg-white px-4 py-2 border border-navy/10 flex items-center gap-3">
+                <span className="text-xs font-heading text-navy/30">#{i + 1}</span>
+                <div>
+                  <p className="text-sm font-body font-bold">{s.name}</p>
+                  <p className="text-xs font-body text-navy/40">{s.count} booking{s.count !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Row 4: Today's Schedule + Upcoming ── */}
       <div className="grid lg:grid-cols-2 gap-8">

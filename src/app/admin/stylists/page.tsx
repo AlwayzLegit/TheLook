@@ -320,12 +320,17 @@ export default function StylistsPage() {
     <div className="p-4 sm:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-heading text-3xl">Stylists</h1>
-        <button
-          onClick={handleAddNew}
-          className="px-4 py-2 bg-navy text-white text-sm font-body hover:bg-navy/90"
-        >
-          + Add Stylist
-        </button>
+        <div className="flex gap-3">
+          <a href="/about" target="_blank" rel="noopener noreferrer" className="px-3 py-2 text-xs font-body border border-navy/20 hover:bg-navy/5">
+            Preview on website &rarr;
+          </a>
+          <button
+            onClick={handleAddNew}
+            className="px-4 py-2 bg-navy text-white text-sm font-body hover:bg-navy/90"
+          >
+            + Add Stylist
+          </button>
+        </div>
       </div>
 
       {/* Form Modal */}

@@ -15,6 +15,9 @@ interface Appointment {
   end_time: string;
   status: string;
   notes: string | null;
+  staff_notes: string | null;
+  reminder_sent: boolean;
+  cancel_token: string | null;
   created_at: string;
 }
 
