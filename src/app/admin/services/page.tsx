@@ -18,9 +18,9 @@ interface Service {
   sort_order: number;
 }
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   "Haircuts",
-  "Color", 
+  "Color",
   "Styling",
   "Treatments",
   "Perms & More"
@@ -153,10 +153,16 @@ export default function ServicesPage() {
     setShowForm(true);
   };
 
+  const [newCategory, setNewCategory] = useState("");
+
   if (status !== "authenticated") return null;
 
+  // Build categories dynamically: defaults + any custom categories from existing services
+  const existingCategories = [...new Set(services.map((s) => s.category))];
+  const allCategories = [...new Set([...DEFAULT_CATEGORIES, ...existingCategories])];
+
   // Group services by category
-  const groupedServices = CATEGORIES.map(cat => ({
+  const groupedServices = allCategories.map(cat => ({
     category: cat,
     items: services.filter(s => s.category === cat).sort((a, b) => a.sort_order - b.sort_order)
   })).filter(g => g.items.length > 0);
@@ -184,13 +190,37 @@ export default function ServicesPage() {
                 <label className="block text-sm font-body text-navy/60 mb-1">Category</label>
                 <select
                   value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  onChange={(e) => {
+                    if (e.target.value === "__new__") return;
+                    setFormData({ ...formData, category: e.target.value });
+                  }}
                   className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
                 >
-                  {CATEGORIES.map(cat => (
+                  {allCategories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="text"
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    placeholder="Or type a new category"
+                    className="flex-1 border border-navy/20 px-3 py-1.5 text-xs font-body"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newCategory.trim()) {
+                        setFormData({ ...formData, category: newCategory.trim() });
+                        setNewCategory("");
+                      }
+                    }}
+                    className="text-xs font-body text-navy border border-navy/20 px-3 py-1.5 hover:bg-navy/5"
+                  >
+                    Use
+                  </button>
+                </div>
               </div>
 
               <div>
