@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { usePolledAppointments } from "@/hooks/usePolledAppointments";
 import AdminToast from "@/components/admin/AdminToast";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface Service {
   id: string;
@@ -29,6 +30,7 @@ interface EnrichedAppointment {
   status: string;
   notes: string | null;
   staff_notes?: string | null;
+  reminder_sent?: boolean;
   serviceName: string;
   stylistName: string;
 }
@@ -61,6 +63,9 @@ export default function AppointmentsPage() {
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState({ date: "", start_time: "", end_time: "", staff_notes: "" });
+  const [confirmAction, setConfirmAction] = useState<{ id: string; status: string; name: string } | null>(null);
+  const [clientHistoryId, setClientHistoryId] = useState<string | null>(null);
+  const [clientHistory, setClientHistory] = useState<EnrichedAppointment[]>([]);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
@@ -200,6 +205,23 @@ export default function AppointmentsPage() {
     }
   };
 
+  // Client history lookup
+  const lookupClient = (email: string) => {
+    const history = enrichedAppts.filter((a) => a.client_email === email);
+    setClientHistory(history);
+    setClientHistoryId(clientHistoryId === email ? null : email);
+  };
+
+  // Count repeat visits and no-shows for a client email
+  const clientStats = (email: string) => {
+    const all = enrichedAppts.filter((a) => a.client_email === email);
+    return {
+      visits: all.filter((a) => a.status === "completed" || a.status === "confirmed").length,
+      noShows: all.filter((a) => a.status === "no_show").length,
+      total: all.length,
+    };
+  };
+
   const updateStatus = async (id: string, newStatus: string) => {
     try {
       setPendingStatusId(id);
@@ -224,6 +246,12 @@ export default function AppointmentsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 className="font-heading text-3xl">Appointments</h1>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => window.print()}
+            className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
+          >
+            Print
+          </button>
           <button
             onClick={exportCsv}
             className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
@@ -358,7 +386,33 @@ export default function AppointmentsPage() {
             <div key={appt.id} className="px-6 py-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-body font-bold text-sm">{appt.client_name}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button onClick={() => lookupClient(appt.client_email)} className="font-body font-bold text-sm text-navy hover:text-rose transition-colors text-left">
+                      {appt.client_name}
+                    </button>
+                    {(() => {
+                      const stats = clientStats(appt.client_email);
+                      return (
+                        <>
+                          {stats.visits > 1 && (
+                            <span className="text-[10px] font-body bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                              {stats.visits}x client
+                            </span>
+                          )}
+                          {stats.noShows > 0 && (
+                            <span className="text-[10px] font-body bg-red-100 text-red-700 px-1.5 py-0.5 rounded">
+                              {stats.noShows} no-show{stats.noShows > 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
+                    {appt.reminder_sent && (
+                      <span className="text-[10px] font-body text-green-600" title="Reminder sent">
+                        ✓ reminded
+                      </span>
+                    )}
+                  </div>
                   <p className="text-navy/50 text-xs font-body">{appt.client_email} {appt.client_phone && `| ${appt.client_phone}`}</p>
                   <p className="text-navy/60 text-sm font-body mt-1">
                     {appt.serviceName} with {appt.stylistName}
@@ -443,19 +497,19 @@ export default function AppointmentsPage() {
                   >
                     {pendingStatusId === appt.id ? "Updating..." : "Complete"}
                   </button>
-                  <button 
-                    onClick={() => updateStatus(appt.id, "no_show")} 
+                  <button
+                    onClick={() => setConfirmAction({ id: appt.id, status: "no_show", name: appt.client_name })}
                     disabled={pendingStatusId === appt.id}
                     className="text-xs font-body text-gray-600 border border-gray-200 px-3 py-1 hover:bg-gray-50"
                   >
-                    {pendingStatusId === appt.id ? "Updating..." : "No Show"}
+                    No Show
                   </button>
-                  <button 
-                    onClick={() => updateStatus(appt.id, "cancelled")} 
+                  <button
+                    onClick={() => setConfirmAction({ id: appt.id, status: "cancelled", name: appt.client_name })}
                     disabled={pendingStatusId === appt.id}
                     className="text-xs font-body text-red-600 border border-red-200 px-3 py-1 hover:bg-red-50"
                   >
-                    {pendingStatusId === appt.id ? "Updating..." : "Cancel"}
+                    Cancel
                   </button>
                 </div>
               )}
@@ -463,12 +517,55 @@ export default function AppointmentsPage() {
           ))}
         </div>
       )}
-      {toast ? (
-        <AdminToast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
+      {/* Client history panel */}
+      {clientHistoryId && clientHistory.length > 0 && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setClientHistoryId(null)}>
+          <div className="bg-white p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-heading text-lg">Client History</h3>
+              <button onClick={() => setClientHistoryId(null)} className="text-navy/40 hover:text-navy text-xl">&times;</button>
+            </div>
+            <p className="text-sm font-body text-navy/50 mb-1">{clientHistory[0]?.client_name}</p>
+            <p className="text-xs font-body text-navy/40 mb-4">{clientHistoryId} &middot; {clientHistory.length} appointment{clientHistory.length !== 1 ? "s" : ""}</p>
+            <div className="divide-y divide-navy/5">
+              {clientHistory.map((h) => (
+                <div key={h.id} className="py-2 flex justify-between">
+                  <div>
+                    <p className="text-sm font-body">{h.serviceName}</p>
+                    <p className="text-xs font-body text-navy/40">{h.date} &middot; {formatTime(h.start_time)}</p>
+                  </div>
+                  <span className={`text-xs font-body px-2 py-0.5 self-start ${
+                    h.status === "confirmed" ? "bg-green-100 text-green-700" :
+                    h.status === "completed" ? "bg-blue-100 text-blue-700" :
+                    h.status === "cancelled" ? "bg-red-100 text-red-700" :
+                    h.status === "no_show" ? "bg-gray-100 text-gray-700" :
+                    "bg-amber-100 text-amber-700"
+                  }`}>
+                    {h.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation modal for destructive actions */}
+      {confirmAction && (
+        <ConfirmModal
+          title={confirmAction.status === "cancelled" ? "Cancel Appointment" : "Mark as No-Show"}
+          message={`Are you sure you want to ${confirmAction.status === "cancelled" ? "cancel" : "mark as no-show"} the appointment for ${confirmAction.name}? This cannot be undone.`}
+          confirmLabel={confirmAction.status === "cancelled" ? "Cancel Appointment" : "Mark No-Show"}
+          onConfirm={() => {
+            updateStatus(confirmAction.id, confirmAction.status);
+            setConfirmAction(null);
+          }}
+          onCancel={() => setConfirmAction(null)}
         />
+      )}
+
+      {toast ? (
+        <AdminToast type={toast.type} message={toast.message} onClose={() => setToast(null)} />
       ) : null}
     </div>
   );

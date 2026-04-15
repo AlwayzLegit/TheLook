@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
+import ImageUpload from "@/components/admin/ImageUpload";
 
 interface Service {
   id: string;
@@ -171,12 +172,17 @@ export default function ServicesPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-heading text-3xl">Services</h1>
-        <button
-          onClick={handleAddNew}
-          className="px-4 py-2 bg-navy text-white text-sm font-body hover:bg-navy/90"
-        >
-          + Add Service
-        </button>
+        <div className="flex gap-3">
+          <a href="/services" target="_blank" rel="noopener noreferrer" className="px-3 py-2 text-xs font-body border border-navy/20 hover:bg-navy/5">
+            Preview on website &rarr;
+          </a>
+          <button
+            onClick={handleAddNew}
+            className="px-4 py-2 bg-navy text-white text-sm font-body hover:bg-navy/90"
+          >
+            + Add Service
+          </button>
+        </div>
       </div>
 
       {/* Form Modal */}
@@ -275,16 +281,11 @@ export default function ServicesPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-body text-navy/60 mb-1">Image URL / Path</label>
-                <input
-                  type="text"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
-                  placeholder="/images/services/Haircuts/clipper-cut.png"
-                />
-              </div>
+              <ImageUpload
+                value={formData.image_url}
+                onChange={(url) => setFormData({ ...formData, image_url: url })}
+                name={formData.name || formData.category}
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>

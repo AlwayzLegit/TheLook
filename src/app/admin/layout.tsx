@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SessionProvider, useSession } from "next-auth/react";
+import KeyboardShortcuts from "@/components/admin/KeyboardShortcuts";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: "dashboard" },
@@ -12,6 +13,7 @@ const navItems = [
   { href: "/admin/services", label: "Services", icon: "scissors" },
   { href: "/admin/stylists", label: "Stylists", icon: "people" },
   { href: "/admin/schedule", label: "Schedule", icon: "clock" },
+  { href: "/admin/activity", label: "Activity Log", icon: "log" },
 ];
 
 function useBadgeCounts() {
@@ -142,6 +144,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex min-h-screen bg-cream">
         <AdminSidebar />
         <div className="flex-1 pt-14 lg:pt-0">{children}</div>
+        <KeyboardShortcuts />
       </div>
     </SessionProvider>
   );
