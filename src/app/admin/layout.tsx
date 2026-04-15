@@ -7,13 +7,15 @@ import { SessionProvider, useSession } from "next-auth/react";
 import KeyboardShortcuts from "@/components/admin/KeyboardShortcuts";
 
 const navItems = [
-  { href: "/admin", label: "Dashboard", icon: "dashboard" },
-  { href: "/admin/appointments", label: "Appointments", icon: "calendar" },
-  { href: "/admin/messages", label: "Messages", icon: "mail" },
-  { href: "/admin/services", label: "Services", icon: "scissors" },
-  { href: "/admin/stylists", label: "Stylists", icon: "people" },
-  { href: "/admin/schedule", label: "Schedule", icon: "clock" },
-  { href: "/admin/activity", label: "Activity Log", icon: "log" },
+  { href: "/admin", label: "Dashboard" },
+  { href: "/admin/appointments", label: "Appointments" },
+  { href: "/admin/clients", label: "Clients" },
+  { href: "/admin/messages", label: "Messages" },
+  { href: "/admin/analytics", label: "Analytics" },
+  { href: "/admin/services", label: "Services" },
+  { href: "/admin/stylists", label: "Stylists" },
+  { href: "/admin/schedule", label: "Schedule" },
+  { href: "/admin/activity", label: "Activity Log" },
 ];
 
 function useBadgeCounts() {
