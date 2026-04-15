@@ -1,4 +1,5 @@
 import { supabase, hasSupabaseConfig } from "./supabase";
+import { BOOKING } from "./constants";
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
@@ -16,12 +17,11 @@ export async function getAvailableSlots(
   serviceId: string,
   date: string
 ): Promise<string[]> {
-  // Validate date is not in the past and within 60 days
   const dateObj = new Date(date + "T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const maxDate = new Date(today);
-  maxDate.setDate(maxDate.getDate() + 60);
+  maxDate.setDate(maxDate.getDate() + BOOKING.MAX_ADVANCE_DAYS);
 
   if (dateObj < today || dateObj > maxDate) return [];
 
@@ -99,7 +99,7 @@ export async function getAvailableSlots(
 
   // Generate 30-min aligned slots
   const allSlots: string[] = [];
-  for (let start = openMins; start + duration <= closeMins; start += 30) {
+  for (let start = openMins; start + duration <= closeMins; start += BOOKING.SLOT_INCREMENT_MINUTES) {
     allSlots.push(minutesToTime(start));
   }
 

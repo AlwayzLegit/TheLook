@@ -73,6 +73,17 @@ CREATE TABLE IF NOT EXISTS appointments (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Contact messages table
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(200) NOT NULL,
+  email VARCHAR(200) NOT NULL,
+  phone VARCHAR(50),
+  service VARCHAR(120),
+  message TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Admin log table
 CREATE TABLE IF NOT EXISTS admin_log (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -92,6 +103,7 @@ CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
 CREATE INDEX IF NOT EXISTS idx_appointments_cancel_token ON appointments(cancel_token);
 CREATE INDEX IF NOT EXISTS idx_schedule_rules_type ON schedule_rules(rule_type);
 CREATE INDEX IF NOT EXISTS idx_schedule_rules_day ON schedule_rules(day_of_week);
+CREATE INDEX IF NOT EXISTS idx_appointments_client_email ON appointments(client_email);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
@@ -100,6 +112,7 @@ ALTER TABLE stylist_services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE schedule_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public read access (booking flow)
 CREATE POLICY "Services are viewable by everyone" 
@@ -121,4 +134,20 @@ CREATE POLICY "Appointments can be created by anyone"
 CREATE POLICY "Appointments are viewable by cancel token" 
   ON appointments FOR SELECT USING (true);
 
+-- Contact messages: public can create
+CREATE POLICY "Contact messages can be created by anyone"
+  ON contact_messages FOR INSERT WITH CHECK (true);
+
 -- Note: Admin operations will use service role key bypassing RLS
+
+-- RPC function for fetching booked slots (used by availability checker)
+-- SECURITY DEFINER ensures this runs with table owner permissions,
+-- so the public API can check booked slots without direct table read access.
+CREATE OR REPLACE FUNCTION get_booked_slots(p_stylist_id UUID, p_date TEXT)
+RETURNS TABLE(start_time VARCHAR, end_time VARCHAR) AS $$
+  SELECT a.start_time, a.end_time
+  FROM appointments a
+  WHERE a.stylist_id = p_stylist_id
+    AND a.date = p_date
+    AND a.status IN ('pending', 'confirmed')
+$$ LANGUAGE sql SECURITY DEFINER STABLE;

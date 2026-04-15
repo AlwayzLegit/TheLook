@@ -1,3 +1,21 @@
+// ---------- App-wide configuration constants ----------
+
+export const RATE_LIMITS = {
+  BOOKING: { limit: 8, windowMs: 15 * 60 * 1000 },
+  CONTACT: { limit: 5, windowMs: 15 * 60 * 1000 },
+} as const;
+
+export const BOOKING = {
+  MAX_ADVANCE_DAYS: 60,
+  SLOT_INCREMENT_MINUTES: 30,
+} as const;
+
+export const POLLING = {
+  APPOINTMENTS_MS: 15_000,
+} as const;
+
+// ---------- Service catalog ----------
+
 export const SALON_SERVICES = [
   { category: "Haircuts", name: "Wash + Cut + Style", priceText: "$80+", priceMin: 8000, duration: 70 },
   { category: "Haircuts", name: "Clipper Cut", priceText: "$28", priceMin: 2800, duration: 25 },

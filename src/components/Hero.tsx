@@ -111,10 +111,10 @@ export default function Hero() {
           className="flex flex-col sm:flex-row gap-4 justify-center"
         >
           <Link
-            href="/book"
-            className="cta-glow bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-11 py-4 rounded-sm transition-all duration-300 hover:shadow-[0_4px_24px_rgba(194,39,75,0.45)] hover:-translate-y-0.5"
+            href="/services"
+            className="border border-white/20 hover:border-gold/60 bg-white/5 hover:bg-white/10 text-white text-[11px] tracking-[0.2em] uppercase px-11 py-4 rounded-sm transition-all duration-300 hover:-translate-y-0.5 backdrop-blur-sm"
           >
-            Book Your Appointment
+            View Our Services
           </Link>
           <a
             href="tel:+18186625665"

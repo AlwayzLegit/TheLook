@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp, uuid, boolean, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, uuid, boolean, varchar, index } from "drizzle-orm/pg-core";
 
 export const services = pgTable("services", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -61,6 +61,21 @@ export const appointments = pgTable("appointments", {
   reminderSent: boolean("reminder_sent").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_appointments_client_email").on(table.clientEmail),
+  index("idx_appointments_date").on(table.date),
+  index("idx_appointments_stylist_date").on(table.stylistId, table.date),
+  index("idx_appointments_status").on(table.status),
+]);
+
+export const contactMessages = pgTable("contact_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 200 }).notNull(),
+  email: varchar("email", { length: 200 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  service: varchar("service", { length: 120 }),
+  message: text("message"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const adminLog = pgTable("admin_log", {

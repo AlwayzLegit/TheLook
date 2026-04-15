@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface Service {
   id: string;
@@ -35,6 +36,7 @@ export default function ServicesPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     category: "Haircuts",
     name: "",
@@ -122,8 +124,6 @@ export default function ServicesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this service?")) return;
-    
     try {
       setDeletingId(id);
       const res = await fetch(`/api/admin/services/${id}`, { method: "DELETE" });
@@ -227,6 +227,9 @@ export default function ServicesPage() {
                     placeholder="8000"
                     required
                   />
+                  <p className="text-xs text-navy/40 mt-1">
+                    e.g. 8000 = $80.00, 15000 = $150.00
+                  </p>
                 </div>
               </div>
 
@@ -336,7 +339,7 @@ export default function ServicesPage() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(service.id)}
+                        onClick={() => setConfirmDeleteId(service.id)}
                         disabled={deletingId === service.id}
                         className="text-xs font-body text-red-600 border border-red-200 px-3 py-1 hover:bg-red-50"
                       >
@@ -349,6 +352,17 @@ export default function ServicesPage() {
             </div>
           ))}
         </div>
+      )}
+      {confirmDeleteId && (
+        <ConfirmModal
+          title="Delete Service"
+          message="Are you sure you want to delete this service? This action cannot be undone."
+          onConfirm={() => {
+            handleDelete(confirmDeleteId);
+            setConfirmDeleteId(null);
+          }}
+          onCancel={() => setConfirmDeleteId(null)}
+        />
       )}
       {toast ? (
         <AdminToast

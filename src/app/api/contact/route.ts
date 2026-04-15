@@ -1,40 +1,36 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { contactCreateSchema } from "@/lib/validation";
 import { verifyTurnstileToken } from "@/lib/turnstile";
+import { RATE_LIMITS } from "@/lib/constants";
+import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const rl = await checkRateLimit({
     key: `contact:${ip}`,
-    limit: 5,
-    windowMs: 15 * 60 * 1000,
+    limit: RATE_LIMITS.CONTACT.limit,
+    windowMs: RATE_LIMITS.CONTACT.windowMs,
   });
   if (!rl.ok) {
-    return NextResponse.json(
-      { error: "Too many messages sent. Please wait a few minutes before trying again." },
-      { status: 429 }
-    );
+    return apiError("Too many messages sent. Please wait a few minutes before trying again.", 429);
   }
 
   if (!hasSupabaseConfig) {
-    return NextResponse.json(
-      { error: "Contact backend is not configured. Please call us directly at (818) 662-5665." },
-      { status: 503 }
-    );
+    return apiError("Contact backend is not configured. Please call us directly at (818) 662-5665.", 503);
   }
 
   const body = await request.json();
   const parsed = contactCreateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid form data." }, { status: 400 });
+    return apiError("Invalid form data.", 400);
   }
   const { name, email, phone, service, message, turnstileToken } = parsed.data;
 
   const turnstile = await verifyTurnstileToken(turnstileToken, ip);
   if (!turnstile.ok) {
-    return NextResponse.json({ error: turnstile.error }, { status: 400 });
+    return apiError(turnstile.error || "Captcha verification failed.", 400);
   }
 
   const { error } = await supabase.from("contact_messages").insert({
@@ -46,10 +42,9 @@ export async function POST(request: NextRequest) {
   });
 
   if (error) {
-    console.error("Error saving contact message:", error);
-    return NextResponse.json({ error: "Failed to send message. Please try again." }, { status: 500 });
+    logError("contact POST", error);
+    return apiError("Failed to send message. Please try again.", 500);
   }
 
-  return NextResponse.json({ success: true });
+  return apiSuccess({ success: true });
 }
-

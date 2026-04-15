@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com"),
   title: "The Look Hair Salon | Beauty Hair Salon | Glendale, CA",
   description:
     "Family owned & operated since 2011. Over 25 years in the beauty industry — specializing in cutting, coloring, balayage, ombré, highlights, extensions & styling in Glendale, CA.",
@@ -27,6 +28,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     siteName: "The Look Hair Salon",
+    images: [
+      {
+        url: "/images/hero/salon-main.jpg",
+        width: 1200,
+        height: 630,
+        alt: "The Look Hair Salon - Glendale, CA",
+      },
+    ],
   },
   robots: {
     index: true,

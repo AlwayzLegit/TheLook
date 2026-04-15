@@ -1,5 +1,8 @@
+import Link from "next/link";
+
 interface Props {
   result: {
+    id?: string;
     service: string;
     stylist: string;
     date: string;
@@ -34,9 +37,14 @@ export default function BookingConfirmation({ result }: Props) {
       </div>
 
       <h2 className="font-heading text-3xl mb-2">You&apos;re All Set!</h2>
-      <p className="text-navy/50 font-body text-sm mb-8">
+      <p className="text-navy/50 font-body text-sm mb-2">
         A confirmation email has been sent with your appointment details.
       </p>
+      {result.id && (
+        <p className="text-navy/40 font-body text-xs mb-8">
+          Reference: <span className="font-mono text-navy/60">{result.id.slice(0, 8).toUpperCase()}</span>
+        </p>
+      )}
 
       <div className="bg-white border border-navy/10 p-8 text-left space-y-4">
         <div className="flex justify-between">
@@ -65,9 +73,16 @@ export default function BookingConfirmation({ result }: Props) {
         </div>
       </div>
 
-      <p className="text-navy/50 text-xs font-body mt-6">
+      <p className="text-navy/50 text-xs font-body mt-6 mb-8">
         Need to cancel? Check your confirmation email for a cancellation link.
       </p>
+
+      <Link
+        href="/"
+        className="inline-block border border-navy/20 text-navy text-[11px] tracking-[0.2em] uppercase px-8 py-3 transition-all duration-300 hover:border-navy font-body"
+      >
+        Return to Home
+      </Link>
     </div>
   );
 }

@@ -9,7 +9,7 @@ export default function Footer() {
           src="/images/footer-hair-bg.png"
           alt=""
           fill
-          priority
+          loading="lazy"
           className="object-cover object-center opacity-70"
           sizes="100vw"
         />

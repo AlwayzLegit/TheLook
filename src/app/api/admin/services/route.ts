@@ -1,12 +1,17 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
 import { adminServiceSchema } from "@/lib/validation";
-import { NextRequest, NextResponse } from "next/server";
+import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { logAdminAction } from "@/lib/auditLog";
+import { NextRequest } from "next/server";
 
-// GET all services
 export async function GET() {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return apiError("Unauthorized", 401);
+
+  if (!hasSupabaseConfig) {
+    return apiSuccess([]);
+  }
 
   const { data, error } = await supabase
     .from("services")
@@ -14,22 +19,24 @@ export async function GET() {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    console.error("Error fetching services:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logError("admin/services GET", error);
+    return apiError("Failed to fetch services.", 500);
   }
 
-  return NextResponse.json(data);
+  return apiSuccess(data);
 }
 
-// CREATE new service
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return apiError("Unauthorized", 401);
 
   const body = await request.json();
   const parsed = adminServiceSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid service payload" }, { status: 400 });
+    return apiError("Invalid service payload.", 400);
+  }
+  if (!hasSupabaseConfig) {
+    return apiError("Database not configured.", 503);
   }
   const payload = parsed.data;
   const basePayload = {
@@ -63,9 +70,11 @@ export async function POST(request: NextRequest) {
   }
 
   if (error) {
-    console.error("Error creating service:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logError("admin/services POST", error);
+    return apiError("Failed to create service.", 500);
   }
 
-  return NextResponse.json(data, { status: 201 });
+  logAdminAction("service.create", JSON.stringify({ name: payload.name }));
+
+  return apiSuccess(data, 201);
 }

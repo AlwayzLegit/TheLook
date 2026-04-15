@@ -1,12 +1,11 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { NextResponse } from "next/server";
+import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 
 export async function GET() {
   if (!hasSupabaseConfig) {
-    return NextResponse.json([]);
+    return apiSuccess([]);
   }
 
-  // Fetch stylists
   const { data: allStylists, error: stylistsError } = await supabase
     .from("stylists")
     .select("*")
@@ -14,18 +13,17 @@ export async function GET() {
     .order("sort_order", { ascending: true });
 
   if (stylistsError) {
-    console.error("Error fetching stylists:", stylistsError);
-    return NextResponse.json([], { status: 500 });
+    logError("stylists GET", stylistsError);
+    return apiError("Failed to fetch stylists.", 500);
   }
 
-  // Fetch stylist-service mappings
   const { data: allMappings, error: mappingsError } = await supabase
     .from("stylist_services")
     .select("*");
 
   if (mappingsError) {
-    console.error("Error fetching stylist services:", mappingsError);
-    return NextResponse.json([], { status: 500 });
+    logError("stylists GET (mappings)", mappingsError);
+    return apiError("Failed to fetch stylist services.", 500);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,5 +37,5 @@ export async function GET() {
       .map((m: any) => m.service_id),
   }));
 
-  return NextResponse.json(result);
+  return apiSuccess(result);
 }

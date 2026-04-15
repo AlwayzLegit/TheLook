@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
 
@@ -29,6 +29,18 @@ export default function ServiceGallery({
   reversed = false,
 }: ServiceGalleryProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!selectedImage) return;
+    closeRef.current?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedImage(null);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [selectedImage]);
 
   return (
     <section className="py-24 md:py-32 bg-white relative overflow-hidden">
@@ -91,6 +103,7 @@ export default function ServiceGallery({
                   src={images[0]?.src}
                   alt={images[0]?.alt}
                   fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                   className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
                 {/* Overlay on hover */}
@@ -123,6 +136,7 @@ export default function ServiceGallery({
                   src={image.src}
                   alt={image.alt}
                   fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
                   className="object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 {/* Gradient overlay */}
@@ -144,10 +158,15 @@ export default function ServiceGallery({
       {/* Lightbox Modal */}
       {selectedImage && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image lightbox"
           className="fixed inset-0 bg-navy/95 z-50 flex items-center justify-center p-4"
           onClick={() => setSelectedImage(null)}
         >
           <button
+            ref={closeRef}
+            aria-label="Close lightbox"
             className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors"
             onClick={() => setSelectedImage(null)}
           >

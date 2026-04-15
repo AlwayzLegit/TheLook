@@ -1,24 +1,26 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
 import { adminStylistSchema } from "@/lib/validation";
-import { NextRequest, NextResponse } from "next/server";
+import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { logAdminAction } from "@/lib/auditLog";
+import { NextRequest } from "next/server";
 
-// UPDATE stylist
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return apiError("Unauthorized", 401);
+  if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { id } = await params;
   const body = await request.json();
   const parsed = adminStylistSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid stylist payload" }, { status: 400 });
+    return apiError("Invalid stylist payload.", 400);
   }
   const payload = parsed.data;
-  
+
   const updateData: Record<string, unknown> = {
     name: payload.name,
     bio: payload.bio,
@@ -28,12 +30,11 @@ export async function PATCH(
     sort_order: payload.sort_order,
     updated_at: new Date().toISOString(),
   };
-  
-  // Regenerate slug if name changed
+
   if (payload.name) {
     updateData.slug = payload.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   }
-  
+
   const { data, error } = await supabase
     .from("stylists")
     .update(updateData)
@@ -42,32 +43,36 @@ export async function PATCH(
     .single();
 
   if (error) {
-    console.error("Error updating stylist:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logError("admin/stylists PATCH", error);
+    return apiError("Failed to update stylist.", 500);
   }
 
-  return NextResponse.json(data);
+  logAdminAction("stylist.update", JSON.stringify({ id, name: payload.name }));
+
+  return apiSuccess(data);
 }
 
-// DELETE stylist
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return apiError("Unauthorized", 401);
+  if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { id } = await params;
-  
+
   const { error } = await supabase
     .from("stylists")
     .delete()
     .eq("id", id);
 
   if (error) {
-    console.error("Error deleting stylist:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logError("admin/stylists DELETE", error);
+    return apiError("Failed to delete stylist.", 500);
   }
 
-  return NextResponse.json({ success: true });
+  logAdminAction("stylist.delete", JSON.stringify({ id }));
+
+  return apiSuccess({ success: true });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SessionProvider } from "next-auth/react";
@@ -14,11 +15,12 @@ const navItems = [
 
 function AdminSidebar() {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   if (pathname === "/admin/login") return null;
 
-  return (
-    <aside className="w-64 bg-navy min-h-screen p-6 shrink-0">
+  const navContent = (
+    <>
       <Link href="/" className="block font-heading text-xl text-white tracking-wider mb-1">
         THE LOOK
       </Link>
@@ -29,6 +31,8 @@ function AdminSidebar() {
           <Link
             key={item.href}
             href={item.href}
+            aria-current={pathname === item.href ? "page" : undefined}
+            onClick={() => setMobileOpen(false)}
             className={`block px-4 py-2.5 text-sm font-body rounded transition-colors ${
               pathname === item.href
                 ? "bg-white/10 text-white"
@@ -48,7 +52,44 @@ function AdminSidebar() {
           &larr; Back to website
         </Link>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-navy z-40 px-4 py-3 flex items-center justify-between">
+        <span className="font-heading text-lg text-white tracking-wider">THE LOOK</span>
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label="Toggle admin menu"
+          className="text-white/70 hover:text-white p-1"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {mobileOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />
+      )}
+
+      {/* Mobile slide-out sidebar */}
+      <aside className={`lg:hidden fixed top-0 left-0 w-64 bg-navy min-h-screen p-6 z-50 transition-transform duration-300 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        {navContent}
+      </aside>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:block w-64 bg-navy min-h-screen p-6 shrink-0">
+        {navContent}
+      </aside>
+    </>
   );
 }
 
@@ -57,7 +98,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <SessionProvider>
       <div className="flex min-h-screen bg-cream">
         <AdminSidebar />
-        <div className="flex-1">{children}</div>
+        <div className="flex-1 pt-14 lg:pt-0">{children}</div>
       </div>
     </SessionProvider>
   );

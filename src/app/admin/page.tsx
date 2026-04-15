@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useRealtimeAppointments } from "@/hooks/useRealtimeAppointments";
+import { usePolledAppointments } from "@/hooks/usePolledAppointments";
 
 interface Service {
   id: string;
@@ -41,7 +41,7 @@ function formatTime(time: string) {
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { appointments: realtimeAppts, loading, error, lastUpdate } = useRealtimeAppointments({
+  const { appointments: realtimeAppts, loading, error, lastUpdate } = usePolledAppointments({
     enabled: status === "authenticated",
   });
   const [services, setServices] = useState<Service[]>([]);
@@ -78,7 +78,9 @@ export default function AdminDashboard() {
 
   // Filter for today's appointments
   const today = new Date().toISOString().split("T")[0];
-  const todayAppts = enrichedAppts.filter((a) => a.date === today);
+  const todayAppts = enrichedAppts
+    .filter((a) => a.date === today)
+    .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
   // Filter for upcoming appointments (next 7 days)
   const nextWeek = new Date();
@@ -86,7 +88,9 @@ export default function AdminDashboard() {
   const upcomingAppts = enrichedAppts.filter((a) => {
     const apptDate = new Date(a.date);
     return apptDate > new Date(today) && apptDate <= nextWeek;
-  }).slice(0, 5);
+  })
+    .sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
+    .slice(0, 5);
 
   const confirmed = todayAppts.filter((a) => a.status === "confirmed");
   const pending = todayAppts.filter((a) => a.status === "pending");
@@ -210,7 +214,7 @@ export default function AdminDashboard() {
       {/* Real-time indicator */}
       <div className="mt-8 flex items-center gap-2 text-xs text-navy/40 font-body">
         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-        Live updates enabled — new bookings appear instantly
+        Auto-refreshing every 15 seconds
       </div>
     </div>
   );

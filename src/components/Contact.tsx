@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import AnimatedSection from "./AnimatedSection";
 import TurnstileField from "./TurnstileField";
 
 export default function Contact() {
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const [serviceCategories, setServiceCategories] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -17,6 +18,17 @@ export default function Contact() {
     "idle" | "submitting" | "success" | "error"
   >("idle");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/services")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && typeof data === "object") {
+          setServiceCategories(Object.keys(data));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -153,13 +165,17 @@ export default function Contact() {
                     className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors"
                   >
                     <option value="">Select a service</option>
-                    <option value="cutting">Cutting</option>
-                    <option value="styling">Styling & Blowout</option>
-                    <option value="color">Color & Perms</option>
-                    <option value="treatment">Hair Treatments</option>
-                    <option value="keratin">Keratin Straightening</option>
-                    <option value="extensions">Extensions</option>
-                    <option value="threading">Threading & Waxing</option>
+                    {serviceCategories.length > 0
+                      ? serviceCategories.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))
+                      : <>
+                          <option value="Haircuts">Haircuts</option>
+                          <option value="Color">Color</option>
+                          <option value="Styling">Styling</option>
+                          <option value="Treatments">Treatments</option>
+                        </>
+                    }
                   </select>
                 </div>
               </div>

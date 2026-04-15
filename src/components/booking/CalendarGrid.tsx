@@ -75,10 +75,9 @@ export default function CalendarGrid({ selectedDate, onSelectDate }: Props) {
           const day = i + 1;
           const dateStr = `${viewYear}-${(viewMonth + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
           const dateObj = new Date(viewYear, viewMonth, day);
-          const isTuesday = dateObj.getDay() === 2;
           const isPast = dateStr < todayStr;
           const isTooFar = dateObj > maxDate;
-          const disabled = isPast || isTooFar || isTuesday;
+          const disabled = isPast || isTooFar;
           const isSelected = selectedDate === dateStr;
           const isToday = dateStr === todayStr;
 
