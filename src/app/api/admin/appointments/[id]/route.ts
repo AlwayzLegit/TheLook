@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { adminAppointmentPatchSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
+import { sendStatusChangeEmail } from "@/lib/email";
 import { NextRequest } from "next/server";
 
 export async function PATCH(
@@ -46,6 +47,22 @@ export async function PATCH(
   }
 
   logAdminAction("appointment.update", JSON.stringify(payload), id);
+
+  // Send email notification on status change
+  if (payload.status && data) {
+    const { data: service } = await supabase.from("services").select("name").eq("id", data.service_id).single();
+    const { data: stylist } = await supabase.from("stylists").select("name").eq("id", data.stylist_id).single();
+    sendStatusChangeEmail({
+      clientName: data.client_name,
+      clientEmail: data.client_email,
+      serviceName: service?.name || "Your Service",
+      stylistName: stylist?.name || "Your Stylist",
+      date: data.date,
+      startTime: data.start_time,
+      newStatus: payload.status,
+      cancelToken: data.cancel_token,
+    }).catch((err) => logError("status-email", err));
+  }
 
   return apiSuccess(data);
 }

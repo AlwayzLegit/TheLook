@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { usePolledAppointments } from "@/hooks/usePolledAppointments";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
+import { downloadIcs } from "@/lib/icsExport";
 
 interface Service {
   id: string;
@@ -246,6 +247,22 @@ export default function AppointmentsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 className="font-heading text-3xl">Appointments</h1>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => {
+              const events = filteredAppts.filter((a) => a.status !== "cancelled").map((a) => ({
+                title: `${a.client_name} - ${a.serviceName}`,
+                description: `${a.serviceName} with ${a.stylistName}\n${a.client_email}${a.client_phone ? `\n${a.client_phone}` : ""}`,
+                location: "919 South Central Ave Suite #E, Glendale, CA 91204",
+                date: a.date,
+                startTime: a.start_time,
+                endTime: a.end_time,
+              }));
+              downloadIcs(events);
+            }}
+            className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
+          >
+            Calendar
+          </button>
           <button
             onClick={() => window.print()}
             className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"

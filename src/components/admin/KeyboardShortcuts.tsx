@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 const shortcuts = [
   { key: "d", path: "/admin", label: "Dashboard" },
   { key: "a", path: "/admin/appointments", label: "Appointments" },
+  { key: "c", path: "/admin/clients", label: "Clients" },
   { key: "m", path: "/admin/messages", label: "Messages" },
+  { key: "n", path: "/admin/analytics", label: "Analytics" },
   { key: "s", path: "/admin/services", label: "Services" },
   { key: "t", path: "/admin/stylists", label: "Stylists" },
   { key: "h", path: "/admin/schedule", label: "Schedule" },
