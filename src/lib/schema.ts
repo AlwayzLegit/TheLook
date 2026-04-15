@@ -24,6 +24,7 @@ export const stylists = pgTable("stylists", {
   active: boolean("active").default(true),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const stylistServices = pgTable("stylist_services", {

@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS stylists (
   specialties TEXT, -- JSON string
   active BOOLEAN DEFAULT TRUE,
   sort_order INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Stylist-Services join table
@@ -137,6 +138,11 @@ CREATE POLICY "Appointments are viewable by cancel token"
 -- Contact messages: public can create
 CREATE POLICY "Contact messages can be created by anyone"
   ON contact_messages FOR INSERT WITH CHECK (true);
+
+-- Admin log: allow inserts (service role key is used, but policy ensures
+-- the table isn't completely locked if accessed via anon key)
+CREATE POLICY "Admin log can be inserted"
+  ON admin_log FOR INSERT WITH CHECK (true);
 
 -- Note: Admin operations will use service role key bypassing RLS
 
