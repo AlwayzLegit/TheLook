@@ -7,16 +7,17 @@ import { SessionProvider, useSession } from "next-auth/react";
 import KeyboardShortcuts from "@/components/admin/KeyboardShortcuts";
 
 const navItems = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/appointments", label: "Appointments" },
-  { href: "/admin/clients", label: "Clients" },
-  { href: "/admin/messages", label: "Messages" },
-  { href: "/admin/analytics", label: "Analytics" },
-  { href: "/admin/services", label: "Services" },
-  { href: "/admin/stylists", label: "Stylists" },
-  { href: "/admin/discounts", label: "Discounts" },
-  { href: "/admin/schedule", label: "Schedule" },
-  { href: "/admin/activity", label: "Activity Log" },
+  { href: "/admin", label: "Dashboard", adminOnly: false },
+  { href: "/admin/appointments", label: "Appointments", adminOnly: false },
+  { href: "/admin/clients", label: "Clients", adminOnly: false },
+  { href: "/admin/messages", label: "Messages", adminOnly: true },
+  { href: "/admin/analytics", label: "Analytics", adminOnly: true },
+  { href: "/admin/services", label: "Services", adminOnly: true },
+  { href: "/admin/stylists", label: "Stylists", adminOnly: true },
+  { href: "/admin/discounts", label: "Discounts", adminOnly: true },
+  { href: "/admin/schedule", label: "Schedule", adminOnly: false },
+  { href: "/admin/users", label: "Users", adminOnly: true },
+  { href: "/admin/activity", label: "Activity Log", adminOnly: true },
 ];
 
 function useBadgeCounts() {
@@ -48,10 +49,15 @@ function useBadgeCounts() {
 
 function AdminSidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const badges = useBadgeCounts();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userRole = (session?.user as any)?.role || "admin";
 
   if (pathname === "/admin/login") return null;
+
+  const visibleNavItems = navItems.filter((item) => !item.adminOnly || userRole === "admin");
 
   const getBadge = (href: string) => {
     if (href === "/admin/appointments" && badges.pending > 0) return badges.pending;
@@ -67,7 +73,7 @@ function AdminSidebar() {
       <p className="text-gold text-xs tracking-[0.2em] uppercase font-body mb-8">Admin Panel</p>
 
       <nav className="space-y-1">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const badge = getBadge(item.href);
           return (
             <Link
