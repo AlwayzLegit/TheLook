@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { checkRateLimit } from "./rateLimit";
-import bcrypt from "bcryptjs";
 
 const failedAttempts = new Map<string, { count: number; lockedUntil: number }>();
 const MAX_FAILED = 5;
@@ -62,7 +61,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Try database users first
         const dbUser = await findUserInDb(inputEmail);
         if (dbUser) {
-          const valid = await bcrypt.compare(password, dbUser.passwordHash);
+          const { compare } = await import("bcryptjs");
+          const valid = await compare(password, dbUser.passwordHash);
           if (valid) {
             failedAttempts.delete(inputEmail);
             return {
