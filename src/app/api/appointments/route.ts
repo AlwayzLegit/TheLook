@@ -1,6 +1,7 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { getAvailableSlots } from "@/lib/availability";
 import { sendBookingConfirmation } from "@/lib/email";
+import { sendBookingConfirmationSms, hasTwilioConfig } from "@/lib/sms";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { appointmentCreateSchema } from "@/lib/validation";
 import { verifyTurnstileToken } from "@/lib/turnstile";
@@ -118,6 +119,18 @@ export async function POST(request: NextRequest) {
     startTime,
     cancelUrl: `${baseUrl}/book/cancel?token=${cancelToken}`,
   }).catch(console.error);
+
+  // Send confirmation SMS if phone provided and Twilio is configured
+  if (clientPhone && hasTwilioConfig) {
+    sendBookingConfirmationSms({
+      clientName,
+      clientPhone,
+      serviceName: service.name,
+      stylistName: stylist?.name || "Your Stylist",
+      date,
+      startTime,
+    }).catch(console.error);
+  }
 
   return apiSuccess({
     id: appointmentId,

@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { sendCancellationEmail } from "@/lib/email";
+import { sendCancellationSms, hasTwilioConfig } from "@/lib/sms";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
@@ -55,6 +56,18 @@ export async function POST(request: NextRequest) {
     date: appointment.date,
     startTime: appointment.start_time,
   }).catch((err) => logError("appointments/cancel email", err));
+
+  // Send cancellation SMS if phone is on file
+  if (appointment.client_phone && hasTwilioConfig) {
+    sendCancellationSms({
+      clientName: appointment.client_name,
+      clientPhone: appointment.client_phone,
+      serviceName: service?.name || "Your Service",
+      stylistName: stylist?.name || "Your Stylist",
+      date: appointment.date,
+      startTime: appointment.start_time,
+    }).catch((err) => logError("appointments/cancel sms", err));
+  }
 
   return apiSuccess({ message: "Appointment cancelled" });
 }

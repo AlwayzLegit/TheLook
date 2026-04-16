@@ -4,6 +4,7 @@ import { adminAppointmentPatchSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { sendStatusChangeEmail } from "@/lib/email";
+import { sendStatusChangeSms, hasTwilioConfig } from "@/lib/sms";
 import { NextRequest } from "next/server";
 
 export async function PATCH(
@@ -62,6 +63,18 @@ export async function PATCH(
       newStatus: payload.status,
       cancelToken: data.cancel_token,
     }).catch((err) => logError("status-email", err));
+
+    // Send SMS notification on status change
+    if (data.client_phone && hasTwilioConfig) {
+      sendStatusChangeSms({
+        clientName: data.client_name,
+        clientPhone: data.client_phone,
+        serviceName: service?.name || "Your Service",
+        date: data.date,
+        startTime: data.start_time,
+        newStatus: payload.status,
+      }).catch((err) => logError("status-sms", err));
+    }
   }
 
   return apiSuccess(data);

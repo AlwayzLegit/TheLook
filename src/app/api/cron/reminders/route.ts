@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { sendReminderEmail } from "@/lib/email";
+import { sendReminderSms, hasTwilioConfig } from "@/lib/sms";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
@@ -49,6 +50,21 @@ export async function GET(request: NextRequest) {
         ? `${baseUrl}/book/cancel?token=${appt.cancel_token}`
         : undefined,
     });
+
+    // Send SMS reminder if phone is on file and Twilio is configured
+    if (appt.client_phone && hasTwilioConfig) {
+      await sendReminderSms({
+        clientName: appt.client_name,
+        clientPhone: appt.client_phone,
+        serviceName: serviceMap[appt.service_id]?.name || "Your Service",
+        stylistName: stylistMap[appt.stylist_id]?.name || "Your Stylist",
+        date: appt.date,
+        startTime: appt.start_time,
+        cancelUrl: appt.cancel_token
+          ? `${baseUrl}/book/cancel?token=${appt.cancel_token}`
+          : undefined,
+      });
+    }
 
     await supabase
       .from("appointments")
