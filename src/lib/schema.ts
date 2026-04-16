@@ -97,6 +97,8 @@ export const clientProfiles = pgTable("client_profiles", {
   preferences: text("preferences"), // free-form notes about preferences
   internalNotes: text("internal_notes"), // private staff notes
   allergyInfo: text("allergy_info"), // product allergies or sensitivities
+  hairFormulas: text("hair_formulas"), // JSON: color formulas, treatments
+  hairType: varchar("hair_type", { length: 100 }), // e.g. "Fine, straight, level 6"
   birthday: varchar("birthday", { length: 10 }), // MM-DD for birthday promotions
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -126,3 +128,17 @@ export const discountUsage = pgTable("discount_usage", {
   clientEmail: varchar("client_email", { length: 200 }).notNull(),
   usedAt: timestamp("used_at").defaultNow(),
 });
+
+export const clientPhotos = pgTable("client_photos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientEmail: varchar("client_email", { length: 200 }).notNull(),
+  url: varchar("url", { length: 500 }).notNull(),
+  caption: varchar("caption", { length: 255 }),
+  photoType: varchar("photo_type", { length: 20 }), // "before", "after", "result", "inspiration"
+  appointmentId: uuid("appointment_id").references(() => appointments.id),
+  serviceId: uuid("service_id").references(() => services.id),
+  takenAt: varchar("taken_at", { length: 10 }), // YYYY-MM-DD
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_client_photos_email").on(table.clientEmail),
+]);
