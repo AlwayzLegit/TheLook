@@ -179,6 +179,21 @@ ALTER TABLE discounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE discount_usage ENABLE ROW LEVEL SECURITY;
 ALTER TABLE client_photos ENABLE ROW LEVEL SECURITY;
 
+-- Admin users (role-based access)
+CREATE TABLE IF NOT EXISTS admin_users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email VARCHAR(200) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'stylist', -- 'admin' or 'stylist'
+  stylist_id UUID REFERENCES stylists(id) ON DELETE SET NULL,
+  active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
+
 -- Create policies for public read access (booking flow)
 CREATE POLICY "Services are viewable by everyone" 
   ON services FOR SELECT USING (true);

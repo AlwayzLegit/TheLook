@@ -87,6 +87,20 @@ export const adminLog = pgTable("admin_log", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const adminUsers = pgTable("admin_users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: varchar("email", { length: 200 }).unique().notNull(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  role: varchar("role", { length: 20 }).notNull().default("stylist"), // "admin" or "stylist"
+  stylistId: uuid("stylist_id").references(() => stylists.id),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_admin_users_email").on(table.email),
+]);
+
 export const clientProfiles = pgTable("client_profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: varchar("email", { length: 200 }).unique().notNull(),
