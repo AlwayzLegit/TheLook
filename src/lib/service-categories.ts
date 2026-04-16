@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 export interface ServiceCategoryMeta {
   slug: string;
   category: string;           // matches DB / SALON_SERVICES category name
