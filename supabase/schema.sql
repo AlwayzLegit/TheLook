@@ -182,7 +182,7 @@ CREATE POLICY "Appointments can be created by anyone"
 CREATE POLICY "Appointments are viewable by cancel token" 
   ON appointments FOR SELECT USING (true);
 
--- Contact messages: public can create
+-- Contact messages: public can create (single policy — drop any pre-existing duplicates)
 CREATE POLICY "Contact messages can be created by anyone"
   ON contact_messages FOR INSERT WITH CHECK (true);
 
@@ -195,7 +195,10 @@ CREATE POLICY "Admin log can be inserted"
 CREATE POLICY "Active discounts are viewable"
   ON discounts FOR SELECT USING (active = true);
 
--- Note: Admin operations will use service role key bypassing RLS
+-- Note: Admin operations use service_role key which bypasses RLS.
+-- client_profiles, discount_usage, and admin_log have RLS enabled with
+-- no public policies intentionally — they are only accessed from server-side
+-- admin API routes via the service_role key. This is secure-by-default.
 
 -- RPC function for fetching booked slots (used by availability checker)
 -- SECURITY DEFINER ensures this runs with table owner permissions,
