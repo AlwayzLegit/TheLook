@@ -24,7 +24,7 @@ export default function Footer() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[radial-gradient(ellipse,rgba(196,162,101,0.06)_0%,transparent_70%)]" />
 
       <div className="max-w-7xl mx-auto px-8 lg:px-12 py-18 relative">
-        <div className="grid md:grid-cols-4 gap-12">
+        <div className="grid md:grid-cols-5 gap-10">
           {/* Brand */}
           <div className="md:col-span-1">
             <h3 className="font-heading text-2xl text-white tracking-wider mb-4">
@@ -61,6 +61,30 @@ export default function Footer() {
                 { href: "/about", label: "About" },
                 { href: "/book", label: "Book Online" },
                 { href: "/contact", label: "Contact" },
+              ].map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="block text-white/72 hover:text-gold text-sm font-body font-light transition-all duration-300 hover:translate-x-1"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Services */}
+          <div>
+            <h4 className="text-gold text-[11px] tracking-[0.2em] uppercase font-body mb-6">
+              Services
+            </h4>
+            <div className="space-y-3">
+              {[
+                { href: "/services/haircuts", label: "Haircuts" },
+                { href: "/services/color", label: "Color & Highlights" },
+                { href: "/services/styling", label: "Styling" },
+                { href: "/services/treatments", label: "Treatments" },
+                { href: "/services/perms-and-more", label: "Perms & More" },
               ].map((link) => (
                 <Link
                   key={link.href}
