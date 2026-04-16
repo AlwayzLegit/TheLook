@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface ClientSummary {
   email: string;
@@ -123,7 +124,7 @@ export default function ClientsPage() {
             <div key={c.email} className="px-6 py-4 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="font-body font-bold text-sm">{c.name}</p>
+                  <Link href={`/admin/clients/${encodeURIComponent(c.email)}`} className="font-body font-bold text-sm text-navy hover:text-rose transition-colors">{c.name}</Link>
                   {c.visits > 1 && (
                     <span className="text-[10px] font-body bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{c.visits}x</span>
                   )}

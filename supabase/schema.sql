@@ -94,6 +94,47 @@ CREATE TABLE IF NOT EXISTS admin_log (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Client profiles table
+CREATE TABLE IF NOT EXISTS client_profiles (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email VARCHAR(200) UNIQUE NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  phone VARCHAR(50),
+  preferred_stylist_id UUID REFERENCES stylists(id) ON DELETE SET NULL,
+  tags TEXT, -- JSON array
+  preferences TEXT,
+  internal_notes TEXT,
+  allergy_info TEXT,
+  birthday VARCHAR(10), -- MM-DD
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Discounts / coupons table
+CREATE TABLE IF NOT EXISTS discounts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code VARCHAR(50) UNIQUE NOT NULL,
+  description VARCHAR(255),
+  type VARCHAR(20) NOT NULL, -- 'percentage' or 'fixed'
+  value INTEGER NOT NULL, -- percentage or cents
+  min_purchase INTEGER DEFAULT 0,
+  max_uses INTEGER, -- NULL = unlimited
+  uses_count INTEGER DEFAULT 0,
+  valid_from VARCHAR(10), -- YYYY-MM-DD
+  valid_until VARCHAR(10), -- YYYY-MM-DD
+  active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Discount usage tracking
+CREATE TABLE IF NOT EXISTS discount_usage (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  discount_id UUID NOT NULL REFERENCES discounts(id),
+  appointment_id UUID REFERENCES appointments(id) ON DELETE SET NULL,
+  client_email VARCHAR(200) NOT NULL,
+  used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_services_active ON services(active);
 CREATE INDEX IF NOT EXISTS idx_services_category ON services(category);
@@ -105,6 +146,9 @@ CREATE INDEX IF NOT EXISTS idx_appointments_cancel_token ON appointments(cancel_
 CREATE INDEX IF NOT EXISTS idx_schedule_rules_type ON schedule_rules(rule_type);
 CREATE INDEX IF NOT EXISTS idx_schedule_rules_day ON schedule_rules(day_of_week);
 CREATE INDEX IF NOT EXISTS idx_appointments_client_email ON appointments(client_email);
+CREATE INDEX IF NOT EXISTS idx_client_profiles_email ON client_profiles(email);
+CREATE INDEX IF NOT EXISTS idx_discounts_code ON discounts(code);
+CREATE INDEX IF NOT EXISTS idx_discount_usage_email ON discount_usage(client_email);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
@@ -114,6 +158,9 @@ ALTER TABLE schedule_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE discounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE discount_usage ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public read access (booking flow)
 CREATE POLICY "Services are viewable by everyone" 
@@ -143,6 +190,10 @@ CREATE POLICY "Contact messages can be created by anyone"
 -- the table isn't completely locked if accessed via anon key)
 CREATE POLICY "Admin log can be inserted"
   ON admin_log FOR INSERT WITH CHECK (true);
+
+-- Discounts: public can read active discounts (for booking page validation)
+CREATE POLICY "Active discounts are viewable"
+  ON discounts FOR SELECT USING (active = true);
 
 -- Note: Admin operations will use service role key bypassing RLS
 

@@ -86,3 +86,43 @@ export const adminLog = pgTable("admin_log", {
   details: text("details"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const clientProfiles = pgTable("client_profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: varchar("email", { length: 200 }).unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  preferredStylistId: uuid("preferred_stylist_id").references(() => stylists.id),
+  tags: text("tags"), // JSON array: ["VIP", "color specialist", "sensitive scalp"]
+  preferences: text("preferences"), // free-form notes about preferences
+  internalNotes: text("internal_notes"), // private staff notes
+  allergyInfo: text("allergy_info"), // product allergies or sensitivities
+  birthday: varchar("birthday", { length: 10 }), // MM-DD for birthday promotions
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_client_profiles_email").on(table.email),
+]);
+
+export const discounts = pgTable("discounts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: varchar("code", { length: 50 }).unique().notNull(),
+  description: varchar("description", { length: 255 }),
+  type: varchar("type", { length: 20 }).notNull(), // "percentage" or "fixed"
+  value: integer("value").notNull(), // percentage (e.g. 20 = 20%) or cents (e.g. 2000 = $20)
+  minPurchase: integer("min_purchase").default(0), // minimum service price in cents
+  maxUses: integer("max_uses"), // null = unlimited
+  usesCount: integer("uses_count").default(0),
+  validFrom: varchar("valid_from", { length: 10 }), // YYYY-MM-DD
+  validUntil: varchar("valid_until", { length: 10 }), // YYYY-MM-DD
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const discountUsage = pgTable("discount_usage", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  discountId: uuid("discount_id").notNull().references(() => discounts.id),
+  appointmentId: uuid("appointment_id").references(() => appointments.id),
+  clientEmail: varchar("client_email", { length: 200 }).notNull(),
+  usedAt: timestamp("used_at").defaultNow(),
+});
