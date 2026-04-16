@@ -36,10 +36,18 @@ export async function GET(
     .select("*, discounts(*)")
     .eq("client_email", decodedEmail);
 
+  // Get photos
+  const { data: photos } = await supabase
+    .from("client_photos")
+    .select("*")
+    .eq("client_email", decodedEmail)
+    .order("created_at", { ascending: false });
+
   return apiSuccess({
     profile,
     appointments: appointments || [],
     discountUsage: discountUsage || [],
+    photos: photos || [],
   });
 }
 
@@ -65,6 +73,8 @@ export async function PUT(
     preferences: body.preferences || null,
     internal_notes: body.internalNotes || null,
     allergy_info: body.allergyInfo || null,
+    hair_formulas: body.hairFormulas || null,
+    hair_type: body.hairType || null,
     birthday: body.birthday || null,
     updated_at: new Date().toISOString(),
   };

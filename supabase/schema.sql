@@ -105,6 +105,8 @@ CREATE TABLE IF NOT EXISTS client_profiles (
   preferences TEXT,
   internal_notes TEXT,
   allergy_info TEXT,
+  hair_formulas TEXT, -- JSON: color formulas, treatments
+  hair_type VARCHAR(100), -- e.g. "Fine, straight, level 6"
   birthday VARCHAR(10), -- MM-DD
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -135,6 +137,19 @@ CREATE TABLE IF NOT EXISTS discount_usage (
   used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Client photos (before/after, results, inspiration)
+CREATE TABLE IF NOT EXISTS client_photos (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  client_email VARCHAR(200) NOT NULL,
+  url VARCHAR(500) NOT NULL,
+  caption VARCHAR(255),
+  photo_type VARCHAR(20), -- 'before', 'after', 'result', 'inspiration'
+  appointment_id UUID REFERENCES appointments(id) ON DELETE SET NULL,
+  service_id UUID REFERENCES services(id) ON DELETE SET NULL,
+  taken_at VARCHAR(10), -- YYYY-MM-DD
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_services_active ON services(active);
 CREATE INDEX IF NOT EXISTS idx_services_category ON services(category);
@@ -149,6 +164,7 @@ CREATE INDEX IF NOT EXISTS idx_appointments_client_email ON appointments(client_
 CREATE INDEX IF NOT EXISTS idx_client_profiles_email ON client_profiles(email);
 CREATE INDEX IF NOT EXISTS idx_discounts_code ON discounts(code);
 CREATE INDEX IF NOT EXISTS idx_discount_usage_email ON discount_usage(client_email);
+CREATE INDEX IF NOT EXISTS idx_client_photos_email ON client_photos(client_email);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
@@ -161,6 +177,7 @@ ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE client_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE discounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE discount_usage ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_photos ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public read access (booking flow)
 CREATE POLICY "Services are viewable by everyone" 
