@@ -1,20 +1,3 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/reminders",
-      "schedule": "0 15 * * *"
-    },
-    {
-      "path": "/api/cron/marketing",
-      "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/review-requests",
-      "schedule": "0 17 * * *"
-    },
-    {
-      "path": "/api/cron/review-digest",
-      "schedule": "0 16 * * 1"
-    }
-  ]
+  "crons": []
 }
