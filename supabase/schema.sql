@@ -194,6 +194,87 @@ CREATE TABLE IF NOT EXISTS admin_users (
 ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
 
+-- Waitlist
+CREATE TABLE IF NOT EXISTS waitlist (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  service_id UUID NOT NULL REFERENCES services(id),
+  stylist_id UUID REFERENCES stylists(id) ON DELETE SET NULL,
+  client_name VARCHAR(200) NOT NULL,
+  client_email VARCHAR(200) NOT NULL,
+  client_phone VARCHAR(20),
+  preferred_date VARCHAR(10),
+  preferred_time_range VARCHAR(50),
+  notes TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'waiting',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Waitlist can be created by anyone" ON waitlist FOR INSERT WITH CHECK (true);
+
+-- Stylist commissions
+CREATE TABLE IF NOT EXISTS stylist_commissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  stylist_id UUID NOT NULL REFERENCES stylists(id) UNIQUE,
+  commission_percent INTEGER NOT NULL DEFAULT 50,
+  hourly_rate INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE stylist_commissions ENABLE ROW LEVEL SECURITY;
+
+-- Deposits
+CREATE TABLE IF NOT EXISTS deposits (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  appointment_id UUID NOT NULL REFERENCES appointments(id),
+  amount INTEGER NOT NULL,
+  currency VARCHAR(3) DEFAULT 'USD',
+  stripe_payment_intent_id VARCHAR(255),
+  status VARCHAR(20) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE deposits ENABLE ROW LEVEL SECURITY;
+
+-- Products / inventory
+CREATE TABLE IF NOT EXISTS products (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(200) NOT NULL,
+  brand VARCHAR(100),
+  category VARCHAR(50),
+  sku VARCHAR(100),
+  stock_qty INTEGER NOT NULL DEFAULT 0,
+  low_stock_threshold INTEGER DEFAULT 5,
+  cost_price INTEGER,
+  retail_price INTEGER,
+  active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+
+-- Product usage per appointment
+CREATE TABLE IF NOT EXISTS product_usage (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  appointment_id UUID NOT NULL REFERENCES appointments(id),
+  product_id UUID NOT NULL REFERENCES products(id),
+  quantity_used INTEGER DEFAULT 1,
+  notes VARCHAR(255),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE product_usage ENABLE ROW LEVEL SECURITY;
+
+-- Client magic link tokens (self-service portal)
+CREATE TABLE IF NOT EXISTS client_access_tokens (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email VARCHAR(200) NOT NULL,
+  token VARCHAR(64) UNIQUE NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  used_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE client_access_tokens ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_client_access_tokens_token ON client_access_tokens(token);
+
 -- Create policies for public read access (booking flow)
 CREATE POLICY "Services are viewable by everyone" 
   ON services FOR SELECT USING (true);

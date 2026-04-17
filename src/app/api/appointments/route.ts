@@ -1,6 +1,7 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { getAvailableSlots } from "@/lib/availability";
 import { sendBookingConfirmation } from "@/lib/email";
+import { sendBookingConfirmationSMS } from "@/lib/sms";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { appointmentCreateSchema } from "@/lib/validation";
 import { verifyTurnstileToken } from "@/lib/turnstile";
@@ -118,6 +119,11 @@ export async function POST(request: NextRequest) {
     startTime,
     cancelUrl: `${baseUrl}/book/cancel?token=${cancelToken}`,
   }).catch(console.error);
+
+  // Send SMS confirmation if phone provided (non-blocking)
+  if (clientPhone) {
+    sendBookingConfirmationSMS(clientPhone, clientName, service.name, date, startTime).catch(console.error);
+  }
 
   return apiSuccess({
     id: appointmentId,

@@ -9,6 +9,8 @@ const siteUrl = (() => {
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  manifest: "/manifest.json",
+  themeColor: "#282936",
   title: "The Look Hair Salon | Beauty Hair Salon | Glendale, CA",
   description:
     "Family owned & operated since 2011. Over 25 years in the beauty industry — specializing in cutting, coloring, balayage, ombré, highlights, extensions & styling in Glendale, CA.",
