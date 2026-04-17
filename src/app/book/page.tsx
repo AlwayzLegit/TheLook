@@ -184,9 +184,22 @@ export default function BookPage() {
       .then((r) => r.json())
       .then((data) => {
         if (data && Object.keys(data).length > 0) {
-          setServices(data);
+          // Normalize snake_case fields from the API into the camelCase shape
+          // this page and its child components use internally.
+          const normalized: Record<string, Service[]> = {};
+          for (const cat of Object.keys(data)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            normalized[cat] = (data[cat] as any[]).map((s) => ({
+              id: s.id,
+              category: s.category,
+              name: s.name,
+              priceText: s.priceText ?? s.price_text ?? "",
+              priceMin: s.priceMin ?? s.price_min,
+              duration: s.duration,
+            }));
+          }
+          setServices(normalized);
         } else {
-          // Fallback services when DB isn't connected
           setServices(FALLBACK_SERVICES);
         }
       })
