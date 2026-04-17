@@ -60,6 +60,7 @@ export const appointments = pgTable("appointments", {
   staffNotes: text("staff_notes"),
   cancelToken: varchar("cancel_token", { length: 64 }).unique(),
   reminderSent: boolean("reminder_sent").default(false),
+  reviewRequestSentAt: timestamp("review_request_sent_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

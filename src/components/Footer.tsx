@@ -152,9 +152,17 @@ export default function Footer() {
           <p className="text-white/55 text-xs font-body">
             &copy; {new Date().getFullYear()} The Look Hair Salon. All rights reserved.
           </p>
-          <p className="text-white/45 text-[10px] font-body tracking-wider">
-            Crafted with care in Glendale, CA
-          </p>
+          <div className="flex items-center gap-5 text-[11px] font-body">
+            <Link href="/terms" className="text-white/55 hover:text-gold transition-colors">
+              Terms of Service
+            </Link>
+            <Link href="/privacy" className="text-white/55 hover:text-gold transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/accessibility" className="text-white/55 hover:text-gold transition-colors">
+              Accessibility
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

@@ -70,9 +70,13 @@ CREATE TABLE IF NOT EXISTS appointments (
   staff_notes TEXT,
   cancel_token VARCHAR(64) UNIQUE,
   reminder_sent BOOLEAN DEFAULT FALSE,
+  review_request_sent_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- For existing databases, run:
+--   ALTER TABLE appointments ADD COLUMN IF NOT EXISTS review_request_sent_at TIMESTAMP WITH TIME ZONE;
 
 -- Contact messages table
 CREATE TABLE IF NOT EXISTS contact_messages (

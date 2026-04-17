@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePolledAppointments } from "@/hooks/usePolledAppointments";
+import ReviewStatsWidget from "@/components/admin/ReviewStatsWidget";
 
 interface Service {
   id: string;
@@ -205,8 +206,8 @@ export default function AdminDashboard() {
         </Link>
       </div>
 
-      {/* ── Row 2: Revenue ── */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      {/* ── Row 2: Revenue + Reviews ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-5 border border-navy/10">
           <p className="text-navy/40 text-xs font-body">Revenue Today</p>
           <p className="font-heading text-2xl mt-1 text-green-600">{formatCents(revenueToday)}</p>
@@ -219,6 +220,7 @@ export default function AdminDashboard() {
           <p className="text-navy/40 text-xs font-body">This Month</p>
           <p className="font-heading text-2xl mt-1">{formatCents(revenueMonth)}</p>
         </div>
+        <ReviewStatsWidget />
       </div>
 
       {/* ── Row 3: Health & Workload ── */}

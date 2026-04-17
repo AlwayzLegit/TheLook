@@ -1,0 +1,178 @@
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy — The Look Hair Salon",
+  description: "How The Look Hair Salon collects, uses, and protects your personal information.",
+};
+
+const LAST_UPDATED = "November 2025";
+
+export default function PrivacyPage() {
+  return (
+    <>
+      <Navbar />
+      <main className="pt-24 pb-20 min-h-screen bg-cream">
+        <div className="max-w-3xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center gap-4 mb-5">
+              <span className="w-10 h-[1px] bg-gradient-to-r from-transparent to-gold" />
+              <span className="text-gold text-[11px] tracking-[0.3em] uppercase font-body">Legal</span>
+              <span className="w-10 h-[1px] bg-gradient-to-l from-transparent to-gold" />
+            </div>
+            <h1 className="font-heading text-5xl md:text-6xl mb-4">Privacy Policy</h1>
+            <p className="text-navy/40 text-xs tracking-wider uppercase font-body">Last updated: {LAST_UPDATED}</p>
+          </div>
+
+          <div className="bg-white border border-navy/10 p-8 md:p-10 space-y-6 font-body text-navy/75 leading-relaxed text-[15px]">
+            <section>
+              <p>
+                The Look Hair Salon (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) respects your
+                privacy. This policy explains what information we collect, how we use it, and the choices
+                you have.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">1. Information We Collect</h2>
+              <p className="mb-3">We collect information you provide directly, including:</p>
+              <ul className="list-disc pl-6 space-y-2">
+                <li><strong>Booking information:</strong> name, email, phone, service selected, stylist preference, appointment date/time, and any notes you share.</li>
+                <li><strong>Contact form submissions:</strong> name, email, phone, message, and service of interest.</li>
+                <li><strong>Account information (if you sign in):</strong> email and, for staff/stylist accounts, a password hash (we never store your password in plain text).</li>
+                <li><strong>Client history:</strong> past appointments, stylist notes, hair formulas (for stylists only), preferences, and photos you or a stylist adds to your record.</li>
+              </ul>
+              <p className="mt-3">We also automatically collect:</p>
+              <ul className="list-disc pl-6 space-y-2">
+                <li>Basic technical data such as IP address and user-agent (used for rate limiting and spam prevention).</li>
+                <li>Cookies used for authentication sessions and to remember returning clients&#39; details when booking.</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">2. How We Use Information</h2>
+              <ul className="list-disc pl-6 space-y-2">
+                <li>To schedule, confirm, remind you about, and manage your appointments.</li>
+                <li>To send you transactional emails such as booking confirmations, reminders, cancellations, and post-visit review requests.</li>
+                <li>To respond to contact form inquiries.</li>
+                <li>To improve service quality and maintain a history that helps your stylist give you consistent results.</li>
+                <li>To prevent abuse (rate limiting, captcha).</li>
+                <li>With your opt-in consent, to send occasional marketing emails about promotions.</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">3. Sharing of Information</h2>
+              <p>
+                We do not sell your personal information. We share data only with trusted service providers
+                that help us run the Site and salon:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 mt-3">
+                <li><strong>Supabase</strong> — database and file storage hosting.</li>
+                <li><strong>Vercel</strong> — website hosting.</li>
+                <li><strong>Resend</strong> — email delivery (confirmations, reminders).</li>
+                <li><strong>Twilio</strong> (optional) — SMS reminders.</li>
+                <li><strong>Stripe</strong> (optional) — deposit processing for large services.</li>
+                <li><strong>Cloudflare Turnstile</strong> — bot protection on forms.</li>
+                <li><strong>Google Places API</strong> / <strong>Yelp Fusion API</strong> — pulls our public business rating and latest reviews for display on the Site.</li>
+              </ul>
+              <p className="mt-3">
+                Each provider has its own privacy policy. We may also disclose information if legally required
+                (e.g., subpoena) or to protect the rights, safety, or property of The Look, our clients, or others.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">4. Data Retention</h2>
+              <p>
+                We keep appointment and client records for as long as needed to provide continuity of service
+                and to comply with business records obligations. You may request deletion of your record at any
+                time (see &ldquo;Your Rights&rdquo; below).
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">5. Cookies</h2>
+              <p>
+                We use a minimal set of cookies:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 mt-3">
+                <li><strong>Session cookies</strong> — to keep you signed in to the client portal or admin panel.</li>
+                <li><strong>Local storage</strong> — to remember your name/email/phone so returning clients don&#39;t need to retype them.</li>
+              </ul>
+              <p className="mt-3">
+                We do not use third-party advertising cookies or tracking pixels.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">6. Your Rights</h2>
+              <p>
+                You can request to:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 mt-3">
+                <li>See what information we have about you.</li>
+                <li>Correct or update your information.</li>
+                <li>Delete your account and associated records (note: we may retain financial/booking records required by law for a limited period).</li>
+                <li>Opt out of non-transactional marketing emails at any time via the unsubscribe link.</li>
+              </ul>
+              <p className="mt-3">
+                To exercise any of these, email us at <a href="mailto:look_hairsalon@yahoo.com" className="text-rose hover:underline">look_hairsalon@yahoo.com</a> or call (818) 662-5665.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">7. Security</h2>
+              <p>
+                We use HTTPS everywhere, industry-standard password hashing (bcrypt), and access controls on
+                all admin data. No system is perfectly secure, but we take reasonable measures to protect
+                your information.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">8. Children&#39;s Privacy</h2>
+              <p>
+                The Site is not directed to children under 13. We do not knowingly collect information from
+                children under 13. A parent or guardian must book appointments on behalf of a minor.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">9. California Residents</h2>
+              <p>
+                California residents have specific rights under the CCPA, including the right to know what
+                personal information we collect, to request deletion, and not to be discriminated against for
+                exercising these rights. Submit requests using the contact information below.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">10. Changes to This Policy</h2>
+              <p>
+                We may update this policy from time to time. The &ldquo;Last updated&rdquo; date above reflects
+                the latest revision. Continued use of the Site after a change means you accept the revised policy.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">11. Contact</h2>
+              <div className="space-y-1 text-navy">
+                <p>The Look Hair Salon</p>
+                <p>919 South Central Ave Suite #E, Glendale, CA 91204</p>
+                <p>(818) 662-5665</p>
+                <p>look_hairsalon@yahoo.com</p>
+              </div>
+            </section>
+          </div>
+
+          <p className="text-center text-navy/40 text-xs font-body mt-6">
+            This policy is provided for convenience and is not legal advice.
+          </p>
+        </div>
+      </main>
+      <Footer />
+    </>
+  );
+}

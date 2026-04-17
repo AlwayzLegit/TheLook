@@ -3,79 +3,100 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedSection from "./AnimatedSection";
+import LeaveReviewCTA from "./LeaveReviewCTA";
 
-export interface YelpReview {
+export type ReviewSource = "Google" | "Yelp" | "Curated";
+
+export interface Review {
   name: string;
   rating: number;
   text: string;
-  date: string;
+  source: ReviewSource;
+  date?: string;
   service?: string;
+  url?: string;
+  authorPhoto?: string | null;
 }
 
-// Real verified reviews sourced from Google Reviews, Yellow Pages, and Yelp snippets
-const reviews: YelpReview[] = [
+// Evergreen curated testimonials used when APIs are empty or as padding.
+const curatedReviews: Review[] = [
   {
     name: "Annie M.",
     rating: 5,
     text: "The Look helps me look fabulous fast without emptying out my wallet. I have gone to The Look since it opened, have had various stylists cut my hair, and have always left pleased as punch. The stylists listen to me, ask questions, make suggestions, and then always deliver just what I want. Who says looking good has to cost a lot?",
-    date: "Yelp",
+    source: "Yelp",
     service: "Haircut",
   },
   {
     name: "Kelsey F.",
     rating: 5,
     text: "It was my first time coming here and everyone was beyond amazing! Huge thanks to Liz for doing my hair, I absolutely love it!",
-    date: "Google",
+    source: "Google",
     service: "Styling",
   },
   {
     name: "Elena K.",
     rating: 5,
     text: "WOW! Honestly I've found my dream salon for everything at last! The prices are unreal. I can finally not feel guilty.",
-    date: "Google",
+    source: "Google",
   },
   {
     name: "Alexa S.",
     rating: 5,
     text: "Been coming here for years but first time reviewing. Had moved away but still do the drive as it's hard to find a salon like this where they do a good job at an affordable price, with genuinely nice stylists and owners. Always a great experience!",
-    date: "Google",
+    source: "Google",
   },
   {
     name: "Lupe G.",
     rating: 5,
     text: "Always a 10/10 experience! Took my daughter in to get her hair bleached and styled and couldn't be happier. They were very sweet and attentive, the results were amazing, and her hair is very soft and doesn't seem damaged.",
-    date: "Google",
+    source: "Google",
     service: "Bleach & Style",
   },
   {
     name: "Meg A.",
     rating: 5,
     text: "I drive from the Inland Empire to see my girl Jasmen. I love love love her. Truly a homecoming each time.",
-    date: "Google",
+    source: "Google",
     service: "Styling",
   },
   {
     name: "Salma A.",
     rating: 5,
     text: "Jasmin is my stylist and she is amazing. Everyone is friendly and I always get smiles from the moment I walk in.",
-    date: "Google",
+    source: "Google",
     service: "Styling",
   },
   {
     name: "Shruthi R.",
     rating: 5,
     text: "I have been regular here now. Me and my husband get our hair cuts done here. Highly recommend this place! Keep up the great work!",
-    date: "Google",
+    source: "Google",
     service: "Haircut",
   },
   {
     name: "Ryan S.",
     rating: 4,
     text: "A great place for a quick cut at a great price where you can usually get the look you want. Friendly staff and no long waits.",
-    date: "Yelp",
+    source: "Yelp",
     service: "Haircut",
   },
 ];
+
+interface ApiReview {
+  author: string;
+  authorPhoto?: string | null;
+  rating: number;
+  text: string;
+  time: number;
+  relative: string;
+  url?: string;
+}
+interface ApiPayload {
+  reviews: ApiReview[];
+  rating: number | null;
+  total: number | null;
+}
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -94,18 +115,14 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function ReviewCard({ review }: { review: YelpReview }) {
+function ReviewCard({ review }: { review: Review }) {
   return (
     <div className="relative flex flex-col bg-navy p-8 border border-white/8 hover:border-gold/25 transition-all duration-500 hover:shadow-[0_8px_30px_rgba(196,162,101,0.12)] group h-[320px]">
-      {/* Decorative quote mark */}
       <div className="absolute top-5 right-6 font-heading text-5xl text-gold/10 leading-none group-hover:text-gold/20 transition-colors duration-500">&ldquo;</div>
-
-      {/* Bottom accent line on hover — gold gradient */}
       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-gold-light via-gold to-gold-light scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
 
       <StarRating rating={review.rating} />
 
-      {/* Scrollable text area with fixed card height */}
       <div className="flex-1 mt-5 mb-6 overflow-y-auto min-h-0 pr-1 scrollbar-thin">
         <p className="text-white/60 font-body font-light text-[14px] leading-relaxed">
           &ldquo;{review.text}&rdquo;
@@ -114,50 +131,122 @@ function ReviewCard({ review }: { review: YelpReview }) {
 
       <div className="flex items-center justify-between pt-5 border-t border-white/8">
         <div className="flex items-center gap-3">
-          {/* Avatar initial */}
-          <div className="w-9 h-9 rounded-full bg-navy-light flex items-center justify-center border border-gold/20">
-            <span className="text-gold/80 font-heading text-sm">{review.name.charAt(0)}</span>
+          <div className="w-9 h-9 rounded-full bg-navy-light flex items-center justify-center border border-gold/20 overflow-hidden">
+            {review.authorPhoto ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={review.authorPhoto} alt={review.name} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-gold/80 font-heading text-sm">{review.name.charAt(0)}</span>
+            )}
           </div>
           <div>
             <p className="font-body font-medium text-sm text-white/85 group-hover:text-gold transition-colors duration-300">
               {review.name}
             </p>
-            {review.service && (
+            {(review.service || review.date) && (
               <p className="text-white/35 text-[10px] tracking-wider uppercase font-body mt-0.5">
-                {review.service}
+                {review.service || review.date}
               </p>
             )}
           </div>
         </div>
         <span className={`text-[10px] font-body tracking-wider uppercase px-2.5 py-1 rounded-sm ${
-          review.date === "Yelp"
+          review.source === "Yelp"
             ? "bg-rose/15 text-rose-light"
-            : "bg-white/8 text-white/45"
+            : review.source === "Google"
+              ? "bg-white/8 text-white/55"
+              : "bg-gold/10 text-gold/70"
         }`}>
-          {review.date}
+          {review.source}
         </span>
       </div>
     </div>
   );
 }
 
+const YELP_PROFILE_URL = "https://www.yelp.com/biz/the-look-hair-salon-glendale";
+const GOOGLE_MAPS_URL = "https://www.google.com/maps/place/The+Look+Hair+Salon/@34.1425,-118.2553,17z/";
+
 export default function YelpReviews() {
+  const [reviews, setReviews] = useState<Review[]>(curatedReviews);
+  const [googleStats, setGoogleStats] = useState<{ rating: number; total: number } | null>(null);
+  const [yelpStats, setYelpStats] = useState<{ rating: number; total: number } | null>(null);
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
+  useEffect(() => {
+    async function load() {
+      const merged: Review[] = [];
+
+      try {
+        const res = await fetch("/api/google-reviews");
+        if (res.ok) {
+          const data: ApiPayload = await res.json();
+          if (data.rating != null && data.total != null) {
+            setGoogleStats({ rating: data.rating, total: data.total });
+          }
+          for (const r of data.reviews || []) {
+            merged.push({
+              name: r.author,
+              rating: r.rating,
+              text: r.text,
+              source: "Google",
+              date: r.relative,
+              url: r.url,
+              authorPhoto: r.authorPhoto ?? null,
+            });
+          }
+        }
+      } catch {}
+
+      try {
+        const res = await fetch("/api/yelp-reviews");
+        if (res.ok) {
+          const data: ApiPayload = await res.json();
+          if (data.rating != null && data.total != null) {
+            setYelpStats({ rating: data.rating, total: data.total });
+          }
+          for (const r of data.reviews || []) {
+            merged.push({
+              name: r.author,
+              rating: r.rating,
+              text: r.text,
+              source: "Yelp",
+              date: r.relative,
+              url: r.url,
+              authorPhoto: r.authorPhoto ?? null,
+            });
+          }
+        }
+      } catch {}
+
+      // Pad with curated reviews so we always have enough to fill the carousel
+      const existingTexts = new Set(merged.map((r) => r.text.slice(0, 40)));
+      const padding = curatedReviews.filter((r) => !existingTexts.has(r.text.slice(0, 40)));
+      const final = [...merged, ...padding];
+
+      if (final.length > 0) setReviews(final);
+    }
+    load();
+  }, []);
+
   const next = useCallback(() => {
     setCurrent((prev) => (prev + 1) % reviews.length);
-  }, []);
+  }, [reviews.length]);
 
   const prev = useCallback(() => {
     setCurrent((prev) => (prev - 1 + reviews.length) % reviews.length);
-  }, []);
+  }, [reviews.length]);
 
   useEffect(() => {
     if (isPaused) return;
     const timer = setInterval(next, 6000);
     return () => clearInterval(timer);
   }, [next, isPaused]);
+
+  useEffect(() => {
+    if (current >= reviews.length) setCurrent(0);
+  }, [current, reviews.length]);
 
   const getVisibleReviews = () => {
     const visible = [];
@@ -167,32 +256,31 @@ export default function YelpReviews() {
     return visible;
   };
 
+  // Use live stats when present; fall back to prior hardcoded numbers so badges
+  // still look right before API keys are configured.
+  const yelpRating = yelpStats?.rating ?? 4.2;
+  const yelpTotal = yelpStats?.total ?? 830;
+  const googleRating = googleStats?.rating ?? 4.1;
+  const googleTotal = googleStats?.total ?? 146;
+
   return (
     <section className="py-24 md:py-32 bg-charcoal relative overflow-hidden">
-      {/* Subtle decorative background */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-[radial-gradient(circle,rgba(196,162,101,0.06)_0%,transparent_70%)]" />
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-[radial-gradient(circle,rgba(196,162,101,0.04)_0%,transparent_70%)]" />
 
       <div className="max-w-7xl mx-auto px-6 lg:px-12 relative">
-        {/* Header */}
         <AnimatedSection className="flex flex-col md:flex-row items-center justify-between mb-14">
           <div>
             <div className="flex items-center gap-4 mb-4">
               <span className="w-10 h-[1px] bg-gradient-to-r from-gold to-gold/30" />
-              <span className="text-gold text-[11px] tracking-[0.25em] uppercase font-body">
-                Reviews
-              </span>
+              <span className="text-gold text-[11px] tracking-[0.25em] uppercase font-body">Reviews</span>
             </div>
-            <h2 className="font-heading text-4xl md:text-5xl text-white">
-              Loved by Our Community
-            </h2>
+            <h2 className="font-heading text-4xl md:text-5xl text-white">Loved by Our Community</h2>
           </div>
 
-          {/* Review badges */}
           <div className="mt-6 md:mt-0 flex flex-col sm:flex-row gap-3">
-            {/* Yelp badge */}
             <a
-              href="https://www.yelp.com/biz/the-look-hair-salon-glendale"
+              href={YELP_PROFILE_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 bg-navy px-5 py-3.5 border border-white/8 hover:border-gold/25 transition-all duration-500 group hover:shadow-[0_4px_15px_rgba(196,162,101,0.08)] hover:-translate-y-0.5"
@@ -202,9 +290,9 @@ export default function YelpReviews() {
               </svg>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-body font-bold text-sm text-white/90">4.2</span>
-                  <StarRating rating={4} />
-                  <span className="text-white/40 text-xs font-body">830+</span>
+                  <span className="font-body font-bold text-sm text-white/90">{yelpRating.toFixed(1)}</span>
+                  <StarRating rating={Math.round(yelpRating)} />
+                  <span className="text-white/40 text-xs font-body">{yelpTotal}+</span>
                 </div>
                 <p className="text-white/30 text-[10px] font-body mt-0.5 group-hover:text-gold/60 transition-colors">
                   Yelp reviews &rarr;
@@ -212,9 +300,8 @@ export default function YelpReviews() {
               </div>
             </a>
 
-            {/* Google badge */}
             <a
-              href="https://www.google.com/maps/place/The+Look+Hair+Salon/@34.1425,-118.2553,17z/"
+              href={GOOGLE_MAPS_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 bg-navy px-5 py-3.5 border border-white/8 hover:border-gold/25 transition-all duration-500 group hover:shadow-[0_4px_15px_rgba(196,162,101,0.08)] hover:-translate-y-0.5"
@@ -227,9 +314,9 @@ export default function YelpReviews() {
               </svg>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-body font-bold text-sm text-white/90">4.1</span>
-                  <StarRating rating={4} />
-                  <span className="text-white/40 text-xs font-body">146+</span>
+                  <span className="font-body font-bold text-sm text-white/90">{googleRating.toFixed(1)}</span>
+                  <StarRating rating={Math.round(googleRating)} />
+                  <span className="text-white/40 text-xs font-body">{googleTotal}+</span>
                 </div>
                 <p className="text-white/30 text-[10px] font-body mt-0.5 group-hover:text-gold/60 transition-colors">
                   Google reviews &rarr;
@@ -239,13 +326,11 @@ export default function YelpReviews() {
           </div>
         </AnimatedSection>
 
-        {/* Review Cards */}
         <div
           className="relative"
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
         >
-          {/* Desktop: 3 cards with fixed equal height */}
           <div className="hidden md:grid md:grid-cols-3 gap-6">
             <AnimatePresence mode="popLayout">
               {getVisibleReviews().map((review, i) => (
@@ -263,7 +348,6 @@ export default function YelpReviews() {
             </AnimatePresence>
           </div>
 
-          {/* Mobile: single card */}
           <div className="md:hidden">
             <AnimatePresence mode="wait">
               <motion.div
@@ -273,12 +357,11 @@ export default function YelpReviews() {
                 exit={{ opacity: 0, x: -30 }}
                 transition={{ duration: 0.3 }}
               >
-                <ReviewCard review={reviews[current]} />
+                <ReviewCard review={reviews[current] ?? reviews[0]} />
               </motion.div>
             </AnimatePresence>
           </div>
 
-          {/* Navigation */}
           <div className="flex items-center justify-center gap-4 mt-10">
             <button
               onClick={prev}
@@ -315,6 +398,10 @@ export default function YelpReviews() {
               </svg>
             </button>
           </div>
+        </div>
+
+        <div className="mt-16">
+          <LeaveReviewCTA variant="dark" />
         </div>
       </div>
     </section>

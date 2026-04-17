@@ -227,3 +227,106 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
     console.error("Failed to send status change email:", error);
   }
 }
+
+interface ReviewRequestDetails {
+  clientName: string;
+  clientEmail: string;
+  stylistName: string;
+  serviceName: string;
+  date: string;
+  reviewUrl: string;
+  googleUrl: string;
+  yelpUrl: string;
+}
+
+interface ReviewDigestItem {
+  source: "Google" | "Yelp";
+  author: string;
+  rating: number;
+  text: string;
+  relative: string;
+  url?: string;
+}
+
+export async function sendReviewDigestEmail(items: ReviewDigestItem[], ratingSnapshot: { google: string; yelp: string }) {
+  if (items.length === 0) return;
+
+  const row = (r: ReviewDigestItem) => `
+    <tr>
+      <td style="padding: 12px 0; border-bottom: 1px solid #eee;">
+        <div style="font-size: 12px; color: #c9a96e; letter-spacing: 2px; text-transform: uppercase;">${r.source} · ${r.rating}★ · ${r.relative}</div>
+        <div style="font-weight: bold; color: #282936; margin-top: 4px;">${r.author}</div>
+        <div style="color: #666; margin-top: 6px; font-size: 14px; line-height: 1.5;">${r.text.replace(/</g, "&lt;")}</div>
+        ${r.url ? `<a href="${r.url}" style="color: #c2274b; font-size: 12px; margin-top: 8px; display: inline-block;">Respond on ${r.source} &rarr;</a>` : ""}
+      </td>
+    </tr>`;
+
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to: SALON_EMAIL,
+      subject: `${items.length} new review${items.length === 1 ? "" : "s"} this week`,
+      html: `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
+            <p style="color: #c9a96e; font-size: 12px; letter-spacing: 3px; margin-top: 8px;">WEEKLY REVIEW DIGEST</p>
+          </div>
+          <div style="background: white; padding: 30px; border: 1px solid #eee;">
+            <p style="color: #666; margin: 0 0 15px;">Current ratings: ${ratingSnapshot.google ? `Google ${ratingSnapshot.google}★` : ""}${ratingSnapshot.google && ratingSnapshot.yelp ? " · " : ""}${ratingSnapshot.yelp ? `Yelp ${ratingSnapshot.yelp}★` : ""}</p>
+            <h2 style="color: #282936; font-family: Georgia, serif; font-size: 20px; margin: 20px 0 15px;">${items.length} new review${items.length === 1 ? "" : "s"}</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              ${items.map(row).join("")}
+            </table>
+          </div>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("Failed to send review digest email:", error);
+  }
+}
+
+export async function sendReviewRequestEmail(details: ReviewRequestDetails) {
+  const { clientName, clientEmail, stylistName, serviceName, date, reviewUrl, googleUrl, yelpUrl } = details;
+
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to: clientEmail,
+      subject: "How was your visit to The Look?",
+      html: `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
+            <p style="color: #c9a96e; font-size: 12px; letter-spacing: 3px; margin-top: 8px;">THANK YOU</p>
+          </div>
+          <div style="background: white; padding: 30px; border: 1px solid #eee;">
+            <p style="color: #282936; margin: 0 0 15px;">Hi ${clientName},</p>
+            <p style="color: #666; line-height: 1.6;">
+              Thank you for coming in for your ${serviceName} with ${stylistName} on ${formatDate(date)}.
+              If you loved your visit, a quick review on Google or Yelp would mean the world to us —
+              it helps other Glendale locals find us and tells our stylists they&#39;re doing it right.
+            </p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${googleUrl}" style="display: inline-block; background: #282936; color: white; padding: 12px 24px; text-decoration: none; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin: 6px;">Review on Google</a>
+              <a href="${yelpUrl}" style="display: inline-block; background: #c2274b; color: white; padding: 12px 24px; text-decoration: none; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin: 6px;">Review on Yelp</a>
+            </div>
+            <p style="color: #999; font-size: 12px; text-align: center; margin-top: 20px;">
+              Or visit <a href="${reviewUrl}" style="color: #c2274b;">${reviewUrl}</a> to pick either one.
+            </p>
+            <p style="color: #666; font-size: 13px; margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee;">
+              Had an issue instead? Reply to this email or call us at (818) 662-5665 — we&#39;d rather hear
+              about it first so we can make it right.
+            </p>
+          </div>
+          <p style="color: #999; font-size: 11px; text-align: center; margin-top: 20px;">
+            919 South Central Ave Suite #E, Glendale, CA 91204
+          </p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("Failed to send review request email:", error);
+  }
+}

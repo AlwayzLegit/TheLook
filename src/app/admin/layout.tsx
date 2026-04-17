@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   { href: "/admin/waitlist", label: "Waitlist", adminOnly: false },
   { href: "/admin/clients", label: "Clients", adminOnly: false },
   { href: "/admin/messages", label: "Messages", adminOnly: true },
+  { href: "/admin/reviews", label: "Reviews", adminOnly: true },
   { href: "/admin/analytics", label: "Analytics", adminOnly: true },
   { href: "/admin/commissions", label: "Commissions", adminOnly: true },
   { href: "/admin/services", label: "Services", adminOnly: true },
