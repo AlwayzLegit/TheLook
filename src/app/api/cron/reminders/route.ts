@@ -1,11 +1,18 @@
 import { supabase } from "@/lib/supabase";
 import { sendReminderEmail } from "@/lib/email";
+import { sendReminderSMS } from "@/lib/sms";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
+function formatTime(t: string) {
+  const [h, m] = t.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+}
+
 export async function GET(request: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return apiError("Unauthorized", 401);
   }
 
@@ -48,6 +55,11 @@ export async function GET(request: NextRequest) {
         ? `${baseUrl}/book/cancel?token=${appt.cancel_token}`
         : undefined,
     });
+
+    // Also send SMS if phone available
+    if (appt.client_phone) {
+      await sendReminderSMS(appt.client_phone, appt.client_name, formatTime(appt.start_time));
+    }
 
     await supabase
       .from("appointments")

@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
+import ImageUpload from "@/components/admin/ImageUpload";
 
 interface Service {
   id: string;
@@ -18,9 +19,9 @@ interface Service {
   sort_order: number;
 }
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   "Haircuts",
-  "Color", 
+  "Color",
   "Styling",
   "Treatments",
   "Perms & More"
@@ -153,10 +154,16 @@ export default function ServicesPage() {
     setShowForm(true);
   };
 
+  const [newCategory, setNewCategory] = useState("");
+
   if (status !== "authenticated") return null;
 
+  // Build categories dynamically: defaults + any custom categories from existing services
+  const existingCategories = [...new Set(services.map((s) => s.category))];
+  const allCategories = [...new Set([...DEFAULT_CATEGORIES, ...existingCategories])];
+
   // Group services by category
-  const groupedServices = CATEGORIES.map(cat => ({
+  const groupedServices = allCategories.map(cat => ({
     category: cat,
     items: services.filter(s => s.category === cat).sort((a, b) => a.sort_order - b.sort_order)
   })).filter(g => g.items.length > 0);
@@ -165,12 +172,17 @@ export default function ServicesPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-heading text-3xl">Services</h1>
-        <button
-          onClick={handleAddNew}
-          className="px-4 py-2 bg-navy text-white text-sm font-body hover:bg-navy/90"
-        >
-          + Add Service
-        </button>
+        <div className="flex gap-3">
+          <a href="/services" target="_blank" rel="noopener noreferrer" className="px-3 py-2 text-xs font-body border border-navy/20 hover:bg-navy/5">
+            Preview on website &rarr;
+          </a>
+          <button
+            onClick={handleAddNew}
+            className="px-4 py-2 bg-navy text-white text-sm font-body hover:bg-navy/90"
+          >
+            + Add Service
+          </button>
+        </div>
       </div>
 
       {/* Form Modal */}
@@ -184,13 +196,37 @@ export default function ServicesPage() {
                 <label className="block text-sm font-body text-navy/60 mb-1">Category</label>
                 <select
                   value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  onChange={(e) => {
+                    if (e.target.value === "__new__") return;
+                    setFormData({ ...formData, category: e.target.value });
+                  }}
                   className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
                 >
-                  {CATEGORIES.map(cat => (
+                  {allCategories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="text"
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    placeholder="Or type a new category"
+                    className="flex-1 border border-navy/20 px-3 py-1.5 text-xs font-body"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newCategory.trim()) {
+                        setFormData({ ...formData, category: newCategory.trim() });
+                        setNewCategory("");
+                      }
+                    }}
+                    className="text-xs font-body text-navy border border-navy/20 px-3 py-1.5 hover:bg-navy/5"
+                  >
+                    Use
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -245,16 +281,11 @@ export default function ServicesPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-body text-navy/60 mb-1">Image URL / Path</label>
-                <input
-                  type="text"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
-                  placeholder="/images/services/Haircuts/clipper-cut.png"
-                />
-              </div>
+              <ImageUpload
+                value={formData.image_url}
+                onChange={(url) => setFormData({ ...formData, image_url: url })}
+                name={formData.name || formData.category}
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>

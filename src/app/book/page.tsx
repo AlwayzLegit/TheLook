@@ -42,6 +42,7 @@ interface Service {
   category: string;
   name: string;
   priceText: string;
+  priceMin?: number;
   duration: number;
 }
 
@@ -76,6 +77,61 @@ export default function BookPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BookingResult | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [discountCode, setDiscountCode] = useState("");
+  const [discountResult, setDiscountResult] = useState<{ code: string; description: string; discountAmount: number; finalPrice: number } | null>(null);
+  const [discountError, setDiscountError] = useState("");
+  const [checkingDiscount, setCheckingDiscount] = useState(false);
+
+  const applyDiscount = async () => {
+    if (!discountCode.trim() || !selectedService) return;
+    setCheckingDiscount(true);
+    setDiscountError("");
+    try {
+      const res = await fetch("/api/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: discountCode, servicePrice: selectedService.priceMin || 0 }),
+      });
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setDiscountResult(data);
+      } else {
+        setDiscountResult(null);
+        setDiscountError(data.error || "Invalid code.");
+      }
+    } catch {
+      setDiscountError("Failed to validate code.");
+    } finally {
+      setCheckingDiscount(false);
+    }
+  };
+
+  // Warn before leaving with unsaved booking progress
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (step > 0 && step < 5) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [step]);
+
+  // Auto-fill returning customer info from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("thelook_client");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setClientInfo((prev) => ({
+          ...prev,
+          name: parsed.name || "",
+          email: parsed.email || "",
+          phone: parsed.phone || "",
+        }));
+      }
+    } catch {}
+  }, []);
 
   // Warn before leaving with unsaved booking progress
   useEffect(() => {
@@ -272,6 +328,35 @@ export default function BookPage() {
                   {clientInfo.phone && <p className="text-navy/50 text-sm font-body">{clientInfo.phone}</p>}
                 </div>
               </div>
+              {/* Discount code */}
+              <div className="border-t border-navy/10 pt-4 mt-4">
+                <p className="text-navy/50 text-xs font-body mb-2">Have a discount code?</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={discountCode}
+                    onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountResult(null); setDiscountError(""); }}
+                    placeholder="Enter code"
+                    className="flex-1 border border-navy/20 px-3 py-2 text-sm font-body uppercase"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyDiscount}
+                    disabled={checkingDiscount || !discountCode.trim()}
+                    className="px-4 py-2 bg-navy text-white text-xs font-body hover:bg-navy/90 disabled:opacity-60"
+                  >
+                    {checkingDiscount ? "Checking..." : "Apply"}
+                  </button>
+                </div>
+                {discountError && <p className="text-red-500 text-xs font-body mt-1">{discountError}</p>}
+                {discountResult && (
+                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded">
+                    <p className="text-green-700 text-sm font-body font-bold">{discountResult.code} applied!</p>
+                    <p className="text-green-600 text-xs font-body">{discountResult.description || `Saves $${(discountResult.discountAmount / 100).toFixed(0)}`}</p>
+                  </div>
+                )}
+              </div>
+
               {error && <p className="text-red-600 text-sm font-body mt-4 text-center">{error}</p>}
               <p className="text-navy/40 text-xs font-body mt-4 text-center">
                 A $50 deposit may be required for select color/styling services. 25% cancellation fee applies for no-shows or cancellations within 24 hours.

@@ -142,3 +142,14 @@ h1, h2, h3, h4, h5, h6 {
   scrollbar-width: thin;
   scrollbar-color: var(--color-gold) transparent;
 }
+
+/* ── Print styles for admin ── */
+@media print {
+  aside, .lg\:hidden, [aria-label="Toggle admin menu"],
+  button, select, input, .animate-pulse { display: none !important; }
+  .pt-14 { padding-top: 0 !important; }
+  body { background: white !important; }
+  .bg-cream { background: white !important; }
+  .bg-white { box-shadow: none !important; }
+  .border { border-color: #ddd !important; }
+}

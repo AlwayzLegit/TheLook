@@ -13,6 +13,14 @@ const navLinks = [
   { href: "/contact", label: "Contact" },
 ];
 
+const serviceSubLinks = [
+  { href: "/services/haircuts", label: "Haircuts" },
+  { href: "/services/color", label: "Color & Highlights" },
+  { href: "/services/styling", label: "Styling" },
+  { href: "/services/treatments", label: "Treatments" },
+  { href: "/services/perms-and-more", label: "Perms & More" },
+];
+
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -111,23 +119,68 @@ export default function Navbar() {
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center">
               <div className="flex items-center gap-1">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`relative px-5 py-2 text-[11px] tracking-[0.25em] uppercase font-body transition-colors duration-300 ${
-                      isActive(link.href)
-                        ? "text-gold"
-                        : "text-white/70 hover:text-gold"
-                    }`}
-                  >
-                    {link.label}
-                    {/* Active indicator */}
-                    {isActive(link.href) && (
-                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[1px] bg-gold" />
-                    )}
-                  </Link>
-                ))}
+                {navLinks.map((link) =>
+                  link.href === "/services" ? (
+                    <div key={link.href} className="relative group/services">
+                      <Link
+                        href={link.href}
+                        className={`relative px-5 py-2 text-[11px] tracking-[0.25em] uppercase font-body transition-colors duration-300 flex items-center gap-1 ${
+                          isActive(link.href)
+                            ? "text-gold"
+                            : "text-white/70 hover:text-gold"
+                        }`}
+                      >
+                        {link.label}
+                        <svg className="w-3 h-3 opacity-50 transition-transform duration-200 group-hover/services:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                        {isActive(link.href) && (
+                          <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[1px] bg-gold" />
+                        )}
+                      </Link>
+                      {/* Dropdown */}
+                      <div className="absolute top-full left-0 pt-2 opacity-0 invisible group-hover/services:opacity-100 group-hover/services:visible transition-all duration-200">
+                        <div className="bg-navy/95 backdrop-blur-md border border-white/10 min-w-[200px] py-2 shadow-[0_8px_30px_rgba(0,0,0,0.3)]">
+                          <Link
+                            href="/services"
+                            className="block px-5 py-2.5 text-[10px] tracking-[0.2em] uppercase font-body text-gold/70 hover:text-gold hover:bg-white/5 transition-colors duration-200"
+                          >
+                            All Services
+                          </Link>
+                          <div className="h-[1px] bg-white/8 mx-4 my-1" />
+                          {serviceSubLinks.map((sub) => (
+                            <Link
+                              key={sub.href}
+                              href={sub.href}
+                              className={`block px-5 py-2.5 text-[10px] tracking-[0.15em] uppercase font-body transition-colors duration-200 ${
+                                pathname === sub.href
+                                  ? "text-gold"
+                                  : "text-white/60 hover:text-gold hover:bg-white/5"
+                              }`}
+                            >
+                              {sub.label}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`relative px-5 py-2 text-[11px] tracking-[0.25em] uppercase font-body transition-colors duration-300 ${
+                        isActive(link.href)
+                          ? "text-gold"
+                          : "text-white/70 hover:text-gold"
+                      }`}
+                    >
+                      {link.label}
+                      {isActive(link.href) && (
+                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[1px] bg-gold" />
+                      )}
+                    </Link>
+                  ),
+                )}
               </div>
               <div className="ml-8 pl-8 border-l border-white/10">
                 <Link
@@ -186,21 +239,45 @@ export default function Navbar() {
             style={{ height: "100vh" }}
           >
             {navLinks.map((link, i) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={handleLinkClick}
-                className={`text-lg tracking-[0.3em] uppercase font-body transition-colors ${
-                  isActive(link.href) ? "text-gold" : "text-white hover:text-gold"
-                }`}
-                style={{
-                  opacity: 0,
-                  transform: "translateY(10px)",
-                  animation: `fadeSlideIn 0.3s ease forwards ${0.1 + i * 0.05}s`,
-                }}
-              >
-                {link.label}
-              </Link>
+              <div key={link.href} className="flex flex-col items-center">
+                <Link
+                  href={link.href}
+                  onClick={handleLinkClick}
+                  className={`text-lg tracking-[0.3em] uppercase font-body transition-colors ${
+                    isActive(link.href) ? "text-gold" : "text-white hover:text-gold"
+                  }`}
+                  style={{
+                    opacity: 0,
+                    transform: "translateY(10px)",
+                    animation: `fadeSlideIn 0.3s ease forwards ${0.1 + i * 0.05}s`,
+                  }}
+                >
+                  {link.label}
+                </Link>
+                {link.href === "/services" && (
+                  <div
+                    className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2"
+                    style={{
+                      opacity: 0,
+                      transform: "translateY(10px)",
+                      animation: `fadeSlideIn 0.3s ease forwards ${0.15 + i * 0.05}s`,
+                    }}
+                  >
+                    {serviceSubLinks.map((sub) => (
+                      <Link
+                        key={sub.href}
+                        href={sub.href}
+                        onClick={handleLinkClick}
+                        className={`text-xs tracking-[0.15em] uppercase font-body transition-colors ${
+                          pathname === sub.href ? "text-gold/80" : "text-white/40 hover:text-gold/70"
+                        }`}
+                      >
+                        {sub.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
 
             <div

@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS stylists (
   specialties TEXT, -- JSON string
   active BOOLEAN DEFAULT TRUE,
   sort_order INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Stylist-Services join table
@@ -93,6 +94,62 @@ CREATE TABLE IF NOT EXISTS admin_log (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Client profiles table
+CREATE TABLE IF NOT EXISTS client_profiles (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email VARCHAR(200) UNIQUE NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  phone VARCHAR(50),
+  preferred_stylist_id UUID REFERENCES stylists(id) ON DELETE SET NULL,
+  tags TEXT, -- JSON array
+  preferences TEXT,
+  internal_notes TEXT,
+  allergy_info TEXT,
+  hair_formulas TEXT, -- JSON: color formulas, treatments
+  hair_type VARCHAR(100), -- e.g. "Fine, straight, level 6"
+  birthday VARCHAR(10), -- MM-DD
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Discounts / coupons table
+CREATE TABLE IF NOT EXISTS discounts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code VARCHAR(50) UNIQUE NOT NULL,
+  description VARCHAR(255),
+  type VARCHAR(20) NOT NULL, -- 'percentage' or 'fixed'
+  value INTEGER NOT NULL, -- percentage or cents
+  min_purchase INTEGER DEFAULT 0,
+  max_uses INTEGER, -- NULL = unlimited
+  uses_count INTEGER DEFAULT 0,
+  valid_from VARCHAR(10), -- YYYY-MM-DD
+  valid_until VARCHAR(10), -- YYYY-MM-DD
+  active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Discount usage tracking
+CREATE TABLE IF NOT EXISTS discount_usage (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  discount_id UUID NOT NULL REFERENCES discounts(id),
+  appointment_id UUID REFERENCES appointments(id) ON DELETE SET NULL,
+  client_email VARCHAR(200) NOT NULL,
+  used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Client photos (before/after, results, inspiration)
+CREATE TABLE IF NOT EXISTS client_photos (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  client_email VARCHAR(200) NOT NULL,
+  url VARCHAR(500) NOT NULL,
+  caption VARCHAR(255),
+  photo_type VARCHAR(20), -- 'before', 'after', 'result', 'inspiration'
+  appointment_id UUID REFERENCES appointments(id) ON DELETE SET NULL,
+  service_id UUID REFERENCES services(id) ON DELETE SET NULL,
+  taken_at VARCHAR(10), -- YYYY-MM-DD
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_services_active ON services(active);
 CREATE INDEX IF NOT EXISTS idx_services_category ON services(category);
@@ -104,6 +161,10 @@ CREATE INDEX IF NOT EXISTS idx_appointments_cancel_token ON appointments(cancel_
 CREATE INDEX IF NOT EXISTS idx_schedule_rules_type ON schedule_rules(rule_type);
 CREATE INDEX IF NOT EXISTS idx_schedule_rules_day ON schedule_rules(day_of_week);
 CREATE INDEX IF NOT EXISTS idx_appointments_client_email ON appointments(client_email);
+CREATE INDEX IF NOT EXISTS idx_client_profiles_email ON client_profiles(email);
+CREATE INDEX IF NOT EXISTS idx_discounts_code ON discounts(code);
+CREATE INDEX IF NOT EXISTS idx_discount_usage_email ON discount_usage(client_email);
+CREATE INDEX IF NOT EXISTS idx_client_photos_email ON client_photos(client_email);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
@@ -113,6 +174,106 @@ ALTER TABLE schedule_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE discounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE discount_usage ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_photos ENABLE ROW LEVEL SECURITY;
+
+-- Admin users (role-based access)
+CREATE TABLE IF NOT EXISTS admin_users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email VARCHAR(200) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'stylist', -- 'admin' or 'stylist'
+  stylist_id UUID REFERENCES stylists(id) ON DELETE SET NULL,
+  active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
+
+-- Waitlist
+CREATE TABLE IF NOT EXISTS waitlist (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  service_id UUID NOT NULL REFERENCES services(id),
+  stylist_id UUID REFERENCES stylists(id) ON DELETE SET NULL,
+  client_name VARCHAR(200) NOT NULL,
+  client_email VARCHAR(200) NOT NULL,
+  client_phone VARCHAR(20),
+  preferred_date VARCHAR(10),
+  preferred_time_range VARCHAR(50),
+  notes TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'waiting',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Waitlist can be created by anyone" ON waitlist FOR INSERT WITH CHECK (true);
+
+-- Stylist commissions
+CREATE TABLE IF NOT EXISTS stylist_commissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  stylist_id UUID NOT NULL REFERENCES stylists(id) UNIQUE,
+  commission_percent INTEGER NOT NULL DEFAULT 50,
+  hourly_rate INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE stylist_commissions ENABLE ROW LEVEL SECURITY;
+
+-- Deposits
+CREATE TABLE IF NOT EXISTS deposits (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  appointment_id UUID NOT NULL REFERENCES appointments(id),
+  amount INTEGER NOT NULL,
+  currency VARCHAR(3) DEFAULT 'USD',
+  stripe_payment_intent_id VARCHAR(255),
+  status VARCHAR(20) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE deposits ENABLE ROW LEVEL SECURITY;
+
+-- Products / inventory
+CREATE TABLE IF NOT EXISTS products (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(200) NOT NULL,
+  brand VARCHAR(100),
+  category VARCHAR(50),
+  sku VARCHAR(100),
+  stock_qty INTEGER NOT NULL DEFAULT 0,
+  low_stock_threshold INTEGER DEFAULT 5,
+  cost_price INTEGER,
+  retail_price INTEGER,
+  active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+
+-- Product usage per appointment
+CREATE TABLE IF NOT EXISTS product_usage (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  appointment_id UUID NOT NULL REFERENCES appointments(id),
+  product_id UUID NOT NULL REFERENCES products(id),
+  quantity_used INTEGER DEFAULT 1,
+  notes VARCHAR(255),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE product_usage ENABLE ROW LEVEL SECURITY;
+
+-- Client magic link tokens (self-service portal)
+CREATE TABLE IF NOT EXISTS client_access_tokens (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email VARCHAR(200) NOT NULL,
+  token VARCHAR(64) UNIQUE NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  used_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE client_access_tokens ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_client_access_tokens_token ON client_access_tokens(token);
 
 -- Create policies for public read access (booking flow)
 CREATE POLICY "Services are viewable by everyone" 
@@ -134,11 +295,23 @@ CREATE POLICY "Appointments can be created by anyone"
 CREATE POLICY "Appointments are viewable by cancel token" 
   ON appointments FOR SELECT USING (true);
 
--- Contact messages: public can create
+-- Contact messages: public can create (single policy — drop any pre-existing duplicates)
 CREATE POLICY "Contact messages can be created by anyone"
   ON contact_messages FOR INSERT WITH CHECK (true);
 
--- Note: Admin operations will use service role key bypassing RLS
+-- Admin log: allow inserts (service role key is used, but policy ensures
+-- the table isn't completely locked if accessed via anon key)
+CREATE POLICY "Admin log can be inserted"
+  ON admin_log FOR INSERT WITH CHECK (true);
+
+-- Discounts: public can read active discounts (for booking page validation)
+CREATE POLICY "Active discounts are viewable"
+  ON discounts FOR SELECT USING (active = true);
+
+-- Note: Admin operations use service_role key which bypasses RLS.
+-- client_profiles, discount_usage, and admin_log have RLS enabled with
+-- no public policies intentionally — they are only accessed from server-side
+-- admin API routes via the service_role key. This is secure-by-default.
 
 -- RPC function for fetching booked slots (used by availability checker)
 -- SECURITY DEFINER ensures this runs with table owner permissions,

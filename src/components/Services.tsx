@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
+import { getSlugForCategory } from "@/lib/service-categories";
 
 interface ApiService {
   id: string;
@@ -143,14 +144,20 @@ export default function Services() {
             {categories.map((category, catIndex) => (
             <AnimatedSection key={category} delay={catIndex * 0.1}>
               <div>
-                <div className="flex items-center gap-3 mb-6 pb-3 border-b border-navy/10">
-                  <span className="text-gold/60">
+                <Link
+                  href={`/services/${getSlugForCategory(category)}`}
+                  className="flex items-center gap-3 mb-6 pb-3 border-b border-navy/10 group"
+                >
+                  <span className="text-gold/60 group-hover:text-gold transition-colors duration-300">
                     {CATEGORY_ICON[category] || CATEGORY_ICON.Styling}
                   </span>
-                  <h3 className="font-heading text-2xl">
+                  <h3 className="font-heading text-2xl group-hover:text-rose transition-colors duration-300">
                     {category}
                   </h3>
-                </div>
+                  <svg className="w-4 h-4 text-navy/30 group-hover:text-rose group-hover:translate-x-1 transition-all duration-300 ml-auto shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
                 <div className="space-y-4">
                   {(servicesByCategory[category] || []).map((item) => {
                     const image = item.image_url?.trim() || null;
