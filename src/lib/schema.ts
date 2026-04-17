@@ -92,13 +92,88 @@ export const adminUsers = pgTable("admin_users", {
   email: varchar("email", { length: 200 }).unique().notNull(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   name: varchar("name", { length: 200 }).notNull(),
-  role: varchar("role", { length: 20 }).notNull().default("stylist"), // "admin" or "stylist"
+  role: varchar("role", { length: 20 }).notNull().default("stylist"),
   stylistId: uuid("stylist_id").references(() => stylists.id),
   active: boolean("active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_admin_users_email").on(table.email),
+]);
+
+// Waitlist: clients waiting for a cancellation
+export const waitlist = pgTable("waitlist", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  serviceId: uuid("service_id").notNull().references(() => services.id),
+  stylistId: uuid("stylist_id").references(() => stylists.id),
+  clientName: varchar("client_name", { length: 200 }).notNull(),
+  clientEmail: varchar("client_email", { length: 200 }).notNull(),
+  clientPhone: varchar("client_phone", { length: 20 }),
+  preferredDate: varchar("preferred_date", { length: 10 }),
+  preferredTimeRange: varchar("preferred_time_range", { length: 50 }), // "morning", "afternoon", "evening"
+  notes: text("notes"),
+  status: varchar("status", { length: 20 }).notNull().default("waiting"), // "waiting", "notified", "booked", "expired"
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Stylist commission config
+export const stylistCommissions = pgTable("stylist_commissions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  stylistId: uuid("stylist_id").notNull().references(() => stylists.id).unique(),
+  commissionPercent: integer("commission_percent").notNull().default(50), // e.g. 50 = 50%
+  hourlyRate: integer("hourly_rate"), // in cents per hour, optional
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Deposits / payments
+export const deposits = pgTable("deposits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  appointmentId: uuid("appointment_id").notNull().references(() => appointments.id),
+  amount: integer("amount").notNull(), // in cents
+  currency: varchar("currency", { length: 3 }).default("USD"),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  status: varchar("status", { length: 20 }).notNull(), // "pending", "succeeded", "refunded", "failed"
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Inventory / products
+export const products = pgTable("products", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 200 }).notNull(),
+  brand: varchar("brand", { length: 100 }),
+  category: varchar("category", { length: 50 }), // "color", "treatment", "styling", "retail"
+  sku: varchar("sku", { length: 100 }),
+  stockQty: integer("stock_qty").notNull().default(0),
+  lowStockThreshold: integer("low_stock_threshold").default(5),
+  costPrice: integer("cost_price"), // wholesale cost in cents
+  retailPrice: integer("retail_price"), // selling price if sold retail
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Product usage per appointment (optional tracking)
+export const productUsage = pgTable("product_usage", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  appointmentId: uuid("appointment_id").notNull().references(() => appointments.id),
+  productId: uuid("product_id").notNull().references(() => products.id),
+  quantityUsed: integer("quantity_used").default(1),
+  notes: varchar("notes", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Client magic link tokens (for self-service portal)
+export const clientAccessTokens = pgTable("client_access_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: varchar("email", { length: 200 }).notNull(),
+  token: varchar("token", { length: 64 }).unique().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_client_access_tokens_token").on(table.token),
 ]);
 
 export const clientProfiles = pgTable("client_profiles", {

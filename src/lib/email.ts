@@ -59,7 +59,7 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
           <p style="color: #666; font-size: 13px; margin: 0;">919 South Central Ave Suite #E, Glendale, CA 91204</p>
           <p style="color: #666; font-size: 13px; margin: 4px 0;">(818) 662-5665</p>
         </div>
-        ${cancelUrl ? `<div style="margin-top: 20px; text-align: center;"><a href="${cancelUrl}" style="color: #c2274b; font-size: 13px;">Need to cancel? Click here</a></div>` : ""}
+        ${cancelUrl ? `<div style="margin-top: 20px; text-align: center;"><a href="${cancelUrl}" style="color: #c2274b; font-size: 13px;">Cancel</a> &nbsp;·&nbsp; <a href="${cancelUrl.replace("/book/cancel", "/book/reschedule")}" style="color: #c2274b; font-size: 13px;">Reschedule</a></div>` : ""}
       </div>
       <p style="text-align: center; color: #999; font-size: 11px; margin-top: 20px;">
         Please note: A $50 deposit may be required for select color/styling services. 25% cancellation fee applies for no-shows or cancellations within 24 hours.

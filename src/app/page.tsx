@@ -10,6 +10,7 @@ import YelpReviews from "@/components/YelpReviews";
 import InstagramFeed from "@/components/InstagramFeed";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
+import AvailabilityWidget from "@/components/AvailabilityWidget";
 
 export default function Home() {
   return (
@@ -28,6 +29,7 @@ export default function Home() {
       </main>
       <Footer />
       <MobileBookButton />
+      <AvailabilityWidget />
     </>
   );
 }
