@@ -6,7 +6,14 @@ import { usePathname } from "next/navigation";
 import { SessionProvider, useSession } from "next-auth/react";
 import KeyboardShortcuts from "@/components/admin/KeyboardShortcuts";
 
-const navItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  adminOnly: boolean;
+  stylistOnly?: boolean;
+};
+
+const navItems: NavItem[] = [
   { href: "/admin", label: "Dashboard", adminOnly: false },
   { href: "/admin/appointments", label: "Appointments", adminOnly: false },
   { href: "/admin/waitlist", label: "Waitlist", adminOnly: false },
@@ -19,6 +26,7 @@ const navItems = [
   { href: "/admin/products", label: "Inventory", adminOnly: true },
   { href: "/admin/discounts", label: "Discounts", adminOnly: true },
   { href: "/admin/schedule", label: "Schedule", adminOnly: false },
+  { href: "/admin/my-profile", label: "My Profile", adminOnly: false, stylistOnly: true },
   { href: "/admin/users", label: "Users", adminOnly: true },
   { href: "/admin/activity", label: "Activity Log", adminOnly: true },
 ];
@@ -60,7 +68,10 @@ function AdminSidebar() {
 
   if (pathname === "/admin/login") return null;
 
-  const visibleNavItems = navItems.filter((item) => !item.adminOnly || userRole === "admin");
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.stylistOnly) return userRole === "stylist";
+    return !item.adminOnly || userRole === "admin";
+  });
 
   const getBadge = (href: string) => {
     if (href === "/admin/appointments" && badges.pending > 0) return badges.pending;

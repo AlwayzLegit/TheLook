@@ -1,5 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
+import { getSessionUser, isAdmin } from "@/lib/roles";
 import { adminStylistSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
@@ -29,6 +30,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  if (!isAdmin(await getSessionUser())) return apiError("Admin access required.", 403);
 
   const body = await request.json();
   const parsed = adminStylistSchema.safeParse(body);

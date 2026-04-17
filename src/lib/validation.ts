@@ -41,6 +41,15 @@ export const adminStylistSchema = z.object({
   sort_order: z.number().int().min(0).max(10_000).optional(),
 });
 
+// Self-service schema for stylists editing their own profile.
+// Excludes `active` and `sort_order` — those remain admin-only.
+export const stylistSelfProfileSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  bio: z.string().max(2000).nullable().optional(),
+  image_url: z.string().max(500).nullable().optional(),
+  specialties: z.union([z.array(z.string()), z.string()]).optional(),
+});
+
 export const adminScheduleSchema = z.object({
   stylistId: z.string().uuid().optional().nullable(),
   ruleType: z.string().trim().min(1).max(20),
