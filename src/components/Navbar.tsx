@@ -8,7 +8,9 @@ import { usePathname } from "next/navigation";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
+  { href: "/stylists", label: "Our Team" },
   { href: "/gallery", label: "Gallery" },
+  { href: "/shop", label: "Shop" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
@@ -182,7 +184,14 @@ export default function Navbar() {
                   ),
                 )}
               </div>
-              <div className="ml-8 pl-8 border-l border-white/10">
+              <div className="ml-8 pl-8 border-l border-white/10 flex items-center gap-4">
+                <Link
+                  href="/my/login"
+                  className="text-[11px] tracking-[0.2em] uppercase font-body text-white/60 hover:text-white transition-colors"
+                  aria-label="My Account"
+                >
+                  My Account
+                </Link>
                 <Link
                   href="/book"
                   className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-7 py-3 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)] hover:-translate-y-0.5"
@@ -287,6 +296,18 @@ export default function Navbar() {
                 animation: `fadeSlideIn 0.3s ease forwards ${0.1 + navLinks.length * 0.05}s`,
               }}
             />
+
+            <Link
+              href="/my/login"
+              onClick={handleLinkClick}
+              className="text-[12px] tracking-[0.2em] uppercase text-white/50 hover:text-white transition-colors font-body"
+              style={{
+                opacity: 0,
+                animation: `fadeSlideIn 0.3s ease forwards ${0.12 + navLinks.length * 0.05}s`,
+              }}
+            >
+              My Account
+            </Link>
 
             <Link
               href="/book"

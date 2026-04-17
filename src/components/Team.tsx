@@ -1,33 +1,66 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import AnimatedSection from "./AnimatedSection";
 
-const team = [
+interface TeamMember {
+  id: string;
+  name: string;
+  slug: string;
+  bio: string | null;
+  image_url: string | null;
+  specialties: string[];
+}
+
+// Fallback used while API loads or if DB not configured
+const FALLBACK: TeamMember[] = [
   {
-    name: "Armen P.",
-    role: "Stylist \u00B7 17+ Years",
+    id: "armen-p", slug: "armen-p", name: "Armen P.",
     bio: "Trained in Moscow. World-class expertise in coloring, cutting & styling. Specialist in barber fades for men & women.",
-    initials: "AP",
+    image_url: null,
     specialties: ["Coloring", "Barber Fades", "Cutting"],
   },
   {
-    name: "Kristina G.",
-    role: "Stylist \u00B7 15 Years",
+    id: "kristina-g", slug: "kristina-g", name: "Kristina G.",
     bio: "Trained in Armenia. 15 years of expertise in cutting & coloring for both men's & women's hair.",
-    initials: "KG",
+    image_url: null,
     specialties: ["Cutting", "Coloring", "Men & Women"],
   },
   {
-    name: "Alisa (Liz) H.",
-    role: "Stylist \u00B7 30+ Years",
+    id: "alisa-h", slug: "alisa-h", name: "Alisa (Liz) H.",
     bio: "Over 30 years in the industry. Specializes in cutting & coloring. A true veteran of the craft.",
-    initials: "LH",
+    image_url: null,
     specialties: ["Cutting", "Coloring", "30+ Years"],
   },
 ];
 
+function getInitials(name: string): string {
+  return name.split(/[\s()]+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+}
+
 export default function Team() {
+  const [team, setTeam] = useState<TeamMember[]>(FALLBACK);
+
+  useEffect(() => {
+    fetch("/api/stylists")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setTeam(data.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            slug: s.slug,
+            bio: s.bio,
+            image_url: s.image_url,
+            specialties: Array.isArray(s.specialties) ? s.specialties : [],
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <section id="team" className="py-28 md:py-36 bg-cream">
       <div className="max-w-7xl mx-auto px-8 lg:px-12">
@@ -40,28 +73,33 @@ export default function Team() {
             <span className="w-8 h-[1px] bg-gold" />
           </div>
           <h2 className="font-heading text-4xl md:text-5xl">Our Team</h2>
+          <p className="text-navy/50 font-body text-sm mt-3">
+            Click any stylist to see their full portfolio and book with them directly.
+          </p>
         </AnimatedSection>
 
         <div className="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto">
           {team.map((member, index) => (
-            <AnimatedSection key={member.name} delay={index * 0.15}>
-              <div className="group text-center">
-                <div className="w-32 h-32 mx-auto mb-8 rounded-full bg-navy/8 flex items-center justify-center">
-                  <span className="font-heading text-3xl text-navy/30">
-                    {member.initials}
-                  </span>
+            <AnimatedSection key={member.id} delay={index * 0.15}>
+              <Link href={`/stylists/${member.slug}`} className="group text-center block">
+                <div className="w-32 h-32 mx-auto mb-8 rounded-full bg-navy/8 flex items-center justify-center overflow-hidden group-hover:ring-2 group-hover:ring-gold/40 transition-all">
+                  {member.image_url ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={member.image_url} alt={member.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="font-heading text-3xl text-navy/30">{getInitials(member.name)}</span>
+                  )}
                 </div>
 
-                <h3 className="font-heading text-xl mb-1">{member.name}</h3>
-                <p className="text-rose text-[11px] tracking-[0.15em] uppercase font-body mb-4">
-                  {member.role}
-                </p>
-                <p className="text-navy/60 text-sm font-body font-light leading-relaxed mb-5 max-w-xs mx-auto">
-                  {member.bio}
-                </p>
+                <h3 className="font-heading text-xl mb-1 group-hover:text-rose transition-colors">{member.name}</h3>
+                {member.bio && (
+                  <p className="text-navy/60 text-sm font-body font-light leading-relaxed mb-5 max-w-xs mx-auto line-clamp-3">
+                    {member.bio}
+                  </p>
+                )}
 
                 <div className="flex flex-wrap justify-center gap-2">
-                  {member.specialties.map((s) => (
+                  {member.specialties.slice(0, 3).map((s) => (
                     <span
                       key={s}
                       className="text-[10px] font-body text-navy/50 tracking-[0.1em] uppercase border border-navy/10 px-3 py-1"
@@ -70,12 +108,22 @@ export default function Team() {
                     </span>
                   ))}
                 </div>
-              </div>
+
+                <p className="text-[10px] font-body text-rose uppercase tracking-[0.2em] mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  View Portfolio &rarr;
+                </p>
+              </Link>
             </AnimatedSection>
           ))}
         </div>
 
-        <AnimatedSection className="text-center mt-14">
+        <AnimatedSection className="text-center mt-14 flex flex-wrap justify-center gap-4">
+          <Link
+            href="/stylists"
+            className="inline-block border border-navy/30 hover:border-navy text-navy text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300"
+          >
+            All Stylists
+          </Link>
           <Link
             href="/book"
             className="inline-block bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)]"
