@@ -6,7 +6,8 @@ import { motion } from "framer-motion";
 interface Props {
   result: {
     id?: string;
-    service: string;
+    service?: string;
+    services?: { id: string; name: string }[];
     stylist: string;
     date: string;
     startTime: string;
@@ -115,9 +116,21 @@ export default function BookingConfirmation({ result }: Props) {
         transition={{ delay: 0.6, duration: 0.5 }}
         className="bg-white border border-navy/10 p-8 text-left space-y-4 shadow-sm"
       >
-        <div className="flex justify-between">
-          <span className="text-navy/50 text-sm font-body">Service</span>
-          <span className="font-body font-bold text-sm">{result.service}</span>
+        <div>
+          <p className="text-navy/50 text-sm font-body mb-2">
+            {result.services && result.services.length > 1 ? "Services" : "Service"}
+          </p>
+          {result.services && result.services.length > 0 ? (
+            <ul className="space-y-1">
+              {result.services.map((s) => (
+                <li key={s.id} className="font-body font-bold text-sm text-right">
+                  {s.name}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="font-body font-bold text-sm text-right">{result.service}</p>
+          )}
         </div>
         <div className="flex justify-between">
           <span className="text-navy/50 text-sm font-body">Stylist</span>

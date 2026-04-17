@@ -85,12 +85,21 @@ export default function AdminDashboard() {
   const serviceMap = Object.fromEntries(services.map((s) => [s.id, s]));
   const stylistMap = Object.fromEntries(stylists.map((s) => [s.id, s]));
 
-  const enrichedAppts: EnrichedAppointment[] = realtimeAppts.map((a) => ({
-    ...a,
-    serviceName: serviceMap[a.service_id]?.name || "Unknown Service",
-    stylistName: stylistMap[a.stylist_id]?.name || "Unknown Stylist",
-    priceMin: serviceMap[a.service_id]?.price_min || 0,
-  }));
+  const enrichedAppts: EnrichedAppointment[] = realtimeAppts.map((a) => {
+    // Multi-service revenue: sum priceMin across all services on the appointment.
+    const ids = (a.serviceIds && a.serviceIds.length > 0)
+      ? a.serviceIds
+      : a.service_id
+        ? [a.service_id]
+        : [];
+    const priceMin = ids.reduce((sum, id) => sum + (serviceMap[id]?.price_min || 0), 0);
+    return {
+      ...a,
+      serviceName: a.serviceName || serviceMap[a.service_id]?.name || "Unknown Service",
+      stylistName: a.stylistName || stylistMap[a.stylist_id]?.name || "Unknown Stylist",
+      priceMin,
+    };
+  });
 
   const today = new Date().toISOString().split("T")[0];
 

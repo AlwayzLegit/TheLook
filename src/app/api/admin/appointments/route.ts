@@ -37,18 +37,40 @@ export async function GET(request: NextRequest) {
 
   const { data: allServices } = await supabase.from("services").select("*");
   const { data: allStylists } = await supabase.from("stylists").select("*");
+  const apptIds = (rows || []).map((a: { id: string }) => a.id);
+  const { data: mappings } = apptIds.length > 0
+    ? await supabase
+        .from("appointment_services")
+        .select("appointment_id, service_id, sort_order")
+        .in("appointment_id", apptIds)
+        .order("sort_order", { ascending: true })
+    : { data: [] };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const serviceMap = Object.fromEntries((allServices || []).map((s: any) => [s.id, s]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stylistMap = Object.fromEntries((allStylists || []).map((s: any) => [s.id, s]));
 
+  // Group mappings by appointment_id
+  const servicesByAppt = new Map<string, string[]>();
+  for (const m of mappings || []) {
+    const list = servicesByAppt.get(m.appointment_id) || [];
+    list.push(m.service_id);
+    servicesByAppt.set(m.appointment_id, list);
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const enriched = (rows || []).map((a: any) => ({
-    ...a,
-    serviceName: serviceMap[a.service_id]?.name,
-    stylistName: stylistMap[a.stylist_id]?.name,
-  }));
+  const enriched = (rows || []).map((a: any) => {
+    const ids = servicesByAppt.get(a.id) || (a.service_id ? [a.service_id] : []);
+    const serviceNames = ids.map((id) => serviceMap[id]?.name).filter(Boolean);
+    return {
+      ...a,
+      serviceIds: ids,
+      serviceName: serviceNames.join(", ") || serviceMap[a.service_id]?.name,
+      serviceNames,
+      stylistName: stylistMap[a.stylist_id]?.name,
+    };
+  });
 
   return apiSuccess(enriched);
 }

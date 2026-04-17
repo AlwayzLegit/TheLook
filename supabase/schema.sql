@@ -78,6 +78,25 @@ CREATE TABLE IF NOT EXISTS appointments (
 -- For existing databases, run:
 --   ALTER TABLE appointments ADD COLUMN IF NOT EXISTS review_request_sent_at TIMESTAMP WITH TIME ZONE;
 
+-- Multi-service bookings: one appointment can cover several services in
+-- a single session with the same stylist. The first service is also kept
+-- on appointments.service_id as the "primary" for backwards compatibility.
+CREATE TABLE IF NOT EXISTS appointment_services (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  appointment_id UUID NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
+  service_id UUID NOT NULL REFERENCES services(id),
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_appointment_services_appointment ON appointment_services(appointment_id);
+
+-- Backfill: for existing appointments, mirror their primary service_id
+-- into appointment_services so multi-service reads work uniformly.
+INSERT INTO appointment_services (appointment_id, service_id, sort_order)
+SELECT a.id, a.service_id, 0
+FROM appointments a
+LEFT JOIN appointment_services s ON s.appointment_id = a.id
+WHERE s.id IS NULL;
+
 -- Contact messages table
 CREATE TABLE IF NOT EXISTS contact_messages (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

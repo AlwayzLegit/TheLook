@@ -34,20 +34,37 @@ export async function GET(request: NextRequest) {
 
   const { data: allServices } = await supabase.from("services").select("*");
   const { data: allStylists } = await supabase.from("stylists").select("*");
+  const apptIds = (upcoming || []).map((a: { id: string }) => a.id);
+  const { data: mappings } = apptIds.length > 0
+    ? await supabase
+        .from("appointment_services")
+        .select("appointment_id, service_id, sort_order")
+        .in("appointment_id", apptIds)
+        .order("sort_order", { ascending: true })
+    : { data: [] };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const serviceMap = Object.fromEntries((allServices || []).map((s: any) => [s.id, s]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stylistMap = Object.fromEntries((allStylists || []).map((s: any) => [s.id, s]));
+  const apptServicesMap = new Map<string, string[]>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const m of (mappings || []) as any[]) {
+    const arr = apptServicesMap.get(m.appointment_id) || [];
+    arr.push(m.service_id);
+    apptServicesMap.set(m.appointment_id, arr);
+  }
 
   const baseUrl = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
   let sent = 0;
 
   for (const appt of upcoming || []) {
+    const ids = apptServicesMap.get(appt.id) || (appt.service_id ? [appt.service_id] : []);
+    const serviceName = ids.map((id) => serviceMap[id]?.name).filter(Boolean).join(", ") || "Your Service";
     await sendReminderEmail({
       clientName: appt.client_name,
       clientEmail: appt.client_email,
-      serviceName: serviceMap[appt.service_id]?.name || "Your Service",
+      serviceName,
       stylistName: stylistMap[appt.stylist_id]?.name || "Your Stylist",
       date: appt.date,
       startTime: appt.start_time,

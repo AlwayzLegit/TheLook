@@ -48,14 +48,25 @@ export async function PATCH(
 
   logAdminAction("appointment.update", JSON.stringify(payload), id);
 
-  // Send email notification on status change
+  // Send email notification on status change — list all services (multi-service safe).
   if (payload.status && data) {
-    const { data: service } = await supabase.from("services").select("name").eq("id", data.service_id).single();
+    const { data: mappings } = await supabase
+      .from("appointment_services")
+      .select("service_id, sort_order")
+      .eq("appointment_id", id)
+      .order("sort_order", { ascending: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ids = (mappings || []).map((m: any) => m.service_id);
+    const lookupIds = ids.length > 0 ? ids : [data.service_id];
+    const { data: services } = await supabase.from("services").select("id, name").in("id", lookupIds);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const byId = Object.fromEntries((services || []).map((s: any) => [s.id, s.name]));
+    const serviceName = lookupIds.map((sid: string) => byId[sid]).filter(Boolean).join(", ") || "Your Service";
     const { data: stylist } = await supabase.from("stylists").select("name").eq("id", data.stylist_id).single();
     sendStatusChangeEmail({
       clientName: data.client_name,
       clientEmail: data.client_email,
-      serviceName: service?.name || "Your Service",
+      serviceName,
       stylistName: stylist?.name || "Your Stylist",
       date: data.date,
       startTime: data.start_time,

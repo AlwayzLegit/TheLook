@@ -56,7 +56,8 @@ interface Stylist {
 }
 
 interface BookingResult {
-  service: string;
+  service?: string;
+  services?: { id: string; name: string }[];
   stylist: string;
   date: string;
   startTime: string;
@@ -68,7 +69,7 @@ export default function BookPage() {
   const [step, setStep] = useState(0);
   const [services, setServices] = useState<Record<string, Service[]>>({});
   const [allStylists, setAllStylists] = useState<Stylist[]>([]);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedStylist, setSelectedStylist] = useState<Stylist | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -82,15 +83,33 @@ export default function BookPage() {
   const [discountError, setDiscountError] = useState("");
   const [checkingDiscount, setCheckingDiscount] = useState(false);
 
+  const totalPriceMin = selectedServices.reduce((sum, s) => sum + (s.priceMin || 0), 0);
+  const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration || 0), 0);
+  const anyPricePlus = selectedServices.some((s) => s.priceText.includes("+"));
+
+  const toggleService = (service: Service) => {
+    setSelectedServices((prev) => {
+      const exists = prev.find((s) => s.id === service.id);
+      if (exists) return prev.filter((s) => s.id !== service.id);
+      return [...prev, service];
+    });
+    // Changing services invalidates downstream selection
+    setSelectedStylist(null);
+    setSelectedDate(null);
+    setSelectedTime(null);
+    setDiscountResult(null);
+    setDiscountError("");
+  };
+
   const applyDiscount = async () => {
-    if (!discountCode.trim() || !selectedService) return;
+    if (!discountCode.trim() || selectedServices.length === 0) return;
     setCheckingDiscount(true);
     setDiscountError("");
     try {
       const res = await fetch("/api/discounts/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: discountCode, servicePrice: selectedService.priceMin || 0 }),
+        body: JSON.stringify({ code: discountCode, servicePrice: totalPriceMin }),
       });
       const data = await res.json();
       if (res.ok && data.valid) {
@@ -187,7 +206,7 @@ export default function BookPage() {
 
   const canProceed = () => {
     switch (step) {
-      case 0: return !!selectedService;
+      case 0: return selectedServices.length > 0;
       case 1: return !!selectedStylist;
       case 2: return !!selectedDate && !!selectedTime;
       case 3: return !!clientInfo.name && !!clientInfo.email && (!turnstileSiteKey || !!turnstileToken);
@@ -196,7 +215,7 @@ export default function BookPage() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedService || !selectedStylist || !selectedDate || !selectedTime) return;
+    if (selectedServices.length === 0 || !selectedStylist || !selectedDate || !selectedTime) return;
     setSubmitting(true);
     setError(null);
 
@@ -205,7 +224,7 @@ export default function BookPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          serviceId: selectedService.id,
+          serviceIds: selectedServices.map((s) => s.id),
           stylistId: selectedStylist.id,
           date: selectedDate,
           startTime: selectedTime,
@@ -252,6 +271,18 @@ export default function BookPage() {
       weekday: "long", month: "long", day: "numeric",
     });
 
+  const formatDuration = (mins: number) => {
+    if (mins < 60) return `${mins} min`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m === 0 ? `${h} hr` : `${h} hr ${m} min`;
+  };
+
+  const hasPriceMin = selectedServices.length > 0 && selectedServices.every((s) => typeof s.priceMin === "number" && s.priceMin > 0);
+  const combinedPriceText = hasPriceMin
+    ? `$${Math.round(totalPriceMin / 100)}${anyPricePlus ? "+" : ""}`
+    : selectedServices.map((s) => s.priceText).join(" + ");
+
   return (
     <>
       <Navbar />
@@ -259,21 +290,31 @@ export default function BookPage() {
         <div className="max-w-4xl mx-auto px-6">
           {step < 5 && <BookingProgress current={step} />}
 
-          {/* Step 0: Service */}
+          {/* Step 0: Services (multi-select) */}
           {step === 0 && (
-            <ServicePicker services={services} onSelect={(s) => { setSelectedService(s); setStep(1); }} selected={selectedService} />
+            <ServicePicker
+              services={services}
+              selected={selectedServices}
+              onToggle={toggleService}
+              onContinue={() => { if (selectedServices.length > 0) setStep(1); }}
+            />
           )}
 
           {/* Step 1: Stylist */}
-          {step === 1 && selectedService && (
-            <StylistPicker stylists={allStylists} serviceId={selectedService.id} onSelect={(s) => { setSelectedStylist(s); setStep(2); }} selected={selectedStylist} />
+          {step === 1 && selectedServices.length > 0 && (
+            <StylistPicker
+              stylists={allStylists}
+              serviceIds={selectedServices.map((s) => s.id)}
+              onSelect={(s) => { setSelectedStylist(s); setStep(2); }}
+              selected={selectedStylist}
+            />
           )}
 
           {/* Step 2: Date & Time */}
-          {step === 2 && selectedStylist && selectedService && (
+          {step === 2 && selectedStylist && selectedServices.length > 0 && (
             <DateTimePicker
               stylistId={selectedStylist.id}
-              serviceId={selectedService.id}
+              serviceIds={selectedServices.map((s) => s.id)}
               selectedDate={selectedDate}
               selectedTime={selectedTime}
               onSelect={(d, t) => { setSelectedDate(d); setSelectedTime(t); }}
@@ -291,24 +332,33 @@ export default function BookPage() {
           )}
 
           {/* Step 4: Review & Confirm */}
-          {step === 4 && selectedService && selectedStylist && selectedDate && selectedTime && (
+          {step === 4 && selectedServices.length > 0 && selectedStylist && selectedDate && selectedTime && (
             <div className="max-w-lg mx-auto">
               <h2 className="font-heading text-3xl mb-2 text-center">Review &amp; Confirm</h2>
               <p className="text-navy/50 font-body text-sm text-center mb-8">
                 Please review your appointment details
               </p>
               <div className="bg-white border border-navy/10 p-8 space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-navy/50 text-sm font-body">Service</span>
-                  <span className="font-body font-bold text-sm">{selectedService.name}</span>
+                <div>
+                  <p className="text-navy/50 text-sm font-body mb-2">
+                    {selectedServices.length === 1 ? "Service" : "Services"}
+                  </p>
+                  <ul className="space-y-1.5">
+                    {selectedServices.map((s) => (
+                      <li key={s.id} className="flex items-baseline justify-between gap-4">
+                        <span className="font-body text-sm text-navy">{s.name}</span>
+                        <span className="text-gold font-heading text-sm shrink-0">{s.priceText}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="flex justify-between border-t border-navy/5 pt-3">
+                  <span className="text-navy/50 text-sm font-body">Total</span>
+                  <span className="text-gold font-heading">{combinedPriceText}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-navy/50 text-sm font-body">Price</span>
-                  <span className="text-gold font-heading">{selectedService.priceText}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-navy/50 text-sm font-body">Duration</span>
-                  <span className="font-body text-sm">{selectedService.duration} min</span>
+                  <span className="text-navy/50 text-sm font-body">Total duration</span>
+                  <span className="font-body text-sm">{formatDuration(totalDuration)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-navy/50 text-sm font-body">Stylist</span>
@@ -367,19 +417,15 @@ export default function BookPage() {
           {/* Step 5: Success */}
           {step === 5 && result && <BookingConfirmation result={result} />}
 
-          {/* Navigation buttons */}
-          {step < 5 && (
+          {/* Navigation buttons (step 0 uses the sticky bar inside ServicePicker) */}
+          {step > 0 && step < 5 && (
             <div className="flex justify-between max-w-2xl mx-auto mt-10">
-              {step > 0 ? (
-                <button
-                  onClick={() => setStep(step - 1)}
-                  className="border border-navy/20 text-navy/60 hover:text-navy hover:border-navy/40 tracking-widest uppercase text-sm px-8 py-3 transition-colors font-body"
-                >
-                  Back
-                </button>
-              ) : (
-                <div />
-              )}
+              <button
+                onClick={() => setStep(step - 1)}
+                className="border border-navy/20 text-navy/60 hover:text-navy hover:border-navy/40 tracking-widest uppercase text-sm px-8 py-3 transition-colors font-body"
+              >
+                Back
+              </button>
 
               {step < 4 ? (
                 <button

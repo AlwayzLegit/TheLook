@@ -13,22 +13,25 @@ interface Stylist {
 
 interface Props {
   stylists: Stylist[];
-  serviceId: string;
+  // A stylist must offer ALL these services to be bookable for this request.
+  serviceIds: string[];
   onSelect: (stylist: Stylist) => void;
   selected: Stylist | null;
 }
 
-export default function StylistPicker({ stylists, serviceId, onSelect, selected }: Props) {
+export default function StylistPicker({ stylists, serviceIds, onSelect, selected }: Props) {
   return (
     <div>
       <h2 className="font-heading text-3xl mb-2 text-center">Choose Your Stylist</h2>
       <p className="text-navy/50 font-body text-sm text-center mb-8">
-        Select who you&apos;d like to see
+        {serviceIds.length > 1
+          ? `Showing stylists who offer all ${serviceIds.length} selected services`
+          : "Select who you'd like to see"}
       </p>
 
       <div className="grid sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
         {stylists.map((stylist) => {
-          const available = stylist.serviceIds.includes(serviceId);
+          const available = serviceIds.every((id) => stylist.serviceIds.includes(id));
           return (
             <button
               key={stylist.id}
@@ -61,6 +64,11 @@ export default function StylistPicker({ stylists, serviceId, onSelect, selected 
                   </span>
                 ))}
               </div>
+              {!available && (
+                <p className="text-xs text-navy/40 font-body mt-3">
+                  Doesn&apos;t offer all selected services
+                </p>
+              )}
             </button>
           );
         })}

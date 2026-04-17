@@ -9,6 +9,10 @@ interface Appointment {
   client_email: string;
   client_phone: string | null;
   service_id: string;
+  serviceIds?: string[];
+  serviceNames?: string[];
+  serviceName?: string;
+  stylistName?: string;
   stylist_id: string;
   date: string;
   start_time: string;

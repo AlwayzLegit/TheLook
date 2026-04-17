@@ -1,7 +1,9 @@
 import { z } from "zod";
 
 export const appointmentCreateSchema = z.object({
-  serviceId: z.string().uuid(),
+  // Accept either a single serviceId (legacy) or an array serviceIds (multi-service).
+  serviceId: z.string().uuid().optional(),
+  serviceIds: z.array(z.string().uuid()).min(1).max(8).optional(),
   stylistId: z.string().uuid(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
@@ -10,6 +12,9 @@ export const appointmentCreateSchema = z.object({
   clientPhone: z.string().trim().max(50).optional(),
   notes: z.string().trim().max(2000).optional(),
   turnstileToken: z.string().trim().optional(),
+}).refine((d) => !!d.serviceId || (d.serviceIds && d.serviceIds.length > 0), {
+  message: "serviceId or serviceIds is required",
+  path: ["serviceIds"],
 });
 
 export const contactCreateSchema = z.object({

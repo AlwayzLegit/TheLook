@@ -87,14 +87,15 @@ export default function AppointmentsPage() {
 
   if (status !== "authenticated") return null;
 
-  // Enrich appointments
+  // Enrich appointments. The API already returns serviceName / stylistName for
+  // multi-service support; fall back to client-side lookup if missing.
   const serviceMap = Object.fromEntries(services.map((s) => [s.id, s]));
   const stylistMap = Object.fromEntries(stylists.map((s) => [s.id, s]));
 
   const enrichedAppts: EnrichedAppointment[] = realtimeAppts.map((a) => ({
     ...a,
-    serviceName: serviceMap[a.service_id]?.name || "Unknown Service",
-    stylistName: stylistMap[a.stylist_id]?.name || "Unknown Stylist",
+    serviceName: a.serviceName || serviceMap[a.service_id]?.name || "Unknown Service",
+    stylistName: a.stylistName || stylistMap[a.stylist_id]?.name || "Unknown Stylist",
   }));
 
   const applyDatePreset = (preset: "today" | "tomorrow" | "thisWeek" | "clear") => {

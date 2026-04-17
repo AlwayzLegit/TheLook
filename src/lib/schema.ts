@@ -32,6 +32,18 @@ export const stylistServices = pgTable("stylist_services", {
   serviceId: uuid("service_id").notNull().references(() => services.id),
 });
 
+// Many-to-many: a single appointment can cover multiple services booked
+// back-to-back with the same stylist. The primary/first service is still
+// mirrored on appointments.service_id for backwards compatibility.
+export const appointmentServices = pgTable("appointment_services", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  appointmentId: uuid("appointment_id").notNull().references(() => appointments.id, { onDelete: "cascade" }),
+  serviceId: uuid("service_id").notNull().references(() => services.id),
+  sortOrder: integer("sort_order").notNull().default(0),
+}, (table) => [
+  index("idx_appointment_services_appointment").on(table.appointmentId),
+]);
+
 export const scheduleRules = pgTable("schedule_rules", {
   id: uuid("id").primaryKey().defaultRandom(),
   stylistId: uuid("stylist_id").references(() => stylists.id),

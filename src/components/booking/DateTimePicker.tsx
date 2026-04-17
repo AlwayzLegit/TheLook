@@ -6,7 +6,7 @@ import TimeSlots from "./TimeSlots";
 
 interface Props {
   stylistId: string;
-  serviceId: string;
+  serviceIds: string[];
   onSelect: (date: string, time: string) => void;
   selectedDate: string | null;
   selectedTime: string | null;
@@ -14,7 +14,7 @@ interface Props {
 
 export default function DateTimePicker({
   stylistId,
-  serviceId,
+  serviceIds,
   onSelect,
   selectedDate,
   selectedTime,
@@ -23,12 +23,13 @@ export default function DateTimePicker({
   const [slots, setSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+  const serviceIdsKey = serviceIds.join(",");
 
   useEffect(() => {
     if (!date) return;
     setLoading(true);
     setFetchError(false);
-    fetch(`/api/availability?stylistId=${stylistId}&serviceId=${serviceId}&date=${date}`)
+    fetch(`/api/availability?stylistId=${stylistId}&serviceIds=${serviceIdsKey}&date=${date}`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed to fetch");
         return r.json();
@@ -42,7 +43,7 @@ export default function DateTimePicker({
         setSlots([]);
         setLoading(false);
       });
-  }, [date, stylistId, serviceId]);
+  }, [date, stylistId, serviceIdsKey]);
 
   return (
     <div>

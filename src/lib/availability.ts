@@ -14,7 +14,8 @@ function minutesToTime(mins: number): string {
 
 export async function getAvailableSlots(
   stylistId: string,
-  serviceId: string,
+  // Either a single service id (legacy) or an array of ids for multi-service bookings.
+  serviceIdOrIds: string | string[],
   date: string
 ): Promise<string[]> {
   const dateObj = new Date(date + "T00:00:00");
@@ -81,21 +82,22 @@ export async function getAvailableSlots(
 
   if (!activeRule || activeRule.is_closed || !activeRule.start_time || !activeRule.end_time) return [];
 
-  // Get service duration
-  const { data: service, error: serviceError } = await supabase
+  // Get total duration from one or more services
+  const ids = Array.isArray(serviceIdOrIds) ? serviceIdOrIds : [serviceIdOrIds];
+  const { data: services, error: serviceError } = await supabase
     .from("services")
-    .select("*")
-    .eq("id", serviceId)
-    .single();
+    .select("id, duration")
+    .in("id", ids);
 
-  if (serviceError || !service) {
+  if (serviceError || !services || services.length === 0) {
     console.error("Error fetching service:", serviceError);
     return ["10:00", "10:30", "11:00", "11:30", "13:00", "14:00", "15:00", "16:00"];
   }
 
   const openMins = timeToMinutes(activeRule.start_time);
   const closeMins = timeToMinutes(activeRule.end_time);
-  const duration = service.duration;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const duration = services.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
 
   // Generate 30-min aligned slots
   const allSlots: string[] = [];

@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
   }
   const {
     serviceId,
+    serviceIds,
     stylistId,
     date,
     startTime,
@@ -48,6 +49,12 @@ export async function POST(request: NextRequest) {
     turnstileToken,
   } = parsed.data;
 
+  // Normalize to an array; serviceIds takes precedence, fall back to single serviceId.
+  const ids: string[] = serviceIds && serviceIds.length > 0 ? serviceIds : (serviceId ? [serviceId] : []);
+  if (ids.length === 0) {
+    return apiError("At least one service must be selected.", 400);
+  }
+
   const turnstile = await verifyTurnstileToken(turnstileToken, ip);
   if (!turnstile.ok) {
     return apiError(turnstile.error || "Captcha verification failed.", 400);
@@ -57,33 +64,41 @@ export async function POST(request: NextRequest) {
     return apiError("Booking backend is not configured locally. Add Supabase env vars to enable real bookings.", 503);
   }
 
-  // Verify the slot is still available (prevent double-booking)
-  const available = await getAvailableSlots(stylistId, serviceId, date);
+  // Verify the slot is still available across the combined duration.
+  const available = await getAvailableSlots(stylistId, ids, date);
   if (!available.includes(startTime)) {
     return apiError("This time slot is no longer available. Please choose another.", 409);
   }
 
-  // Get service duration to calculate end time
-  const { data: service, error: serviceError } = await supabase
+  // Fetch all chosen services, preserving selection order for the name list.
+  const { data: servicesRaw, error: serviceError } = await supabase
     .from("services")
-    .select("*")
-    .eq("id", serviceId)
-    .single();
+    .select("id, name, duration")
+    .in("id", ids);
 
-  if (serviceError || !service) {
-    return apiError("Service not found.", 404);
+  if (serviceError || !servicesRaw || servicesRaw.length === 0) {
+    return apiError("One or more services not found.", 404);
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const serviceMap = new Map(servicesRaw.map((s: any) => [s.id, s]));
+  const services = ids.map((id) => serviceMap.get(id)).filter(Boolean) as { id: string; name: string; duration: number }[];
+  if (services.length !== ids.length) {
+    return apiError("One or more services not found.", 404);
   }
 
-  const endTime = minutesToTime(timeToMinutes(startTime) + service.duration);
+  const totalDuration = services.reduce((sum, s) => sum + (s.duration || 0), 0);
+  const endTime = minutesToTime(timeToMinutes(startTime) + totalDuration);
   const appointmentId = crypto.randomUUID();
   const cancelToken = crypto.randomUUID().replace(/-/g, "");
 
-  // Create appointment
+  // Create appointment. The first service doubles as the "primary" service on
+  // appointments.service_id for compatibility with any code that still reads
+  // it directly.
   const { error: insertError } = await supabase
     .from("appointments")
     .insert({
       id: appointmentId,
-      service_id: serviceId,
+      service_id: services[0].id,
       stylist_id: stylistId,
       date,
       start_time: startTime,
@@ -101,6 +116,20 @@ export async function POST(request: NextRequest) {
     return apiError("Failed to create appointment.", 500);
   }
 
+  // Mirror into appointment_services for full multi-service support.
+  const mappingRows = services.map((s, i) => ({
+    appointment_id: appointmentId,
+    service_id: s.id,
+    sort_order: i,
+  }));
+  const { error: mappingError } = await supabase
+    .from("appointment_services")
+    .insert(mappingRows);
+  if (mappingError) {
+    logError("appointments POST (services)", mappingError);
+    // Don't fail the booking — the appointment exists with the primary service.
+  }
+
   // Get stylist name for email
   const { data: stylist } = await supabase
     .from("stylists")
@@ -108,26 +137,27 @@ export async function POST(request: NextRequest) {
     .eq("id", stylistId)
     .single();
 
+  const serviceNamesCombined = services.map((s) => s.name).join(", ");
+
   // Send confirmation email (non-blocking)
   const baseUrl = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
   sendBookingConfirmation({
     clientName,
     clientEmail,
-    serviceName: service.name,
+    serviceName: serviceNamesCombined,
     stylistName: stylist?.name || "Your Stylist",
     date,
     startTime,
     cancelUrl: `${baseUrl}/book/cancel?token=${cancelToken}`,
   }).catch(console.error);
 
-  // Send SMS confirmation if phone provided (non-blocking)
   if (clientPhone) {
-    sendBookingConfirmationSMS(clientPhone, clientName, service.name, date, startTime).catch(console.error);
+    sendBookingConfirmationSMS(clientPhone, clientName, serviceNamesCombined, date, startTime).catch(console.error);
   }
 
   return apiSuccess({
     id: appointmentId,
-    service: service.name,
+    services: services.map((s) => ({ id: s.id, name: s.name })),
     stylist: stylist?.name,
     date,
     startTime,
