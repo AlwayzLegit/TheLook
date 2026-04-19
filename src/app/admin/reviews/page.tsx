@@ -167,9 +167,15 @@ export default function AdminReviewsPage() {
       {loading ? (
         <p className="text-navy/40 font-body text-sm">Loading reviews...</p>
       ) : noKeys ? (
-        <div className="bg-white border border-navy/10 p-6">
-          <p className="text-navy/60 font-body text-sm mb-2">
-            No reviews loaded. Set <code className="text-navy">GOOGLE_PLACES_API_KEY</code> + <code className="text-navy">GOOGLE_PLACE_ID</code> and <code className="text-navy">YELP_API_KEY</code> + <code className="text-navy">YELP_BUSINESS_ALIAS</code> in Vercel env vars to pull live reviews.
+        <div className="bg-white border border-navy/10 p-8 text-center">
+          <p className="font-heading text-lg mb-2">Connect your review sources</p>
+          <p className="text-navy/60 font-body text-sm mb-5 max-w-md mx-auto">
+            Hook up Google Business and Yelp so new reviews land in this dashboard — with
+            star counts, recent comments, and one-click reply links.
+          </p>
+          <p className="text-navy/40 font-body text-xs">
+            Setup takes ~5 minutes. Your developer will need to add the API credentials
+            in the Vercel project settings.
           </p>
         </div>
       ) : filtered.length === 0 ? (

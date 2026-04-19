@@ -62,7 +62,10 @@ export default function CommissionsPage() {
   const cutoffStr = cutoff.toISOString().split("T")[0];
   const billable = appointments.filter((a) => (a.status === "completed" || a.status === "confirmed") && a.date >= cutoffStr);
 
-  const stylistData = stylists.map((s) => {
+  // Skip any "Any Stylist" sentinel / dup that leaked into the list so the
+  // payroll totals only reflect real humans.
+  const realStylists = stylists.filter((s) => s.name.trim().toLowerCase() !== "any stylist");
+  const stylistData = realStylists.map((s) => {
     const appts = billable.filter((a) => a.stylist_id === s.id);
     const revenue = appts.reduce((sum, a) => sum + (svcMap[a.service_id]?.price_min || 0), 0);
     const percent = commissionMap[s.id]?.commission_percent ?? 50;

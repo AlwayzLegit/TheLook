@@ -140,16 +140,27 @@ export default function BookPage() {
     }
   };
 
-  // Warn before leaving with unsaved booking progress.
+  // Warn before leaving only when the customer has actually started filling
+  // out the form — otherwise even loading the booking page bounces them with
+  // a confusing "Leave site?" dialog (#18).
   useEffect(() => {
+    const dirty =
+      step !== STEP_DONE && (
+        selectedServices.length > 0 ||
+        !!selectedDate ||
+        !!selectedTime ||
+        !!selectedStylist ||
+        !!clientInfo.name ||
+        !!clientInfo.email ||
+        !!clientInfo.phone ||
+        !!clientInfo.notes
+      );
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (step > 0 && step < STEP_DONE) {
-        e.preventDefault();
-      }
+      if (dirty) e.preventDefault();
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [step]);
+  }, [step, selectedServices, selectedDate, selectedTime, selectedStylist, clientInfo]);
 
   // Auto-fill returning customer info from localStorage; query params (used
   // by the "New Appointment for this Client" button in admin) win over it.
@@ -276,6 +287,8 @@ export default function BookPage() {
         return (
           !!clientInfo.name &&
           !!clientInfo.email &&
+          !!clientInfo.phone &&
+          clientInfo.phone.replace(/\D/g, "").length >= 7 &&
           policyAccepted &&
           (!turnstileSiteKey || !!turnstileToken) &&
           (!requiresDeposit || !!depositPaymentIntent)

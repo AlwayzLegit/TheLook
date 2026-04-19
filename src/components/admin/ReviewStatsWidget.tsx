@@ -53,8 +53,8 @@ export default function ReviewStatsWidget() {
       {!loaded ? (
         <p className="text-navy/30 text-xs font-body">Loading...</p>
       ) : !hasGoogle && !hasYelp ? (
-        <p className="text-navy/30 text-xs font-body">
-          Set <code className="text-navy/50">GOOGLE_PLACES_API_KEY</code> + <code className="text-navy/50">YELP_API_KEY</code> to see live ratings.
+        <p className="text-navy/40 text-xs font-body">
+          Connect Google &amp; Yelp to see live ratings here.
         </p>
       ) : (
         <div className="space-y-2">

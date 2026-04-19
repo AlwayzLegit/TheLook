@@ -117,11 +117,13 @@ export default function AdminDashboard() {
     .filter((a) => a.date === today)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
-  // Upcoming (next 7 days)
+  // Upcoming (next 7 days) — exclude cancelled/no-show so the panel shows
+  // what the salon actually needs to prepare for.
   const nextWeek = new Date();
   nextWeek.setDate(nextWeek.getDate() + 7);
   const upcomingAppts = enrichedAppts
     .filter((a) => {
+      if (a.status === "cancelled" || a.status === "no_show") return false;
       const d = new Date(a.date);
       return d > new Date(today) && d <= nextWeek;
     })
@@ -144,7 +146,10 @@ export default function AdminDashboard() {
   const cancelRate = weekAppts.length > 0 ? Math.round(((noShows + cancelled) / weekAppts.length) * 100) : 0;
 
   // ── Stylist workload today ──
-  const stylistWorkload = stylists.map((s) => {
+  // Defensive: drop any stylist that's named "Any Stylist" so dashboard
+  // never renders the sentinel/dup row even if the DB has one.
+  const realStylists = stylists.filter((s) => s.name.trim().toLowerCase() !== "any stylist");
+  const stylistWorkload = realStylists.map((s) => {
     const appts = todayAppts.filter((a) => a.stylist_id === s.id && billable(a));
     const totalMins = appts.reduce((sum, a) => {
       return sum + (timeToMinutes(a.end_time) - timeToMinutes(a.start_time));
@@ -159,7 +164,7 @@ export default function AdminDashboard() {
     .sort((a, b) => b.count - a.count);
 
   // ── Revenue by stylist (this week) ──
-  const stylistRevenue = stylists.map((s) => {
+  const stylistRevenue = realStylists.map((s) => {
     const rev = enrichedAppts
       .filter((a) => a.stylist_id === s.id && a.date >= weekStart && billable(a))
       .reduce((sum, a) => sum + a.priceMin, 0);

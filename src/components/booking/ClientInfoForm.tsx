@@ -62,15 +62,21 @@ export default function ClientInfoForm({
         </div>
         <div>
           <label htmlFor="book-phone" className="block text-sm text-navy/60 mb-2 font-body">
-            Phone
+            Phone *
           </label>
           <input
             id="book-phone"
             type="tel"
+            required
+            inputMode="tel"
+            autoComplete="tel"
             value={info.phone}
             onChange={(e) => onChange({ ...info, phone: e.target.value })}
             className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors"
           />
+          <p className="text-xs text-navy/40 font-body mt-1">
+            Required so we can reach you about same-day changes.
+          </p>
         </div>
         <div>
           <label htmlFor="book-notes" className="block text-sm text-navy/60 mb-2 font-body">

@@ -32,6 +32,26 @@ async function findUserInDb(email: string): Promise<{ id: string; name: string; 
   }
 }
 
+// Returns true if at least one active admin_users row exists. Once that's
+// true, the env-var ADMIN_PASSWORD fallback is permanently disabled — the
+// shared password becomes a liability the moment per-user accounts exist.
+// Setting AUTH_ALLOW_ENV_FALLBACK=force in the environment overrides this
+// (escape hatch in case the salon ever locks themselves out).
+async function dbUsersExist(): Promise<boolean> {
+  try {
+    const { supabase, hasSupabaseConfig } = await import("./supabase");
+    if (!hasSupabaseConfig) return false;
+    const { count, error } = await supabase
+      .from("admin_users")
+      .select("id", { count: "exact", head: true })
+      .eq("active", true);
+    if (error) return false;
+    return (count ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   trustHost: true,
@@ -75,20 +95,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
         }
 
-        // Fallback to env var admin (for initial setup before any DB users exist)
-        const adminPassword = process.env.ADMIN_PASSWORD;
-        const configuredAdminEmail = process.env.ADMIN_EMAIL?.toLowerCase().trim();
-        const allowedEmails = new Set<string>(
-          (process.env.ADMIN_EMAILS || "")
-            .split(",")
-            .map((e) => e.toLowerCase().trim())
-            .filter(Boolean),
-        );
-        if (configuredAdminEmail) allowedEmails.add(configuredAdminEmail);
+        // Fallback to env var admin (for initial setup before any DB users
+        // exist). Disabled automatically once a real admin_users row is
+        // created — the shared password is too risky to leave on once
+        // per-user accounts exist. Override with AUTH_ALLOW_ENV_FALLBACK=force.
+        const fallbackForced = process.env.AUTH_ALLOW_ENV_FALLBACK === "force";
+        if (fallbackForced || !(await dbUsersExist())) {
+          const adminPassword = process.env.ADMIN_PASSWORD;
+          const configuredAdminEmail = process.env.ADMIN_EMAIL?.toLowerCase().trim();
+          const allowedEmails = new Set<string>(
+            (process.env.ADMIN_EMAILS || "")
+              .split(",")
+              .map((e) => e.toLowerCase().trim())
+              .filter(Boolean),
+          );
+          if (configuredAdminEmail) allowedEmails.add(configuredAdminEmail);
 
-        if (inputEmail && adminPassword && password === adminPassword && allowedEmails.has(inputEmail)) {
-          failedAttempts.delete(inputEmail);
-          return { id: "env-admin", name: "Admin", email: inputEmail, role: "admin", stylistId: null };
+          if (inputEmail && adminPassword && password === adminPassword && allowedEmails.has(inputEmail)) {
+            failedAttempts.delete(inputEmail);
+            return { id: "env-admin", name: "Admin", email: inputEmail, role: "admin", stylistId: null };
+          }
         }
 
         // Track failed attempt

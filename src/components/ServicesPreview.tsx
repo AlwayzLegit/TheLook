@@ -85,7 +85,7 @@ export default function ServicesPreview() {
             <AnimatedSection key={s.name} delay={i * 0.08}>
               <Link href={s.href} className="block relative overflow-hidden border border-navy/6 hover:border-gold/30 transition-all duration-500 group hover:shadow-[0_8px_30px_rgba(196,162,101,0.1)] hover:-translate-y-1 bg-white">
                 {/* Service Image */}
-                <div className="relative aspect-[4/3] overflow-hidden">
+                <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-navy/5 to-gold/10">
                   <Image
                     src={s.image}
                     alt={s.name}

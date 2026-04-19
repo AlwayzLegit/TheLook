@@ -5,9 +5,11 @@ import { adminStylistSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { revalidatePath } from "next/cache";
+import { BOOKING } from "@/lib/constants";
+import { normalizeSpecialties } from "@/lib/stylistSpecialties";
 import { NextRequest } from "next/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
 
@@ -15,9 +17,17 @@ export async function GET() {
     return apiSuccess([]);
   }
 
+  const { searchParams } = request.nextUrl;
+  // /admin/stylists (the management page) wants to see everyone so inactive
+  // stylists can still be edited / re-activated. Every other caller —
+  // dashboard workload, commissions, analytics — should only see active real
+  // stylists and must never see the "Any Stylist" sentinel.
+  const includeInactive = searchParams.get("includeInactive") === "true";
+
   const { data, error } = await supabase
     .from("stylists")
     .select("*")
+    .neq("id", BOOKING.ANY_STYLIST_ID)
     .order("sort_order", { ascending: true });
 
   if (error) {
@@ -25,7 +35,9 @@ export async function GET() {
     return apiError("Failed to fetch stylists.", 500);
   }
 
-  return apiSuccess(data);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filtered = includeInactive ? (data || []) : (data || []).filter((s: any) => s.active);
+  return apiSuccess(filtered);
 }
 
 export async function POST(request: NextRequest) {
@@ -45,12 +57,7 @@ export async function POST(request: NextRequest) {
 
   const slug = payload.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-  // Specialties is stored as a JSON-encoded text column; the validator allows
-  // either a string array or a pre-encoded string. Always re-encode arrays so
-  // the public /api/stylists endpoint can JSON.parse it cleanly.
-  const specialtiesJson = Array.isArray(payload.specialties)
-    ? JSON.stringify(payload.specialties)
-    : (payload.specialties || JSON.stringify([]));
+  const specialtiesJson = normalizeSpecialties(payload.specialties);
 
   const { data, error } = await supabase
     .from("stylists")

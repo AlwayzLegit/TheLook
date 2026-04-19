@@ -179,11 +179,25 @@ export default function UsersPage() {
       {loading ? (
         <p className="text-navy/40 font-body text-sm">Loading...</p>
       ) : users.length === 0 ? (
-        <div className="bg-white p-8 border border-navy/10 text-center">
-          <p className="text-navy/40 font-body text-sm mb-4">No database users yet. You&apos;re logged in via environment variables.</p>
-          <p className="text-navy/50 font-body text-xs">Create your first admin user to start using database-backed authentication.</p>
+        <div className="bg-white p-8 border border-amber-200 bg-amber-50 text-left">
+          <p className="font-heading text-base mb-2 text-amber-900">⚠ No database users yet</p>
+          <p className="text-amber-900/80 font-body text-sm mb-2">
+            You&apos;re currently signed in via the shared <code>ADMIN_PASSWORD</code> env var.
+            That&apos;s fine for the very first login, but anyone with that password has full
+            access to the salon&apos;s data.
+          </p>
+          <p className="text-amber-900/80 font-body text-sm">
+            Create at least one admin account here. As soon as a database user exists, the
+            shared env-var password is automatically disabled and every login is per-person.
+          </p>
         </div>
       ) : (
+        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-body rounded">
+          ✓ Database authentication active — the shared env-var password is disabled. Each
+          admin signs in with their own email + password.
+        </div>
+      )}
+      {users.length > 0 && (
         <div className="bg-white border border-navy/10 divide-y divide-navy/5">
           {users.map((u) => (
             <div key={u.id} className={`px-6 py-4 flex items-center justify-between ${!u.active ? "opacity-50" : ""}`}>

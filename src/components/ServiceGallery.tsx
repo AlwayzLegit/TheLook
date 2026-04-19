@@ -96,7 +96,7 @@ export default function ServiceGallery({
           <AnimatedSection delay={0.1} className={reversed ? "lg:order-1" : ""}>
             <div className="relative">
               <div
-                className="aspect-[4/3] relative overflow-hidden rounded-sm shadow-[0_20px_60px_rgba(40,41,54,0.12)] cursor-pointer group"
+                className="aspect-[4/3] relative overflow-hidden rounded-sm shadow-[0_20px_60px_rgba(40,41,54,0.12)] cursor-pointer group bg-gradient-to-br from-navy/5 to-gold/10"
                 onClick={() => setSelectedImage(images[0]?.src)}
               >
                 <Image
@@ -129,7 +129,7 @@ export default function ServiceGallery({
             {images.slice(1).map((image, index) => (
               <div
                 key={index}
-                className="relative aspect-square overflow-hidden rounded-sm cursor-pointer group"
+                className="relative aspect-square overflow-hidden rounded-sm cursor-pointer group bg-gradient-to-br from-navy/5 to-gold/10"
                 onClick={() => setSelectedImage(image.src)}
               >
                 <Image

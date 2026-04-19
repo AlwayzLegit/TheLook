@@ -1,15 +1,22 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { BOOKING } from "@/lib/constants";
 
 export async function GET() {
   if (!hasSupabaseConfig) {
     return apiSuccess([]);
   }
 
+  // Exclude the "Any Stylist" sentinel row — the booking picker renders its
+  // own Any-Stylist tile, and if the sentinel also surfaces here the
+  // customer sees two tiles that mean the same thing. Also exclude any
+  // other stylist that someone accidentally named "Any Stylist" to dedupe.
   const { data: allStylists, error: stylistsError } = await supabase
     .from("stylists")
     .select("*")
     .eq("active", true)
+    .neq("id", BOOKING.ANY_STYLIST_ID)
+    .not("name", "ilike", "any stylist")
     .order("sort_order", { ascending: true });
 
   if (stylistsError) {

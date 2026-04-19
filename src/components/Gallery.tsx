@@ -73,7 +73,7 @@ export default function Gallery() {
             <span className="w-10 h-[1px] bg-gradient-to-l from-transparent to-gold" />
           </div>
           <h2 className="font-heading text-4xl md:text-5xl mb-5">Gallery</h2>
-          <p className="text-navy/60 font-body font-light">
+          <p className="text-navy/75 font-body">
             Check out our Instagram for the most recent transformations
           </p>
         </AnimatedSection>
@@ -84,7 +84,7 @@ export default function Gallery() {
               <button
                 ref={(el) => { if (lightboxIndex === null) triggerRef.current = el; }}
                 onClick={() => { triggerRef.current = document.activeElement as HTMLButtonElement; setLightboxIndex(index); }}
-                className="group relative aspect-square overflow-hidden cursor-pointer w-full rounded-sm"
+                className="group relative aspect-square overflow-hidden cursor-pointer w-full rounded-sm bg-gradient-to-br from-navy/5 to-gold/10"
               >
                 <Image
                   src={item.image}

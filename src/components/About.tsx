@@ -52,14 +52,14 @@ export default function About() {
               <span className="text-rose">Salon Since 2011</span>
             </h2>
 
-            <p className="text-navy/65 font-body font-light leading-relaxed mb-5">
+            <p className="text-navy/75 font-body leading-relaxed mb-5">
               Since opening our doors on 11.11.11, The Look Hair Salon has grown
               to be one of the most loved spots in Glendale. We&apos;re a
               family-owned salon that believes everyone deserves to look and feel
               their best — without breaking the bank.
             </p>
 
-            <p className="text-navy/65 font-body font-light leading-relaxed mb-10">
+            <p className="text-navy/75 font-body leading-relaxed mb-10">
               With over 25 years in the beauty industry, our team specializes in
               men&apos;s, women&apos;s, and children&apos;s hair cutting,
               coloring, balayage, ombr&eacute;, highlights, extensions, and

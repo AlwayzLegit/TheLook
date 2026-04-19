@@ -122,22 +122,44 @@ export default function AppointmentCalendar({ appointments, onSelectAppointment 
           const isSelected = selectedDate === cell.iso;
           const isToday = cell.iso === today;
           const dayNum = parseInt(cell.iso.slice(-2), 10);
+          // Cap pills at 2 per cell — anything beyond that collapses to "+N".
+          const pillCount = 2;
+          const visible = list.slice(0, pillCount);
+          const overflow = list.length - visible.length;
           return (
             <button
               key={cell.iso}
               onClick={() => setSelectedDate(cell.iso)}
-              className={`relative aspect-square bg-white p-1 sm:p-2 text-left transition-colors ${
+              className={`relative min-h-[72px] sm:min-h-[92px] bg-white p-1 sm:p-1.5 text-left transition-colors overflow-hidden ${
                 isSelected ? "ring-2 ring-rose ring-inset" : "hover:bg-cream/40"
               } ${cell.inMonth ? "" : "opacity-40"}`}
             >
-              <span className={`text-xs font-body ${isToday ? "bg-navy text-white rounded-full px-1.5 py-0.5" : "text-navy"}`}>
+              <span className={`text-[11px] font-body ${isToday ? "bg-navy text-white rounded-full px-1.5 py-0.5" : "text-navy"}`}>
                 {dayNum}
               </span>
-              {list.length > 0 && (
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-rose rounded-full" />
-              )}
-              {list.length > 1 && (
-                <span className="absolute bottom-1 left-1/2 translate-x-2 w-1.5 h-1.5 bg-rose/50 rounded-full" />
+              {visible.length > 0 && (
+                <div className="mt-1 space-y-0.5">
+                  {visible.map((a) => (
+                    <div
+                      key={a.id}
+                      className={`text-[9px] sm:text-[10px] font-body px-1 py-0.5 rounded-sm truncate ${
+                        a.status === "pending"
+                          ? "bg-amber-100 text-amber-800"
+                          : a.status === "cancelled" || a.status === "no_show"
+                            ? "bg-navy/5 text-navy/40 line-through"
+                            : "bg-rose/10 text-rose"
+                      }`}
+                      title={`${formatTime(a.start_time)} · ${a.client_name} · ${a.serviceName}`}
+                    >
+                      {formatTime(a.start_time)} {a.client_name}
+                    </div>
+                  ))}
+                  {overflow > 0 && (
+                    <div className="text-[9px] sm:text-[10px] font-body text-navy/50 px-1">
+                      +{overflow} more
+                    </div>
+                  )}
+                </div>
               )}
             </button>
           );

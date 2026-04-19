@@ -110,7 +110,7 @@ export default function Footer() {
                 <span>Monday</span>
                 <span>10 &ndash; 6</span>
               </div>
-              <div className="flex justify-between text-rose/60">
+              <div className="flex justify-between text-white/40">
                 <span>Tuesday</span>
                 <span>Closed</span>
               </div>

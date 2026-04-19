@@ -256,19 +256,23 @@ export default function AnalyticsPage() {
 
             {/* Client retention */}
             <div className="bg-white p-5 border border-navy/10">
-              <h3 className="font-heading text-sm mb-4">Client Retention</h3>
+              <h3 className="font-heading text-sm mb-1">Client Retention</h3>
+              <p className="text-[10px] text-navy/40 font-body mb-4">
+                Counts only clients with a confirmed or completed visit in the last {range} days.
+                Full client list lives in <span className="text-navy/60">Clients</span>.
+              </p>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <p className="font-heading text-2xl">{clientEmails.size}</p>
-                  <p className="text-xs font-body text-navy/40 mt-1">Total Clients</p>
+                  <p className="text-xs font-body text-navy/50 mt-1">Active ({range}d)</p>
                 </div>
                 <div>
                   <p className="font-heading text-2xl text-blue-600">{newClients}</p>
-                  <p className="text-xs font-body text-navy/40 mt-1">New ({range}d)</p>
+                  <p className="text-xs font-body text-navy/50 mt-1">New ({range}d)</p>
                 </div>
                 <div>
                   <p className="font-heading text-2xl text-green-600">{returningClients}</p>
-                  <p className="text-xs font-body text-navy/40 mt-1">Returning</p>
+                  <p className="text-xs font-body text-navy/50 mt-1">Returning</p>
                 </div>
               </div>
             </div>

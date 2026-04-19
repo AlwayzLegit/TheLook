@@ -82,7 +82,12 @@ export default function StylistPicker({
     return () => { cancelled = true; };
   }, [stylists, serviceIds, variantIds, date, startTime]);
 
-  const tiles: Stylist[] = [ANY_STYLIST, ...stylists];
+  // Defensive filter: even if the public API accidentally returns a stylist
+  // named "Any Stylist" or the sentinel row, don't render a duplicate tile.
+  const realStylists = stylists.filter(
+    (s) => s.id !== BOOKING.ANY_STYLIST_ID && s.name.trim().toLowerCase() !== "any stylist",
+  );
+  const tiles: Stylist[] = [ANY_STYLIST, ...realStylists];
 
   return (
     <div>
@@ -119,20 +124,27 @@ export default function StylistPicker({
                     : "border-navy/5 opacity-40 cursor-not-allowed"
               }`}
             >
-              <div className="w-20 h-20 mb-4 rounded-full overflow-hidden relative bg-navy/5 self-center">
+              <div className="w-20 h-20 mb-4 rounded-full overflow-hidden relative bg-gradient-to-br from-navy/10 to-gold/20 self-center">
                 {isAny ? (
                   <div className="w-full h-full flex items-center justify-center text-navy/50">
                     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                     </svg>
                   </div>
-                ) : (
+                ) : stylist.imageUrl ? (
                   <Image
-                    src={stylist.imageUrl || "/images/gallery/gallery-01.jpg"}
+                    src={stylist.imageUrl}
                     alt={stylist.name}
                     fill
                     className="object-cover"
                   />
+                ) : (
+                  // No photo uploaded — show the stylist's initial on the brand
+                  // gradient instead of falling back to a stock photo (which
+                  // makes every stylist look identical).
+                  <div className="w-full h-full flex items-center justify-center font-heading text-2xl text-navy/70">
+                    {stylist.name.trim().charAt(0).toUpperCase()}
+                  </div>
                 )}
               </div>
               <p className="font-heading text-lg text-center">{stylist.name}</p>

@@ -58,7 +58,9 @@ export default function StylistsPage() {
   const fetchStylists = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/admin/stylists");
+      // Admin stylist manager needs to see inactive stylists too so they can
+      // be re-activated or edited.
+      const res = await fetch("/api/admin/stylists?includeInactive=true");
       if (!res.ok) return;
       const data = await res.json();
       setStylists(Array.isArray(data) ? data : []);

@@ -5,6 +5,7 @@ import { adminStylistSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { revalidatePath } from "next/cache";
+import { normalizeSpecialties } from "@/lib/stylistSpecialties";
 import { NextRequest } from "next/server";
 
 function revalidatePublic() {
@@ -34,9 +35,7 @@ export async function PATCH(
   }
   const payload = parsed.data;
 
-  const specialtiesJson = Array.isArray(payload.specialties)
-    ? JSON.stringify(payload.specialties)
-    : payload.specialties;
+  const specialtiesJson = normalizeSpecialties(payload.specialties);
 
   const updateData: Record<string, unknown> = {
     name: payload.name,
