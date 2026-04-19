@@ -1,18 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 interface Props {
   selectedDate: string | null;
   onSelectDate: (date: string) => void;
+  // Fired whenever the visible month changes so the parent can clear stale
+  // time slots (they belong to a date in the previous month).
+  onMonthChange?: () => void;
 }
 
-export default function CalendarGrid({ selectedDate, onSelectDate }: Props) {
+export default function CalendarGrid({ selectedDate, onSelectDate, onMonthChange }: Props) {
   const today = new Date();
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [closedDaysOfWeek, setClosedDaysOfWeek] = useState<number[]>([2]); // Tuesday default
+  const [closedDates, setClosedDates] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/schedule/public")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setClosedDaysOfWeek(Array.isArray(data.closedDaysOfWeek) ? data.closedDaysOfWeek : [2]);
+        setClosedDates(new Set(Array.isArray(data.closedDates) ? data.closedDates : []));
+      })
+      .catch(() => {
+        // Keep the Tuesday default on any failure.
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const firstDay = new Date(viewYear, viewMonth, 1);
   const lastDay = new Date(viewYear, viewMonth + 1, 0);
@@ -24,21 +44,15 @@ export default function CalendarGrid({ selectedDate, onSelectDate }: Props) {
   maxDate.setDate(maxDate.getDate() + 60);
 
   const prevMonth = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear(viewYear - 1);
-    } else {
-      setViewMonth(viewMonth - 1);
-    }
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
+    else setViewMonth(viewMonth - 1);
+    onMonthChange?.();
   };
 
   const nextMonth = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear(viewYear + 1);
-    } else {
-      setViewMonth(viewMonth + 1);
-    }
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1); }
+    else setViewMonth(viewMonth + 1);
+    onMonthChange?.();
   };
 
   const monthName = new Date(viewYear, viewMonth).toLocaleString("en-US", {
@@ -77,7 +91,9 @@ export default function CalendarGrid({ selectedDate, onSelectDate }: Props) {
           const dateObj = new Date(viewYear, viewMonth, day);
           const isPast = dateStr < todayStr;
           const isTooFar = dateObj > maxDate;
-          const disabled = isPast || isTooFar;
+          const isWeeklyClosed = closedDaysOfWeek.includes(dateObj.getDay());
+          const isSpecificClosed = closedDates.has(dateStr);
+          const disabled = isPast || isTooFar || isWeeklyClosed || isSpecificClosed;
           const isSelected = selectedDate === dateStr;
           const isToday = dateStr === todayStr;
 
@@ -86,13 +102,16 @@ export default function CalendarGrid({ selectedDate, onSelectDate }: Props) {
               key={day}
               onClick={() => !disabled && onSelectDate(dateStr)}
               disabled={disabled}
+              title={isWeeklyClosed ? "Closed this day" : isSpecificClosed ? "Closed — holiday or special hours" : undefined}
               className={`aspect-square flex items-center justify-center text-sm font-body rounded transition-colors ${
                 isSelected
                   ? "bg-rose text-white"
-                  : isToday
+                  : isToday && !disabled
                     ? "bg-gold/20 text-navy hover:bg-rose/20"
                     : disabled
-                      ? "text-navy/15 cursor-not-allowed"
+                      ? (isWeeklyClosed || isSpecificClosed)
+                        ? "text-navy/25 line-through cursor-not-allowed"
+                        : "text-navy/15 cursor-not-allowed"
                       : "text-navy hover:bg-rose/10"
               }`}
             >

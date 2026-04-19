@@ -70,14 +70,19 @@ export default function SettingsPage() {
             <h2 className="font-heading text-lg mb-1">Staff notification emails</h2>
             <p className="text-navy/50 font-body text-xs mb-4">
               One email per line, or comma-separated. These addresses receive an alert for every new
-              online booking.
+              online booking. If this is empty, nobody gets notified.
             </p>
+            {!(s.staff_notification_emails && s.staff_notification_emails.trim()) && (
+              <div className="mb-3 p-3 bg-amber-50 border border-amber-300 text-amber-900 text-xs font-body">
+                ⚠ No recipients saved — new bookings are not triggering email alerts.
+              </div>
+            )}
             <textarea
               rows={5}
               value={s.staff_notification_emails || ""}
               onChange={(e) => setS({ ...s, staff_notification_emails: e.target.value })}
-              placeholder="manager@thelookhairsalonla.com&#10;stylists@thelookhairsalonla.com"
-              className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
+              placeholder="e.g. manager@example.com, receptionist@example.com"
+              className="w-full border border-navy/20 px-3 py-2 text-sm font-body placeholder:text-navy/25 placeholder:italic"
             />
             <label className="flex items-center gap-2 mt-4 cursor-pointer">
               <input

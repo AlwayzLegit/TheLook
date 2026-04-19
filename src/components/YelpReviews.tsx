@@ -220,10 +220,22 @@ export default function YelpReviews() {
         }
       } catch {}
 
-      // Pad with curated reviews so we always have enough to fill the carousel
-      const existingTexts = new Set(merged.map((r) => r.text.slice(0, 40)));
-      const padding = curatedReviews.filter((r) => !existingTexts.has(r.text.slice(0, 40)));
-      const final = [...merged, ...padding];
+      // Pad with curated reviews so we always have enough to fill the
+      // carousel — dedupe by both name and text prefix so if the live API
+      // returns the same reviewer we curated, we don't render it twice.
+      const fingerprint = (r: Review) => `${r.name.trim().toLowerCase()}|${r.text.slice(0, 40)}`;
+      const existing = new Set(merged.map(fingerprint));
+      const padding = curatedReviews.filter((r) => !existing.has(fingerprint(r)));
+      // Final dedupe pass over the whole carousel in case an API returns
+      // the same review from two different sources (it happens on Yelp +
+      // Google cross-posts).
+      const seen = new Set<string>();
+      const final = [...merged, ...padding].filter((r) => {
+        const k = fingerprint(r);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
 
       if (final.length > 0) setReviews(final);
     }

@@ -59,6 +59,7 @@ export default function AdminDashboard() {
   const [services, setServices] = useState<Service[]>([]);
   const [stylists, setStylists] = useState<Stylist[]>([]);
   const [messageCount, setMessageCount] = useState(0);
+  const [staffEmailsConfigured, setStaffEmailsConfigured] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -78,6 +79,16 @@ export default function AdminDashboard() {
     fetch("/api/admin/messages")
       .then((r) => r.json())
       .then((data) => setMessageCount(Array.isArray(data) ? data.length : 0));
+
+    // Surface a banner when staff notification emails are missing —
+    // otherwise no one knows new bookings are landing.
+    fetch("/api/admin/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        const val = (data?.staff_notification_emails || "").trim();
+        setStaffEmailsConfigured(val.length > 0);
+      })
+      .catch(() => setStaffEmailsConfigured(null));
   }, [status]);
 
   if (status !== "authenticated") return null;
@@ -192,6 +203,17 @@ export default function AdminDashboard() {
           </span>
         )}
       </div>
+
+      {staffEmailsConfigured === false && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-300 text-amber-900 text-sm font-body flex items-center gap-3">
+          <span className="text-lg">⚠</span>
+          <span className="flex-1">
+            <b>No staff notification emails configured.</b> Nobody is getting alerted when
+            customers book online.{" "}
+          </span>
+          <Link href="/admin/settings" className="underline font-bold shrink-0">Fix in Settings →</Link>
+        </div>
+      )}
       <p className="text-navy/50 font-body text-sm mb-8">
         Welcome back, {session?.user?.name}
       </p>

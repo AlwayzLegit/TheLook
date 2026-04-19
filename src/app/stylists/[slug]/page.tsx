@@ -3,14 +3,21 @@ import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
+import { BOOKING } from "@/lib/constants";
 import type { Metadata } from "next";
 
 export const revalidate = 60;
 
 async function getStylist(slug: string) {
   if (!hasSupabaseConfig) return null;
+  // Never serve the "Any Stylist" sentinel or a duplicate as a real profile
+  // — it's a booking-flow construct, not a person. Send the customer to the
+  // stylist list instead.
+  if (slug === "any" || slug === "any-stylist") return null;
   const { data } = await supabase.from("stylists").select("*").eq("slug", slug).eq("active", true).single();
   if (!data) return null;
+  if (data.id === BOOKING.ANY_STYLIST_ID) return null;
+  if ((data.name || "").trim().toLowerCase() === "any stylist") return null;
 
   // Get service mappings
   const { data: mappings } = await supabase.from("stylist_services").select("service_id").eq("stylist_id", data.id);

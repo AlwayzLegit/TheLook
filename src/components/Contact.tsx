@@ -185,16 +185,19 @@ export default function Contact() {
                   htmlFor="message"
                   className="block text-sm text-navy/60 mb-2 font-body"
                 >
-                  Message
+                  Message *
                 </label>
                 <textarea
                   id="message"
                   name="message"
                   rows={4}
+                  required
+                  minLength={10}
                   value={formData.message}
                   onChange={(e) =>
                     setFormData({ ...formData, message: e.target.value })
                   }
+                  placeholder="Tell us what you need so we can help — appointment question, feedback, or anything else."
                   className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors resize-none"
                 />
               </div>

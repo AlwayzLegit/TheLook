@@ -121,6 +121,7 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
                             type="button"
                             onClick={() => onToggle(service)}
                             aria-pressed={isSelected}
+                            aria-label={`${isSelected ? "Remove" : "Select"} ${service.name}${service.priceText ? `, ${service.priceText}` : ""}`}
                             className={`w-full px-6 py-4 flex items-center gap-4 text-left transition-all duration-200 ${
                               isSelected
                                 ? "bg-rose/8 border-l-[3px] border-rose"

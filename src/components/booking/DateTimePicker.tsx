@@ -64,6 +64,12 @@ export default function DateTimePicker({
             setDate(d);
             setSlots([]);
           }}
+          onMonthChange={() => {
+            // Month nav: the previously-shown slots no longer correspond to
+            // a visible date, so blank them until the user picks again.
+            setDate(null);
+            setSlots([]);
+          }}
         />
         <TimeSlots
           slots={slots}

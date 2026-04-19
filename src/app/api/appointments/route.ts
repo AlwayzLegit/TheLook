@@ -78,7 +78,15 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const parsed = appointmentCreateSchema.safeParse(body);
   if (!parsed.success) {
-    return apiError(parsed.error.issues[0]?.message || "Invalid booking request.", 400);
+    // Bubble *safe* validation messages (policy / phone) but swallow any
+    // low-level language (like "Invalid id.") that the customer shouldn't
+    // have to parse. Everything a user can actually fix begins with one of
+    // the allow-listed prefixes.
+    const msg = parsed.error.issues[0]?.message || "";
+    const safe = /^(Phone|You must|Invalid booking)/i.test(msg)
+      ? msg
+      : "We couldn't confirm this booking. Please refresh and try again, or call us at (818) 662-5665.";
+    return apiError(safe, 400);
   }
   const {
     serviceId,

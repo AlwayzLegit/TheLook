@@ -84,6 +84,13 @@ export default function BookPage() {
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // DEF-019: stale submit errors linger across Back + change-selection.
+  // Whenever anything upstream of Confirm changes, drop the error so the
+  // user doesn't see "Invalid UUID" after fixing the real problem.
+  useEffect(() => {
+    setError(null);
+  }, [selectedServices, selectedStylist, selectedDate, selectedTime, clientInfo]);
   const [result, setResult] = useState<BookingResult | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [discountCode, setDiscountCode] = useState("");

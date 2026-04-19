@@ -2,20 +2,31 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
+import { BOOKING } from "@/lib/constants";
+import { normalizeSpecialties } from "@/lib/stylistSpecialties";
 
 export const revalidate = 60;
 
 async function getStylists() {
   if (!hasSupabaseConfig) return [];
+  // Same dedupe logic as /api/stylists — drop the Any-Stylist sentinel
+  // row AND any lookalike an admin accidentally re-created with the same
+  // name, so customers don't end up on a dead-end "/stylists/any-stylist"
+  // profile page.
   const { data } = await supabase
     .from("stylists")
     .select("*")
     .eq("active", true)
+    .neq("id", BOOKING.ANY_STYLIST_ID)
+    .not("name", "ilike", "any stylist")
     .order("sort_order", { ascending: true });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data || []).map((s: any) => ({
     ...s,
-    specialties: s.specialties ? JSON.parse(s.specialties) : [],
+    specialties: (() => {
+      try { return JSON.parse(normalizeSpecialties(s.specialties)); }
+      catch { return []; }
+    })(),
   }));
 }
 

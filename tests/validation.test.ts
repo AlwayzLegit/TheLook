@@ -88,10 +88,17 @@ describe("contactCreateSchema", () => {
   const valid = {
     name: "John Smith",
     email: "john@example.com",
+    message: "Looking for a consultation on color options.",
   };
 
   it("accepts minimal valid contact", () => {
     expect(contactCreateSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects missing message (now required)", () => {
+    const { message: _m, ...rest } = valid;
+    void _m;
+    expect(contactCreateSchema.safeParse(rest).success).toBe(false);
   });
 
   it("accepts full contact form", () => {

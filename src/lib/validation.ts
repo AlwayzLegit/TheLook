@@ -1,13 +1,21 @@
 import { z } from "zod";
 
+// Lenient UUID check — Zod 4's .uuid() enforces RFC 4122 version + variant
+// nibbles, which rejects our Any-Stylist sentinel 00000000-...-0001 (the
+// version nibble is 0, which is invalid per RFC). Everywhere we used to
+// call .uuid() we now accept any canonical 8-4-4-4-12 hex format — the
+// values are still strictly formatted, just not version-restricted.
+const UUID_ISH = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+const uuidish = () => z.string().regex(UUID_ISH, "Invalid id.");
+
 export const appointmentCreateSchema = z.object({
   // Accept either a single serviceId (legacy) or an array serviceIds (multi-service).
-  serviceId: z.string().uuid().optional(),
-  serviceIds: z.array(z.string().uuid()).min(1).max(8).optional(),
+  serviceId: uuidish().optional(),
+  serviceIds: z.array(uuidish()).min(1).max(8).optional(),
   // Optional per-service variant ids, aligned by index with serviceIds.
   // Slot a "" (empty string) when a given service has no selected variant.
-  variantIds: z.array(z.string().uuid().or(z.literal(""))).max(8).optional(),
-  stylistId: z.string().uuid(),
+  variantIds: z.array(uuidish().or(z.literal(""))).max(8).optional(),
+  stylistId: uuidish(),
   // Set when the customer chose "Any Stylist" — server then picks an available
   // stylist for the chosen date/time.
   anyStylist: z.boolean().optional(),
@@ -36,7 +44,9 @@ export const contactCreateSchema = z.object({
   email: z.string().trim().email().max(200),
   phone: z.string().trim().max(50).optional(),
   service: z.string().trim().max(120).optional(),
-  message: z.string().trim().max(3000).optional(),
+  // Message is required — an empty contact is just inbox noise for the
+  // salon with nothing actionable.
+  message: z.string().trim().min(10, "Please include a short message.").max(3000),
   turnstileToken: z.string().trim().optional(),
 });
 
