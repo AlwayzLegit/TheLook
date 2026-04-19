@@ -1,7 +1,22 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { logAdminAction } from "@/lib/auditLog";
+import { getAvailableSlots } from "@/lib/availability";
+import { BOOKING } from "@/lib/constants";
+import { createNotification } from "@/lib/notifications";
+import { z } from "zod";
 import { NextRequest } from "next/server";
+
+function minutesToTime(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+}
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -73,4 +88,147 @@ export async function GET(request: NextRequest) {
   });
 
   return apiSuccess(enriched);
+}
+
+// POST — admin creates a booking on behalf of a client (walk-ins, phone
+// reservations, comp appointments). Skips Turnstile + rate-limits that the
+// public /api/appointments endpoint enforces. Admins can also explicitly
+// override conflict detection to double-book or squeeze someone in.
+const adminBookingSchema = z.object({
+  serviceIds: z.array(z.string().uuid()).min(1).max(8),
+  variantIds: z.array(z.string().uuid().or(z.literal(""))).max(8).optional(),
+  stylistId: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/),
+  clientName: z.string().trim().min(1).max(200),
+  clientEmail: z.string().trim().email().max(200),
+  clientPhone: z.string().trim().max(50).optional().nullable(),
+  notes: z.string().trim().max(2000).optional().nullable(),
+  staffNotes: z.string().trim().max(2000).optional().nullable(),
+  status: z.enum(["pending", "confirmed", "completed"]).default("confirmed"),
+  overrideConflicts: z.boolean().optional(),
+});
+
+export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session) return apiError("Unauthorized", 401);
+  if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
+
+  const body = await request.json();
+  const parsed = adminBookingSchema.safeParse(body);
+  if (!parsed.success) {
+    return apiError(parsed.error.issues[0]?.message || "Invalid booking.", 400);
+  }
+  const p = parsed.data;
+
+  const { data: services, error: svcErr } = await supabase
+    .from("services")
+    .select("id, name, duration, price_min")
+    .in("id", p.serviceIds);
+  if (svcErr || !services || services.length === 0) {
+    return apiError("One or more services not found.", 404);
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const svcMap = new Map((services as any[]).map((s) => [s.id, s]));
+
+  const pickedVariantIds = (p.variantIds || []).filter((v) => v && v.length > 0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const variantsById = new Map<string, any>();
+  if (pickedVariantIds.length > 0) {
+    const { data: vrows } = await supabase
+      .from("service_variants")
+      .select("id, service_id, name, duration, price_min")
+      .in("id", pickedVariantIds);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const v of (vrows || []) as any[]) variantsById.set(v.id, v);
+  }
+
+  const effective = p.serviceIds.map((sid, i) => {
+    const vid = (p.variantIds || [])[i];
+    const v = vid ? variantsById.get(vid) : null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const svc = svcMap.get(sid) as any;
+    if (!svc) throw new Error("service missing");
+    return {
+      serviceId: sid,
+      variantId: v?.id ?? null,
+      displayName: v ? `${svc.name} — ${v.name}` : svc.name,
+      duration: v?.duration ?? svc.duration,
+    };
+  });
+  const totalDuration = effective.reduce((sum, e) => sum + (e.duration || 0), 0);
+  const endTime = minutesToTime(timeToMinutes(p.startTime) + totalDuration);
+
+  if (!p.overrideConflicts) {
+    const slots = await getAvailableSlots(p.stylistId, p.serviceIds, p.date, totalDuration);
+    if (!slots.includes(p.startTime)) {
+      return apiError(
+        "This time conflicts with an existing booking or is outside business hours. Tick 'Override conflicts' to book anyway.",
+        409,
+      );
+    }
+  }
+
+  const appointmentId = crypto.randomUUID();
+  const cancelToken = crypto.randomUUID().replace(/-/g, "");
+
+  const { error: insertErr } = await supabase.from("appointments").insert({
+    id: appointmentId,
+    service_id: p.serviceIds[0],
+    stylist_id: p.stylistId,
+    date: p.date,
+    start_time: p.startTime,
+    end_time: endTime,
+    status: p.status,
+    client_name: p.clientName,
+    client_email: p.clientEmail,
+    client_phone: p.clientPhone || null,
+    notes: p.notes || null,
+    staff_notes: p.staffNotes || null,
+    cancel_token: cancelToken,
+    requested_stylist: true,
+    policy_accepted_at: new Date().toISOString(),
+    deposit_required_cents: totalDuration >= BOOKING.DEPOSIT_TRIGGER_MINUTES ? BOOKING.DEPOSIT_AMOUNT_CENTS : 0,
+    approved_at: p.status === "confirmed" ? new Date().toISOString() : null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    approved_by: p.status === "confirmed" ? ((session.user as any)?.email || "admin") : null,
+  });
+  if (insertErr) {
+    logError("admin/appointments POST", insertErr);
+    return apiError(`Failed to create appointment: ${insertErr.message}`, 500);
+  }
+
+  const mappingRows = effective.map((e, i) => ({
+    appointment_id: appointmentId,
+    service_id: e.serviceId,
+    variant_id: e.variantId,
+    sort_order: i,
+  }));
+  const { error: mErr } = await supabase.from("appointment_services").insert(mappingRows);
+  if (mErr) logError("admin/appointments POST (services)", mErr);
+
+  await logAdminAction(
+    "appointment.create",
+    JSON.stringify({
+      client: p.clientEmail,
+      date: p.date,
+      time: p.startTime,
+      stylistId: p.stylistId,
+      status: p.status,
+      override: !!p.overrideConflicts,
+    }),
+    appointmentId,
+  );
+
+  await createNotification({
+    toAllAdmins: true,
+    type: "booking.admin_created",
+    title: `Admin booking: ${p.clientName}`,
+    body: `${effective.map((e) => e.displayName).join(", ")} on ${p.date} at ${p.startTime}` +
+      (p.status === "pending" ? " (pending)" : ""),
+    appointmentId,
+    url: `/admin/appointments?focus=${appointmentId}`,
+  });
+
+  return apiSuccess({ id: appointmentId, endTime, status: p.status, totalDuration });
 }

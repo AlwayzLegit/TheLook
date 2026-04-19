@@ -31,7 +31,7 @@ export default function UsersPage() {
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const [form, setForm] = useState({
-    email: "", name: "", password: "", role: "stylist", stylistId: "", active: true,
+    email: "", name: "", password: "", role: "admin", stylistId: "", active: true,
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,7 +58,7 @@ export default function UsersPage() {
   }, [status, userRole]);
 
   const resetForm = () => {
-    setForm({ email: "", name: "", password: "", role: "stylist", stylistId: "", active: true });
+    setForm({ email: "", name: "", password: "", role: "admin", stylistId: "", active: true });
     setEditing(null);
   };
 
@@ -152,21 +152,17 @@ export default function UsersPage() {
               </div>
               <div>
                 <label className="block text-xs font-body text-navy/40 mb-1">Role</label>
-                <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full border border-navy/20 px-3 py-2 text-sm font-body">
+                <select
+                  value="admin"
+                  disabled
+                  className="w-full border border-navy/20 px-3 py-2 text-sm font-body bg-navy/5 cursor-not-allowed"
+                >
                   <option value="admin">Admin (full access)</option>
-                  <option value="stylist">Stylist (own data only)</option>
                 </select>
+                <p className="text-[10px] text-navy/40 mt-1">
+                  Stylist-only accounts are disabled for now. Every login created here has full admin access.
+                </p>
               </div>
-              {form.role === "stylist" && (
-                <div>
-                  <label className="block text-xs font-body text-navy/40 mb-1">Linked Stylist Profile</label>
-                  <select value={form.stylistId} onChange={(e) => setForm({ ...form, stylistId: e.target.value })} className="w-full border border-navy/20 px-3 py-2 text-sm font-body">
-                    <option value="">Select stylist...</option>
-                    {stylists.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                  <p className="text-[10px] text-navy/30 mt-1">Links this account to a stylist profile so they only see their own appointments</p>
-                </div>
-              )}
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} className="w-4 h-4" />
                 <span className="text-sm font-body">Active</span>

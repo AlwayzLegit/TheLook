@@ -9,6 +9,7 @@ import ConfirmModal from "@/components/admin/ConfirmModal";
 import { downloadIcs } from "@/lib/icsExport";
 import { todayISOInLA, addDaysISOInLA } from "@/lib/datetime";
 import AppointmentCalendar from "@/components/admin/AppointmentCalendar";
+import NewAppointmentModal from "@/components/admin/NewAppointmentModal";
 
 interface Service {
   id: string;
@@ -71,6 +72,7 @@ export default function AppointmentsPage() {
   const [clientHistory, setClientHistory] = useState<EnrichedAppointment[]>([]);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [view, setView] = useState<"calendar" | "list">("calendar");
+  const [showNewAppt, setShowNewAppt] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -239,11 +241,34 @@ export default function AppointmentsPage() {
     }
   };
 
+  const deleteAppointment = async (id: string) => {
+    if (!confirm("Delete this appointment permanently? This can't be undone.")) return;
+    try {
+      setPendingStatusId(id);
+      const res = await fetch(`/api/admin/appointments/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setToast({ type: "error", message: data.error || "Failed to delete appointment." });
+        return;
+      }
+      setToast({ type: "success", message: "Appointment deleted." });
+      refresh();
+    } finally {
+      setPendingStatusId(null);
+    }
+  };
+
   return (
-    <div className="p-8">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h1 className="font-heading text-3xl">Appointments</h1>
-        <div className="flex items-center gap-4">
+    <div className="p-4 sm:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-6">
+        <h1 className="font-heading text-2xl sm:text-3xl">Appointments</h1>
+        <div className="flex items-center flex-wrap gap-2 sm:gap-3">
+          <button
+            onClick={() => setShowNewAppt(true)}
+            className="px-4 py-2 text-xs font-body bg-rose text-white hover:bg-rose-light uppercase tracking-widest"
+          >
+            + New Appointment
+          </button>
           <button
             onClick={() => {
               const events = filteredAppts.filter((a) => a.status !== "cancelled").map((a) => ({
@@ -562,6 +587,14 @@ export default function AppointmentsPage() {
                   >
                     Cancel
                   </button>
+                  <button
+                    onClick={() => deleteAppointment(appt.id)}
+                    disabled={pendingStatusId === appt.id}
+                    className="text-xs font-body text-red-700 border border-red-300 px-3 py-1 hover:bg-red-100"
+                    title="Delete permanently"
+                  >
+                    Delete
+                  </button>
                 </div>
               )}
             </div>
@@ -618,6 +651,15 @@ export default function AppointmentsPage() {
       {toast ? (
         <AdminToast type={toast.type} message={toast.message} onClose={() => setToast(null)} />
       ) : null}
+
+      <NewAppointmentModal
+        open={showNewAppt}
+        onClose={() => setShowNewAppt(false)}
+        onCreated={() => {
+          setToast({ type: "success", message: "Appointment created." });
+          refresh();
+        }}
+      />
     </div>
   );
 }

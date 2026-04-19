@@ -32,12 +32,17 @@ export async function PATCH(
     return apiError("Invalid service payload.", 400);
   }
   const payload = parsed.data;
+  const slugSource = payload.slug && payload.slug.trim().length > 0 ? payload.slug : payload.name;
+  const nextSlug = slugSource.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const basePayload = {
     category: payload.category,
     name: payload.name,
+    slug: nextSlug,
     price_text: payload.price_text,
     price_min: payload.price_min,
     duration: payload.duration,
+    description: payload.description ?? null,
+    products_used: payload.products_used ?? null,
     active: payload.active,
     sort_order: payload.sort_order,
     updated_at: new Date().toISOString(),

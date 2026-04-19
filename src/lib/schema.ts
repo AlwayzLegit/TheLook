@@ -4,10 +4,15 @@ export const services = pgTable("services", {
   id: uuid("id").primaryKey().defaultRandom(),
   category: varchar("category", { length: 100 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 160 }).unique(),
   priceText: varchar("price_text", { length: 50 }).notNull(),
   priceMin: integer("price_min").notNull(),
   duration: integer("duration").notNull(),
   imageUrl: varchar("image_url", { length: 500 }),
+  // Long-form copy shown on the per-service detail page.
+  description: text("description"),
+  // Short freeform list of products / tools used, rendered on the detail page.
+  productsUsed: text("products_used"),
   active: boolean("active").default(true),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),

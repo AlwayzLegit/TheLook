@@ -51,12 +51,20 @@ export async function POST(request: NextRequest) {
     return apiError("Database not configured.", 503);
   }
   const payload = parsed.data;
+  // Auto-slug from name when the admin didn't provide one. Slug clashes in
+  // the backfill migration use a 6-char uuid suffix; same policy here.
+  const baseSlug = (payload.slug && payload.slug.trim().length > 0)
+    ? payload.slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+    : payload.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const basePayload = {
     category: payload.category,
     name: payload.name,
+    slug: baseSlug,
     price_text: payload.price_text,
     price_min: payload.price_min,
     duration: payload.duration,
+    description: payload.description ?? null,
+    products_used: payload.products_used ?? null,
     active: payload.active ?? true,
     sort_order: payload.sort_order ?? 0,
   };

@@ -42,10 +42,13 @@ export default function ServicesPage() {
   const [formData, setFormData] = useState({
     category: "Haircuts",
     name: "",
+    slug: "",
     price_text: "",
     price_min: 0,
     duration: 30,
     image_url: "",
+    description: "",
+    products_used: "",
     active: true,
     sort_order: 0,
   });
@@ -93,10 +96,13 @@ export default function ServicesPage() {
         setFormData({
           category: "Haircuts",
           name: "",
+          slug: "",
           price_text: "",
           price_min: 0,
           duration: 30,
           image_url: "",
+          description: "",
+          products_used: "",
           active: true,
           sort_order: 0,
         });
@@ -118,10 +124,16 @@ export default function ServicesPage() {
     setFormData({
       category: service.category,
       name: service.name,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      slug: (service as any).slug || "",
       price_text: service.price_text,
       price_min: service.price_min,
       duration: service.duration,
       image_url: service.image_url || "",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      description: (service as any).description || "",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      products_used: (service as any).products_used || "",
       active: service.active,
       sort_order: service.sort_order,
     });
@@ -148,10 +160,13 @@ export default function ServicesPage() {
     setFormData({
       category: "Haircuts",
       name: "",
+      slug: "",
       price_text: "",
       price_min: 0,
       duration: 30,
       image_url: "",
+      description: "",
+      products_used: "",
       active: true,
       sort_order: 0,
     });
@@ -173,7 +188,7 @@ export default function ServicesPage() {
   })).filter(g => g.items.length > 0);
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-heading text-3xl">Services</h1>
         <div className="flex gap-3">
@@ -290,6 +305,45 @@ export default function ServicesPage() {
                 onChange={(url) => setFormData({ ...formData, image_url: url })}
                 name={formData.name || formData.category}
               />
+
+              <div>
+                <label className="block text-sm font-body text-navy/60 mb-1">URL slug</label>
+                <input
+                  type="text"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
+                  placeholder="leave blank to auto-generate from name"
+                />
+                <p className="text-xs text-navy/40 mt-1">
+                  Used in the detail-page URL: /services/item/{formData.slug || "auto"}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-body text-navy/60 mb-1">Description</label>
+                <textarea
+                  rows={4}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
+                  placeholder="What the service includes, what to expect, how to prepare, etc."
+                />
+                <p className="text-xs text-navy/40 mt-1">
+                  Shown on the service detail page. Leave blank to use the default copy.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-body text-navy/60 mb-1">Products used</label>
+                <textarea
+                  rows={2}
+                  value={formData.products_used}
+                  onChange={(e) => setFormData({ ...formData, products_used: e.target.value })}
+                  className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
+                  placeholder="e.g. Olaplex No. 3, Redken Chromatics, Kérastase Nutritive"
+                />
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>

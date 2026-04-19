@@ -7,31 +7,31 @@ import { SessionProvider, useSession } from "next-auth/react";
 import KeyboardShortcuts from "@/components/admin/KeyboardShortcuts";
 import NotificationsBell from "@/components/admin/NotificationsBell";
 
+// Stylist self-service accounts are disabled for now — the salon runs as
+// admin-only. When stylists get their own logins later, restore the role
+// filtering + the "My Profile" nav item and un-hide /admin/my-profile.
 type NavItem = {
   href: string;
   label: string;
-  adminOnly: boolean;
-  stylistOnly?: boolean;
 };
 
 const navItems: NavItem[] = [
-  { href: "/admin", label: "Dashboard", adminOnly: false },
-  { href: "/admin/appointments", label: "Appointments", adminOnly: false },
-  { href: "/admin/waitlist", label: "Waitlist", adminOnly: false },
-  { href: "/admin/clients", label: "Clients", adminOnly: false },
-  { href: "/admin/messages", label: "Messages", adminOnly: true },
-  { href: "/admin/reviews", label: "Reviews", adminOnly: true },
-  { href: "/admin/analytics", label: "Analytics", adminOnly: true },
-  { href: "/admin/commissions", label: "Commissions", adminOnly: true },
-  { href: "/admin/services", label: "Services", adminOnly: true },
-  { href: "/admin/stylists", label: "Stylists", adminOnly: true },
-  { href: "/admin/products", label: "Inventory", adminOnly: true },
-  { href: "/admin/discounts", label: "Discounts", adminOnly: true },
-  { href: "/admin/schedule", label: "Schedule", adminOnly: false },
-  { href: "/admin/my-profile", label: "My Profile", adminOnly: false, stylistOnly: true },
-  { href: "/admin/users", label: "Users", adminOnly: true },
-  { href: "/admin/settings", label: "Settings", adminOnly: true },
-  { href: "/admin/activity", label: "Activity Log", adminOnly: true },
+  { href: "/admin", label: "Dashboard" },
+  { href: "/admin/appointments", label: "Appointments" },
+  { href: "/admin/waitlist", label: "Waitlist" },
+  { href: "/admin/clients", label: "Clients" },
+  { href: "/admin/messages", label: "Messages" },
+  { href: "/admin/reviews", label: "Reviews" },
+  { href: "/admin/analytics", label: "Analytics" },
+  { href: "/admin/commissions", label: "Commissions" },
+  { href: "/admin/services", label: "Services" },
+  { href: "/admin/stylists", label: "Stylists" },
+  { href: "/admin/products", label: "Inventory" },
+  { href: "/admin/discounts", label: "Discounts" },
+  { href: "/admin/schedule", label: "Schedule" },
+  { href: "/admin/users", label: "Users" },
+  { href: "/admin/settings", label: "Settings" },
+  { href: "/admin/activity", label: "Activity Log" },
 ];
 
 function useBadgeCounts() {
@@ -63,18 +63,14 @@ function useBadgeCounts() {
 
 function AdminSidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const badges = useBadgeCounts();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userRole = (session?.user as any)?.role || "admin";
 
   if (pathname === "/admin/login") return null;
 
-  const visibleNavItems = navItems.filter((item) => {
-    if (item.stylistOnly) return userRole === "stylist";
-    return !item.adminOnly || userRole === "admin";
-  });
+  // Role-based filtering is off while stylist accounts are disabled; every
+  // signed-in admin sees every nav item.
+  const visibleNavItems = navItems;
 
   const getBadge = (href: string) => {
     if (href === "/admin/appointments" && badges.pending > 0) return badges.pending;

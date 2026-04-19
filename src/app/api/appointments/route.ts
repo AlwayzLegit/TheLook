@@ -318,14 +318,9 @@ export async function POST(request: NextRequest) {
     appointmentId,
     url: `/admin/appointments?focus=${appointmentId}`,
   });
-  await createNotification({
-    toStylistId: stylistId,
-    type: "booking.new",
-    title: `New booking: ${clientName}`,
-    body: `${serviceNamesCombined} on ${date} at ${startTime}`,
-    appointmentId,
-    url: `/admin/appointments?focus=${appointmentId}`,
-  });
+  // Per-stylist notification is skipped while stylist accounts are off —
+  // admins see everything via the bell above. Restore the per-stylist
+  // notification when stylist logins come back.
 
   return apiSuccess({
     id: appointmentId,

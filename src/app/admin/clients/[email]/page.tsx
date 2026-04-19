@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
+import NewAppointmentModal from "@/components/admin/NewAppointmentModal";
 
 interface Profile {
   email: string;
@@ -77,6 +78,7 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [deletePhotoId, setDeletePhotoId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"profile" | "photos" | "history" | "formulas">("profile");
+  const [showNewAppt, setShowNewAppt] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -257,15 +259,12 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
       </div>
 
       <div className="mb-6">
-        <Link
-          href={{
-            pathname: "/book",
-            query: { email, name, phone },
-          }}
+        <button
+          onClick={() => setShowNewAppt(true)}
           className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-xs font-body uppercase tracking-widest px-5 py-2.5 transition-colors"
         >
           + New Appointment for this Client
-        </Link>
+        </button>
       </div>
 
       {/* Tabs */}
@@ -560,6 +559,15 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
       )}
 
       {toast && <AdminToast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
+
+      <NewAppointmentModal
+        open={showNewAppt}
+        onClose={() => setShowNewAppt(false)}
+        onCreated={() => setToast({ type: "success", message: "Appointment created." })}
+        prefillEmail={email}
+        prefillName={name}
+        prefillPhone={phone}
+      />
     </div>
   );
 }

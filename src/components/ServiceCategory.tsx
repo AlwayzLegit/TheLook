@@ -10,6 +10,7 @@ interface ApiService {
   id: string;
   category: string;
   name: string;
+  slug?: string | null;
   price_text: string;
   duration: number;
   image_url?: string | null;
@@ -132,15 +133,15 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
                 {services.map((service, i) => {
                   const image = service.image_url?.trim() || null;
                   const imageKey = `${service.id}:${image || ""}`;
-                  return (
+                  const detailHref = service.slug ? `/services/item/${service.slug}` : null;
+                  const Row = (
                     <div
-                      key={service.id}
-                      className={`flex items-center gap-4 px-6 py-5 group hover:bg-navy/[0.02] transition-colors ${
+                      className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5 group hover:bg-navy/[0.02] transition-colors ${
                         i < services.length - 1 ? "border-b border-navy/6" : ""
                       }`}
                     >
                       {image && !failedImages[imageKey] ? (
-                        <div className="relative w-[72px] h-[72px] rounded-lg overflow-hidden border border-navy/10 shrink-0">
+                        <div className="relative w-[56px] h-[56px] sm:w-[72px] sm:h-[72px] rounded-lg overflow-hidden border border-navy/10 shrink-0">
                           {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic URLs from DB */}
                           <img
                             src={image}
@@ -156,18 +157,30 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
                           />
                         </div>
                       ) : null}
-                      <span className="text-gold font-heading text-lg shrink-0 group-hover:text-rose transition-colors duration-200 w-24 text-left">
+                      <span className="text-gold font-heading text-base sm:text-lg shrink-0 group-hover:text-rose transition-colors duration-200 w-16 sm:w-24 text-left">
                         {service.price_text}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-navy/80 text-[15px] font-body group-hover:text-navy transition-colors">
+                        <p className="text-navy/80 text-sm sm:text-[15px] font-body group-hover:text-navy transition-colors">
                           {service.name}
                         </p>
                         <p className="text-navy/40 text-xs font-body mt-0.5">
                           {service.duration} min
                         </p>
                       </div>
+                      {detailHref && (
+                        <svg className="hidden sm:block w-4 h-4 text-navy/20 group-hover:text-rose transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+                        </svg>
+                      )}
                     </div>
+                  );
+                  return detailHref ? (
+                    <Link key={service.id} href={detailHref} className="block">
+                      {Row}
+                    </Link>
+                  ) : (
+                    <div key={service.id}>{Row}</div>
                   );
                 })}
               </div>

@@ -4,7 +4,6 @@ import { adminAppointmentPatchSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { sendStatusChangeEmail } from "@/lib/email";
-import { createNotification } from "@/lib/notifications";
 import { NextRequest } from "next/server";
 
 export async function PATCH(
@@ -82,20 +81,8 @@ export async function PATCH(
       cancelToken: data.cancel_token,
     }).catch((err) => logError("status-email", err));
 
-    // In-dashboard notification to the assigned stylist when their booking
-    // gets confirmed/cancelled by an admin.
-    if (payload.status === "confirmed" || payload.status === "cancelled") {
-      createNotification({
-        toStylistId: data.stylist_id,
-        type: `booking.${payload.status}`,
-        title: payload.status === "confirmed"
-          ? `Booking confirmed: ${data.client_name}`
-          : `Booking cancelled: ${data.client_name}`,
-        body: `${serviceName} on ${data.date} at ${data.start_time}`,
-        appointmentId: id,
-        url: `/admin/appointments?focus=${id}`,
-      }).catch((err) => logError("status-notification", err));
-    }
+    // Stylist-targeted dashboard notification is off until stylist accounts
+    // come back. Admins see every status change via the admin bell already.
   }
 
   return apiSuccess(data);
