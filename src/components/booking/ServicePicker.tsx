@@ -10,6 +10,15 @@ interface Service {
   priceText: string;
   priceMin?: number;
   duration: number;
+  // Present when this row is a variant of a parent service (e.g. Facial Hair
+  // Removal — Brow). Distinct variants must be independently selectable, so
+  // the picker keys by (id, variantId) rather than id alone.
+  variantId?: string;
+  variantName?: string;
+}
+
+function rowKey(s: Service) {
+  return s.variantId ? `${s.id}:${s.variantId}` : s.id;
 }
 
 interface Props {
@@ -34,7 +43,7 @@ function formatPrice(cents: number, hasPlus: boolean) {
 export default function ServicePicker({ services, onToggle, onContinue, selected }: Props) {
   const categories = Object.keys(services);
   const [openCategory, setOpenCategory] = useState<string | null>(null);
-  const selectedIds = new Set(selected.map((s) => s.id));
+  const selectedKeys = new Set(selected.map(rowKey));
 
   // Auto-open first category on load
   useEffect(() => {
@@ -62,7 +71,7 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
 
       <div className="space-y-2 max-w-2xl mx-auto pb-32">
         {categories.map((cat) => {
-          const selectedInCat = services[cat].filter((s) => selectedIds.has(s.id)).length;
+          const selectedInCat = services[cat].filter((s) => selectedKeys.has(rowKey(s))).length;
           return (
             <div key={cat} className="border border-navy/8 rounded-sm overflow-hidden bg-white">
               <button
@@ -105,10 +114,10 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
                   >
                     <div className="border-t border-navy/5">
                       {services[cat].map((service) => {
-                        const isSelected = selectedIds.has(service.id);
+                        const isSelected = selectedKeys.has(rowKey(service));
                         return (
                           <button
-                            key={service.id}
+                            key={rowKey(service)}
                             type="button"
                             onClick={() => onToggle(service)}
                             aria-pressed={isSelected}

@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
   const {
     serviceId,
     serviceIds,
+    variantIds,
     stylistId: requestedStylistId,
     anyStylist,
     date,
@@ -100,6 +101,13 @@ export async function POST(request: NextRequest) {
   if (ids.length === 0) {
     return apiError("At least one service must be selected.", 400);
   }
+
+  // Normalize variantIds to align by index with ids; empty string means "no
+  // variant picked for this service".
+  const vIds: (string | null)[] = ids.map((_, i) => {
+    const raw = variantIds?.[i];
+    return raw && raw.length > 0 ? raw : null;
+  });
 
   const turnstile = await verifyTurnstileToken(turnstileToken, ip);
   if (!turnstile.ok) {
@@ -123,12 +131,6 @@ export async function POST(request: NextRequest) {
     assignedStylistName = picked.name;
   }
 
-  // Verify the slot is still available across the combined duration.
-  const available = await getAvailableSlots(stylistId, ids, date);
-  if (!available.includes(startTime)) {
-    return apiError("This time slot is no longer available. Please choose another.", 409);
-  }
-
   // Fetch all chosen services, preserving selection order.
   const { data: servicesRaw, error: serviceError } = await supabase
     .from("services")
@@ -146,9 +148,55 @@ export async function POST(request: NextRequest) {
     return apiError("One or more services not found.", 404);
   }
 
-  const totalDuration = services.reduce((sum, s) => sum + (s.duration || 0), 0);
-  const totalPriceMin = services.reduce((sum, s) => sum + (s.price_min || 0), 0);
+  // Fetch any picked variants so duration/price come from the variant, not
+  // the parent service (Facial Hair Removal — Brow vs Full Face etc.).
+  const pickedVariantIds = vIds.filter((v): v is string => v !== null);
+  const variantsById = new Map<string, { id: string; service_id: string; name: string; duration: number; price_min: number; price_text: string }>();
+  if (pickedVariantIds.length > 0) {
+    const { data: vrows, error: vErr } = await supabase
+      .from("service_variants")
+      .select("id, service_id, name, duration, price_min, price_text")
+      .in("id", pickedVariantIds)
+      .eq("active", true);
+    if (vErr) logError("appointments POST (variants)", vErr);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const v of (vrows || []) as any[]) variantsById.set(v.id, v);
+    // Validate every picked variant belongs to the paired service id.
+    for (let i = 0; i < ids.length; i++) {
+      const vid = vIds[i];
+      if (!vid) continue;
+      const v = variantsById.get(vid);
+      if (!v || v.service_id !== ids[i]) {
+        return apiError("Selected variant doesn't match the service.", 400);
+      }
+    }
+  }
+
+  // Compute effective duration + price using variants where provided.
+  const effective = services.map((s, i) => {
+    const vid = vIds[i];
+    const v = vid ? variantsById.get(vid) : null;
+    return {
+      service: s,
+      variantId: v?.id ?? null,
+      displayName: v ? `${s.name} — ${v.name}` : s.name,
+      duration: v?.duration ?? s.duration,
+      priceMin: v?.price_min ?? s.price_min,
+    };
+  });
+
+  const totalDuration = effective.reduce((sum, e) => sum + (e.duration || 0), 0);
+  const totalPriceMin = effective.reduce((sum, e) => sum + (e.priceMin || 0), 0);
   const endTime = minutesToTime(timeToMinutes(startTime) + totalDuration);
+
+  // Verify the slot is still available using the variant-aware total
+  // duration. We deliberately run this AFTER computing totalDuration so
+  // Brow+Lip (10+10=20) isn't approved against the parent service's 10-min
+  // duration.
+  const available = await getAvailableSlots(stylistId, ids, date, totalDuration);
+  if (!available.includes(startTime)) {
+    return apiError("This time slot is no longer available. Please choose another.", 409);
+  }
 
   const requiresDeposit = totalDuration >= BOOKING.DEPOSIT_TRIGGER_MINUTES;
   const depositRequired = requiresDeposit ? BOOKING.DEPOSIT_AMOUNT_CENTS : 0;
@@ -189,18 +237,19 @@ export async function POST(request: NextRequest) {
     return apiError("Failed to create appointment.", 500);
   }
 
-  // Mirror multi-service rows.
-  if (services.length > 1) {
-    const mappingRows = services.map((s, i) => ({
-      appointment_id: appointmentId,
-      service_id: s.id,
-      sort_order: i,
-    }));
-    const { error: mappingError } = await supabase
-      .from("appointment_services")
-      .insert(mappingRows);
-    if (mappingError) logError("appointments POST (services)", mappingError);
-  }
+  // Mirror multi-service rows — always insert so variant_id is recorded
+  // even on single-service bookings. Appointments without variants still
+  // resolve cleanly; this replaces the previous "only-insert-if-multi" path.
+  const mappingRows = effective.map((e, i) => ({
+    appointment_id: appointmentId,
+    service_id: e.service.id,
+    variant_id: e.variantId,
+    sort_order: i,
+  }));
+  const { error: mappingError } = await supabase
+    .from("appointment_services")
+    .insert(mappingRows);
+  if (mappingError) logError("appointments POST (services)", mappingError);
 
   // Record the deposit if one was paid.
   if (depositPaid) {
@@ -221,7 +270,7 @@ export async function POST(request: NextRequest) {
     .eq("id", stylistId)
     .single();
   const stylistName = (stylist?.name as string) || assignedStylistName || "Your Stylist";
-  const serviceNamesCombined = services.map((s) => s.name).join(", ");
+  const serviceNamesCombined = effective.map((e) => e.displayName).join(", ");
   const totalPriceText = `$${Math.round(totalPriceMin / 100)}`;
 
   // Client confirmation email (non-blocking).
@@ -280,7 +329,11 @@ export async function POST(request: NextRequest) {
 
   return apiSuccess({
     id: appointmentId,
-    services: services.map((s) => ({ id: s.id, name: s.name })),
+    services: effective.map((e) => ({
+      id: e.service.id,
+      name: e.displayName,
+      variantId: e.variantId,
+    })),
     stylist: stylistName,
     date,
     startTime,

@@ -5,11 +5,16 @@ import { BOOKING } from "@/lib/constants";
 import { NextRequest } from "next/server";
 
 // GET /api/availability?stylistId=<uuid|any>&serviceIds=<csv>&date=<YYYY-MM-DD>
+//   &variantIds=<csv>
 //
 // When stylistId === "any" (the new step-order picks date/time before
 // stylist), the route returns the UNION of slots free for any stylist
 // who offers every selected service. The booking POST later resolves the
 // concrete stylist when "Any Stylist" is chosen.
+//
+// Optional variantIds (aligned by index with serviceIds) let the caller
+// request variant-aware slot durations so Brow + Lip (10+10) don't get
+// evaluated against the parent service's 10-minute duration.
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const stylistIdRaw = searchParams.get("stylistId");
@@ -17,6 +22,8 @@ export async function GET(request: NextRequest) {
   const serviceIds = searchParams.getAll("serviceIds");
   const serviceId = searchParams.get("serviceId");
   const date = searchParams.get("date");
+  const variantIdsParam = searchParams.get("variantIds");
+  const variantIdsRepeated = searchParams.getAll("variantIds");
 
   if (!stylistIdRaw || !date) {
     return apiError("stylistId and date are required.", 400);
@@ -39,10 +46,39 @@ export async function GET(request: NextRequest) {
     return apiError("At least one serviceId is required.", 400);
   }
 
+  const variantIds = variantIdsRepeated.length > 0
+    ? variantIdsRepeated
+    : variantIdsParam
+      ? variantIdsParam.split(",").map((s) => s.trim())
+      : [];
+
+  // Compute a variant-aware duration override when any variantId is present.
+  let durationOverride: number | undefined;
+  const pickedV = variantIds.filter((v) => v && v.length > 0);
+  if (pickedV.length > 0 && hasSupabaseConfig) {
+    const { data: vrows } = await supabase
+      .from("service_variants")
+      .select("id, duration")
+      .in("id", pickedV);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vById = new Map<string, number>(((vrows || []) as any[]).map((v) => [v.id, v.duration || 0]));
+    const { data: srows } = await supabase
+      .from("services")
+      .select("id, duration")
+      .in("id", [...new Set(ids)]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sById = new Map<string, number>(((srows || []) as any[]).map((s) => [s.id, s.duration || 0]));
+    durationOverride = ids.reduce((sum, sid, i) => {
+      const vid = variantIds[i];
+      if (vid && vById.has(vid)) return sum + (vById.get(vid) || 0);
+      return sum + (sById.get(sid) || 0);
+    }, 0);
+  }
+
   const wantsAny = stylistIdRaw === "any" || stylistIdRaw === BOOKING.ANY_STYLIST_ID;
 
   if (!wantsAny) {
-    const slots = await getAvailableSlots(stylistIdRaw, ids, date);
+    const slots = await getAvailableSlots(stylistIdRaw, ids, date, durationOverride);
     return apiSuccess({ slots });
   }
 
@@ -77,7 +113,7 @@ export async function GET(request: NextRequest) {
   const slotSet = new Set<string>();
   for (const s of (stylists || []) as Array<{ id: string }>) {
     if (s.id === BOOKING.ANY_STYLIST_ID) continue;
-    const slots = await getAvailableSlots(s.id, ids, date);
+    const slots = await getAvailableSlots(s.id, ids, date, durationOverride);
     for (const slot of slots) slotSet.add(slot);
   }
   const slots = [...slotSet].sort();

@@ -17,6 +17,9 @@ interface Props {
   stylists: Stylist[];
   // A stylist must offer ALL these services to be bookable for this request.
   serviceIds: string[];
+  // Optional variant ids aligned by index with serviceIds so availability
+  // lookups use the right per-service duration.
+  variantIds?: string[];
   // When set, we filter stylists to only those actually free at this slot.
   date?: string | null;
   startTime?: string | null;
@@ -34,7 +37,7 @@ const ANY_STYLIST: Stylist = {
 };
 
 export default function StylistPicker({
-  stylists, serviceIds, date, startTime, onSelect, selected,
+  stylists, serviceIds, variantIds, date, startTime, onSelect, selected,
 }: Props) {
   // For each stylist, asynchronously check whether they're free at the chosen
   // slot. Skipped when date/startTime aren't both set.
@@ -52,16 +55,15 @@ export default function StylistPicker({
       const eligible = stylists.filter((s) =>
         serviceIds.every((id) => s.serviceIds.includes(id))
       );
+      const variantQs = (variantIds || []).length > 0
+        ? "&" + (variantIds || []).map((v) => `variantIds=${encodeURIComponent(v || "")}`).join("&")
+        : "";
       const results = await Promise.all(
         eligible.map(async (s) => {
-          const params = new URLSearchParams({
-            stylistId: s.id,
-            date,
-            ...Object.fromEntries(serviceIds.map((id, i) => [`serviceIds[${i}]`, id])),
-          });
-          serviceIds.forEach((id) => params.append("serviceIds", id));
           try {
-            const r = await fetch(`/api/availability?stylistId=${s.id}&date=${date}&${serviceIds.map((id) => `serviceIds=${id}`).join("&")}`);
+            const r = await fetch(
+              `/api/availability?stylistId=${s.id}&date=${date}&${serviceIds.map((id) => `serviceIds=${id}`).join("&")}${variantQs}`,
+            );
             if (!r.ok) return [s.id, false] as const;
             const data = await r.json();
             const slots: string[] = data.slots || [];
@@ -78,7 +80,7 @@ export default function StylistPicker({
       setChecking(false);
     })();
     return () => { cancelled = true; };
-  }, [stylists, serviceIds, date, startTime]);
+  }, [stylists, serviceIds, variantIds, date, startTime]);
 
   const tiles: Stylist[] = [ANY_STYLIST, ...stylists];
 

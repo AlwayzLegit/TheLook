@@ -34,6 +34,12 @@ interface Service {
   priceText: string;
   priceMin?: number;
   duration: number;
+  // Populated when this "service" in the picker list is actually a variant
+  // (e.g. Facial Hair Removal — Brow). `id` still points to the parent
+  // service so FK constraints hold; `variantId` is carried through to the
+  // appointments POST.
+  variantId?: string;
+  variantName?: string;
 }
 
 interface Stylist {
@@ -92,10 +98,13 @@ export default function BookPage() {
   const anyPricePlus = selectedServices.some((s) => s.priceText.includes("+"));
   const requiresDeposit = totalDuration >= BOOKING.DEPOSIT_TRIGGER_MINUTES;
 
+  const serviceKey = (s: Service) => (s.variantId ? `${s.id}:${s.variantId}` : s.id);
+
   const toggleService = (service: Service) => {
     setSelectedServices((prev) => {
-      const exists = prev.find((s) => s.id === service.id);
-      if (exists) return prev.filter((s) => s.id !== service.id);
+      const key = serviceKey(service);
+      const exists = prev.find((s) => serviceKey(s) === key);
+      if (exists) return prev.filter((s) => serviceKey(s) !== key);
       return [...prev, service];
     });
     // Service change invalidates downstream selections.
@@ -171,28 +180,75 @@ export default function BookPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    fetch("/api/services")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data && Object.keys(data).length > 0) {
-          const normalized: Record<string, Service[]> = {};
-          for (const cat of Object.keys(data)) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            normalized[cat] = (data[cat] as any[]).map((s) => ({
-              id: s.id,
-              category: s.category,
-              name: s.name,
-              priceText: s.priceText ?? s.price_text ?? "",
-              priceMin: s.priceMin ?? s.price_min,
-              duration: s.duration,
-            }));
-          }
-          setServices(normalized);
-        } else {
+    (async () => {
+      try {
+        const r = await fetch("/api/services");
+        const data = await r.json();
+        if (!data || Object.keys(data).length === 0) {
           setServices(FALLBACK_SERVICES);
+          return;
         }
-      })
-      .catch(() => setServices(FALLBACK_SERVICES));
+        const normalized: Record<string, Service[]> = {};
+        for (const cat of Object.keys(data)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          normalized[cat] = (data[cat] as any[]).map((s) => ({
+            id: s.id,
+            category: s.category,
+            name: s.name,
+            priceText: s.priceText ?? s.price_text ?? "",
+            priceMin: s.priceMin ?? s.price_min,
+            duration: s.duration,
+          }));
+        }
+
+        // Expand any service that has variants into one picker row per
+        // variant. This keeps the ServicePicker UI variant-agnostic — each
+        // virtual row already carries its own price, duration, and
+        // variantId which flows back to the appointments POST.
+        const allIds = Object.values(normalized).flat().map((s) => s.id);
+        const variantByService = new Map<string, Array<{ id: string; name: string; price_text: string; price_min: number; duration: number }>>();
+        await Promise.all(
+          allIds.map(async (id) => {
+            try {
+              const vr = await fetch(`/api/services/${id}/variants`);
+              if (!vr.ok) return;
+              const vdata = await vr.json();
+              if (Array.isArray(vdata) && vdata.length > 0) variantByService.set(id, vdata);
+            } catch {
+              // best-effort
+            }
+          }),
+        );
+
+        for (const cat of Object.keys(normalized)) {
+          const expanded: Service[] = [];
+          for (const s of normalized[cat]) {
+            const variants = variantByService.get(s.id);
+            if (!variants || variants.length === 0) {
+              expanded.push(s);
+              continue;
+            }
+            for (const v of variants) {
+              expanded.push({
+                id: s.id,
+                category: s.category,
+                name: `${s.name} — ${v.name}`,
+                priceText: v.price_text,
+                priceMin: v.price_min,
+                duration: v.duration,
+                variantId: v.id,
+                variantName: v.name,
+              });
+            }
+          }
+          normalized[cat] = expanded;
+        }
+
+        setServices(normalized);
+      } catch {
+        setServices(FALLBACK_SERVICES);
+      }
+    })();
 
     fetch("/api/stylists")
       .then((r) => r.json())
@@ -258,6 +314,7 @@ export default function BookPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           serviceIds: selectedServices.map((s) => s.id),
+          variantIds: selectedServices.map((s) => s.variantId || ""),
           stylistId: isAny ? BOOKING.ANY_STYLIST_ID : (selectedStylist as Stylist).id,
           anyStylist: isAny,
           date: selectedDate,
@@ -340,6 +397,7 @@ export default function BookPage() {
             <DateTimePicker
               stylistId={availabilityStylistId}
               serviceIds={selectedServices.map((s) => s.id)}
+              variantIds={selectedServices.map((s) => s.variantId || "")}
               selectedDate={selectedDate}
               selectedTime={selectedTime}
               onSelect={(d, t) => { setSelectedDate(d); setSelectedTime(t); }}
@@ -350,6 +408,7 @@ export default function BookPage() {
             <StylistPicker
               stylists={allStylists}
               serviceIds={selectedServices.map((s) => s.id)}
+              variantIds={selectedServices.map((s) => s.variantId || "")}
               date={selectedDate}
               startTime={selectedTime}
               onSelect={(s) => { setSelectedStylist(s); setStep(STEP_INFO); }}
@@ -381,7 +440,7 @@ export default function BookPage() {
                   </p>
                   <ul className="space-y-1.5">
                     {selectedServices.map((s) => (
-                      <li key={s.id} className="flex items-baseline justify-between gap-4">
+                      <li key={serviceKey(s)} className="flex items-baseline justify-between gap-4">
                         <span className="font-body text-sm text-navy">{s.name}</span>
                         <span className="text-gold font-heading text-sm shrink-0">{s.priceText}</span>
                       </li>

@@ -4,6 +4,9 @@ export const appointmentCreateSchema = z.object({
   // Accept either a single serviceId (legacy) or an array serviceIds (multi-service).
   serviceId: z.string().uuid().optional(),
   serviceIds: z.array(z.string().uuid()).min(1).max(8).optional(),
+  // Optional per-service variant ids, aligned by index with serviceIds.
+  // Slot a "" (empty string) when a given service has no selected variant.
+  variantIds: z.array(z.string().uuid().or(z.literal(""))).max(8).optional(),
   stylistId: z.string().uuid(),
   // Set when the customer chose "Any Stylist" — server then picks an available
   // stylist for the chosen date/time.

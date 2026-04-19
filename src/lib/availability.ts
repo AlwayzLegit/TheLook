@@ -22,8 +22,13 @@ function minutesToTime(mins: number): string {
 export async function getAvailableSlots(
   stylistId: string,
   // Either a single service id (legacy) or an array of ids for multi-service bookings.
+  // Duplicates in the array are additive (e.g. two variants of the same service).
   serviceIdOrIds: string | string[],
-  date: string
+  date: string,
+  // When set, overrides the service-table duration lookup. Used by the
+  // booking POST to pass variant-aware totals (Brow 10 + Lip 10 = 20 min
+  // even though the underlying service row's duration is 10).
+  totalDurationOverride?: number,
 ): Promise<string[]> {
   const todayISO = todayISOInLA();
   const maxISO = addDaysISOInLA(BOOKING.MAX_ADVANCE_DAYS);
@@ -87,20 +92,29 @@ export async function getAvailableSlots(
 
   // Get total duration from one or more services
   const ids = Array.isArray(serviceIdOrIds) ? serviceIdOrIds : [serviceIdOrIds];
-  const { data: services, error: serviceError } = await supabase
-    .from("services")
-    .select("id, duration")
-    .in("id", ids);
-
-  if (serviceError || !services || services.length === 0) {
-    console.error("Error fetching service:", serviceError);
-    return ["10:00", "10:30", "11:00", "11:30", "13:00", "14:00", "15:00", "16:00"];
-  }
 
   const openMins = timeToMinutes(activeRule.start_time);
   const closeMins = timeToMinutes(activeRule.end_time);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const duration = services.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+
+  let duration: number;
+  if (typeof totalDurationOverride === "number" && totalDurationOverride > 0) {
+    // Caller already computed the effective duration (variant-aware).
+    duration = totalDurationOverride;
+  } else {
+    const { data: services, error: serviceError } = await supabase
+      .from("services")
+      .select("id, duration")
+      .in("id", [...new Set(ids)]);
+    if (serviceError || !services || services.length === 0) {
+      console.error("Error fetching service:", serviceError);
+      return ["10:00", "10:30", "11:00", "11:30", "13:00", "14:00", "15:00", "16:00"];
+    }
+    // Respect duplicates: if the same id appears twice (two variants of one
+    // parent), the duration is added twice.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const byId = new Map<string, number>((services as any[]).map((s) => [s.id, s.duration || 0]));
+    duration = ids.reduce((sum, id) => sum + (byId.get(id) || 0), 0);
+  }
 
   // Generate 30-min aligned slots
   const allSlots: string[] = [];

@@ -39,6 +39,9 @@ export const appointmentServices = pgTable("appointment_services", {
   id: uuid("id").primaryKey().defaultRandom(),
   appointmentId: uuid("appointment_id").notNull().references(() => appointments.id, { onDelete: "cascade" }),
   serviceId: uuid("service_id").notNull().references(() => services.id),
+  // Filled in when the client picked a specific variant (e.g. Facial Hair
+  // Removal — Brow). Null for services that don't use variants.
+  variantId: uuid("variant_id"),
   sortOrder: integer("sort_order").notNull().default(0),
 }, (table) => [
   index("idx_appointment_services_appointment").on(table.appointmentId),

@@ -7,6 +7,8 @@ import TimeSlots from "./TimeSlots";
 interface Props {
   stylistId: string;
   serviceIds: string[];
+  // Aligned by index with serviceIds. Empty string = no variant for that slot.
+  variantIds?: string[];
   onSelect: (date: string, time: string) => void;
   selectedDate: string | null;
   selectedTime: string | null;
@@ -15,6 +17,7 @@ interface Props {
 export default function DateTimePicker({
   stylistId,
   serviceIds,
+  variantIds,
   onSelect,
   selectedDate,
   selectedTime,
@@ -24,12 +27,14 @@ export default function DateTimePicker({
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const serviceIdsKey = serviceIds.join(",");
+  const variantIdsKey = (variantIds || []).join(",");
 
   useEffect(() => {
     if (!date) return;
     setLoading(true);
     setFetchError(false);
-    fetch(`/api/availability?stylistId=${stylistId}&serviceIds=${serviceIdsKey}&date=${date}`)
+    const vParam = variantIdsKey ? `&variantIds=${variantIdsKey}` : "";
+    fetch(`/api/availability?stylistId=${stylistId}&serviceIds=${serviceIdsKey}${vParam}&date=${date}`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed to fetch");
         return r.json();
@@ -43,7 +48,7 @@ export default function DateTimePicker({
         setSlots([]);
         setLoading(false);
       });
-  }, [date, stylistId, serviceIdsKey]);
+  }, [date, stylistId, serviceIdsKey, variantIdsKey]);
 
   return (
     <div>
