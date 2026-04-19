@@ -18,39 +18,45 @@ import { NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const stylistIdRaw = searchParams.get("stylistId");
-  const serviceIdsParam = searchParams.get("serviceIds");
-  const serviceIds = searchParams.getAll("serviceIds");
   const serviceId = searchParams.get("serviceId");
   const date = searchParams.get("date");
-  const variantIdsParam = searchParams.get("variantIds");
-  const variantIdsRepeated = searchParams.getAll("variantIds");
 
   if (!stylistIdRaw || !date) {
     return apiError("stylistId and date are required.", 400);
   }
 
-  // Combine repeated ?serviceIds=&serviceIds= params with a CSV form so
-  // both client patterns work.
-  const idsFromCsv = serviceIdsParam
-    ? serviceIdsParam.split(",").map((s) => s.trim()).filter(Boolean)
-    : [];
-  const ids = serviceIds.length > 0
-    ? serviceIds
-    : idsFromCsv.length > 0
-      ? idsFromCsv
-      : serviceId
-        ? [serviceId]
-        : [];
+  // Parse serviceIds supporting THREE input patterns, all of which the
+  // booking flow uses in different screens:
+  //   1. ?serviceIds=A&serviceIds=B          (repeated, StylistPicker)
+  //   2. ?serviceIds=A,B                     (CSV, DateTimePicker)
+  //   3. ?serviceIds=A,B&serviceIds=C,D      (mixed — defensive)
+  // Earlier code picked the raw `getAll` array when non-empty, which for
+  // pattern 2 produced `["A,B"]` — a single bogus id that matched nothing
+  // and made the availability query return zero slots. Flatten + split
+  // every entry so every pattern arrives as the same string[] of real ids.
+  const flattenCsv = (arr: string[]): string[] =>
+    arr
+      .flatMap((v) => v.split(","))
+      .map((v) => v.trim())
+      .filter(Boolean);
+
+  const rawServiceIds = searchParams.getAll("serviceIds");
+  const ids = rawServiceIds.length > 0
+    ? flattenCsv(rawServiceIds)
+    : serviceId
+      ? [serviceId]
+      : [];
 
   if (ids.length === 0) {
     return apiError("At least one serviceId is required.", 400);
   }
 
-  const variantIds = variantIdsRepeated.length > 0
-    ? variantIdsRepeated
-    : variantIdsParam
-      ? variantIdsParam.split(",").map((s) => s.trim())
-      : [];
+  // Same flattening story for variantIds — DateTimePicker sends them CSV,
+  // StylistPicker sends them repeated.
+  const rawVariantIds = searchParams.getAll("variantIds");
+  const variantIds = rawVariantIds.length > 0
+    ? rawVariantIds.flatMap((v) => v.split(",")).map((v) => v.trim())
+    : [];
 
   // Compute a variant-aware duration override when any variantId is present.
   let durationOverride: number | undefined;
