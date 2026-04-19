@@ -99,8 +99,11 @@ export default function StylistsPage() {
         setToast({ type: "success", message: editing ? "Stylist updated." : "Stylist created." });
         fetchStylists();
       } else {
-        setToast({ type: "error", message: "Failed to save stylist." });
+        const data = await res.json().catch(() => ({}));
+        setToast({ type: "error", message: data.error || "Failed to save stylist." });
       }
+    } catch (err) {
+      setToast({ type: "error", message: err instanceof Error ? err.message : "Network error." });
     } finally {
       setSaving(false);
     }

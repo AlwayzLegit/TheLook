@@ -4,6 +4,7 @@ import { adminAppointmentPatchSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { sendStatusChangeEmail } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 import { NextRequest } from "next/server";
 
 export async function PATCH(
@@ -31,6 +32,13 @@ export async function PATCH(
   if (payload.date) updateData.date = payload.date;
   if (payload.start_time) updateData.start_time = payload.start_time;
   if (payload.end_time) updateData.end_time = payload.end_time;
+
+  // Stamp approver info whenever a pending booking becomes confirmed.
+  if (payload.status === "confirmed") {
+    updateData.approved_at = new Date().toISOString();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    updateData.approved_by = (session.user as any)?.email || (session.user as any)?.name || "admin";
+  }
 
   updateData.updated_at = new Date().toISOString();
 
@@ -73,6 +81,21 @@ export async function PATCH(
       newStatus: payload.status,
       cancelToken: data.cancel_token,
     }).catch((err) => logError("status-email", err));
+
+    // In-dashboard notification to the assigned stylist when their booking
+    // gets confirmed/cancelled by an admin.
+    if (payload.status === "confirmed" || payload.status === "cancelled") {
+      createNotification({
+        toStylistId: data.stylist_id,
+        type: `booking.${payload.status}`,
+        title: payload.status === "confirmed"
+          ? `Booking confirmed: ${data.client_name}`
+          : `Booking cancelled: ${data.client_name}`,
+        body: `${serviceName} on ${data.date} at ${data.start_time}`,
+        appointmentId: id,
+        url: `/admin/appointments?focus=${id}`,
+      }).catch((err) => logError("status-notification", err));
+    }
   }
 
   return apiSuccess(data);

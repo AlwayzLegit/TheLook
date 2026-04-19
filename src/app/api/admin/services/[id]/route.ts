@@ -3,7 +3,19 @@ import { auth } from "@/lib/auth";
 import { adminServiceSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
+import { revalidatePath } from "next/cache";
 import { NextRequest } from "next/server";
+
+function revalidatePublic() {
+  try {
+    revalidatePath("/");
+    revalidatePath("/services");
+    revalidatePath("/services/[slug]", "page");
+    revalidatePath("/book");
+  } catch {
+    // Best-effort.
+  }
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -55,10 +67,11 @@ export async function PATCH(
 
   if (error) {
     logError("admin/services PATCH", error);
-    return apiError("Failed to update service.", 500);
+    return apiError(`Failed to update service: ${error.message || "unknown"}`, 500);
   }
 
-  logAdminAction("service.update", JSON.stringify({ id, name: payload.name }));
+  await logAdminAction("service.update", JSON.stringify({ id, name: payload.name }));
+  revalidatePublic();
 
   return apiSuccess(data);
 }
@@ -80,10 +93,11 @@ export async function DELETE(
 
   if (error) {
     logError("admin/services DELETE", error);
-    return apiError("Failed to delete service.", 500);
+    return apiError(`Failed to delete service: ${error.message || "unknown"}`, 500);
   }
 
-  logAdminAction("service.delete", JSON.stringify({ id }));
+  await logAdminAction("service.delete", JSON.stringify({ id }));
+  revalidatePublic();
 
   return apiSuccess({ success: true });
 }

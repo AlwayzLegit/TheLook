@@ -19,6 +19,7 @@ describe("appointmentCreateSchema", () => {
     startTime: "10:00",
     clientName: "Jane Doe",
     clientEmail: "jane@example.com",
+    policyAccepted: true,
   };
 
   it("accepts valid booking", () => {

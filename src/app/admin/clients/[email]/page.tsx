@@ -256,6 +256,18 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
         </div>
       </div>
 
+      <div className="mb-6">
+        <Link
+          href={{
+            pathname: "/book",
+            query: { email, name, phone },
+          }}
+          className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-xs font-body uppercase tracking-widest px-5 py-2.5 transition-colors"
+        >
+          + New Appointment for this Client
+        </Link>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-navy/10">
         {(["profile", "photos", "history", "formulas"] as const).map((tab) => (

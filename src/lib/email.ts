@@ -287,6 +287,76 @@ export async function sendReviewDigestEmail(items: ReviewDigestItem[], ratingSna
   }
 }
 
+interface StaffNewBookingDetails {
+  recipients: string[];
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string | null;
+  serviceName: string;
+  stylistName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  totalPriceText?: string | null;
+  notes?: string | null;
+  requestedStylist: boolean;
+  depositRequiredCents: number;
+  depositPaid: boolean;
+  approveUrl: string;
+}
+
+// Sent to the salon when a NEW booking arrives that needs approval. Distinct
+// from the existing client confirmation email — this one tells staff to act.
+export async function sendStaffNewBookingEmail(details: StaffNewBookingDetails) {
+  const {
+    recipients, clientName, clientEmail, clientPhone, serviceName, stylistName,
+    date, startTime, endTime, totalPriceText, notes,
+    requestedStylist, depositRequiredCents, depositPaid, approveUrl,
+  } = details;
+  if (recipients.length === 0) return;
+
+  const depositLine = depositRequiredCents > 0
+    ? `<tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Deposit</td><td style="padding: 10px 0; color: ${depositPaid ? "#1b8a3a" : "#c2274b"}; font-weight: bold;">$${(depositRequiredCents / 100).toFixed(0)} ${depositPaid ? "PAID" : "REQUIRED"}</td></tr>`
+    : "";
+
+  const stylistTag = requestedStylist
+    ? `<span style="background:#c2274b;color:white;padding:2px 8px;font-size:11px;letter-spacing:1px;">REQUESTED</span>`
+    : `<span style="background:#999;color:white;padding:2px 8px;font-size:11px;letter-spacing:1px;">ANY STYLIST</span>`;
+
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to: recipients,
+      subject: `[ACTION REQUIRED] New booking: ${clientName} — ${serviceName}`,
+      html: `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
+            <p style="color: #c2274b; font-size: 12px; letter-spacing: 3px; margin-top: 8px;">NEW BOOKING — PENDING APPROVAL</p>
+          </div>
+          <div style="background: white; padding: 30px; border: 1px solid #eee;">
+            <p style="color: #282936; margin: 0 0 15px;">A new appointment is waiting for you to approve:</p>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Client</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${clientName}<br/><span style="font-weight:normal;color:#666;font-size:12px;">${clientEmail}${clientPhone ? " · " + clientPhone : ""}</span></td></tr>
+              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Service</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${serviceName}${totalPriceText ? ` <span style="color:#c9a96e;">(${totalPriceText})</span>` : ""}</td></tr>
+              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Stylist</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${stylistName} ${stylistTag}</td></tr>
+              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Date</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${formatDate(date)}</td></tr>
+              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Time</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${formatTime(startTime)} – ${formatTime(endTime)}</td></tr>
+              ${depositLine}
+              ${notes ? `<tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Client notes</td><td style="padding: 10px 0; color: #282936;">${notes.replace(/</g, "&lt;")}</td></tr>` : ""}
+            </table>
+            <div style="margin-top: 30px; text-align: center;">
+              <a href="${approveUrl}" style="display: inline-block; background: #c2274b; color: white; padding: 12px 24px; text-decoration: none; font-size: 13px; letter-spacing: 2px; text-transform: uppercase;">Review &amp; Approve</a>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("Failed to send staff new-booking email:", error);
+  }
+}
+
 export async function sendReviewRequestEmail(details: ReviewRequestDetails) {
   const { clientName, clientEmail, stylistName, serviceName, date, reviewUrl, googleUrl, yelpUrl } = details;
 

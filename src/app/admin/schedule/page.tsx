@@ -92,7 +92,8 @@ export default function SchedulePage() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        setToast({ type: "error", message: "Failed to save rule." });
+        const data = await res.json().catch(() => ({}));
+        setToast({ type: "error", message: data.error || "Failed to save rule." });
         return false;
       }
       return true;
@@ -117,19 +118,10 @@ export default function SchedulePage() {
   };
 
   // --- Weekly rule save ---
+  // The API now upserts (deletes any existing rule for this slot, then
+  // inserts), so we don't need to manually delete from the client.
   const saveWeeklyRule = async () => {
     if (editingDay === null) return;
-
-    // Delete existing rule for this day+stylist first
-    const existing = rules.find(
-      (r) =>
-        r.ruleType === "weekly" &&
-        r.dayOfWeek === editingDay &&
-        (editDayStylist ? r.stylistId === editDayStylist : !r.stylistId)
-    );
-    if (existing) {
-      await fetch(`/api/admin/schedule?id=${existing.id}`, { method: "DELETE" });
-    }
 
     const ok = await saveRule({
       ruleType: "weekly",

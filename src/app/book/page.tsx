@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BookingProgress from "@/components/booking/BookingProgress";
@@ -9,33 +10,21 @@ import StylistPicker from "@/components/booking/StylistPicker";
 import DateTimePicker from "@/components/booking/DateTimePicker";
 import ClientInfoForm from "@/components/booking/ClientInfoForm";
 import BookingConfirmation from "@/components/booking/BookingConfirmation";
+import { BOOKING } from "@/lib/constants";
 
-const FALLBACK_SERVICES: Record<string, Service[]> = {
-  Haircuts: [
-    { id: "f-1", category: "Haircuts", name: "Wash + Cut + Style", priceText: "$80+", duration: 70 },
-    { id: "f-2", category: "Haircuts", name: "Clipper Cut", priceText: "$28", duration: 25 },
-    { id: "f-3", category: "Haircuts", name: "Scissor Cut", priceText: "$40", duration: 25 },
-  ],
-  Color: [
-    { id: "f-4", category: "Color", name: "Single Process Root Touch-Up", priceText: "$50+", duration: 65 },
-    { id: "f-5", category: "Color", name: "Balayage (incl. toner)", priceText: "$220+", duration: 180 },
-    { id: "f-6", category: "Color", name: "Full Highlights (incl. toner)", priceText: "$150+", duration: 180 },
-  ],
-  Styling: [
-    { id: "f-7", category: "Styling", name: "Blow-Out", priceText: "$40+", duration: 40 },
-    { id: "f-8", category: "Styling", name: "Formal Updo", priceText: "$90+", duration: 90 },
-  ],
-  Treatments: [
-    { id: "f-9", category: "Treatments", name: "Keratin Straightening", priceText: "$250+", duration: 120 },
-    { id: "f-10", category: "Treatments", name: "Deep Conditioning", priceText: "$30+", duration: 40 },
-  ],
-};
-
-const FALLBACK_STYLISTS: Stylist[] = [
-  { id: "fs-1", name: "Armen P.", bio: "17+ years, trained in Moscow", imageUrl: "/images/gallery/gallery-02.jpg", specialties: ["Coloring", "Cutting"], serviceIds: ["f-1","f-2","f-3","f-4","f-5","f-6","f-7","f-8","f-9","f-10"] },
-  { id: "fs-2", name: "Kristina G.", bio: "15 years, trained in Armenia", imageUrl: "/images/gallery/gallery-03.jpg", specialties: ["Cutting", "Coloring"], serviceIds: ["f-1","f-2","f-3","f-4","f-5","f-6","f-7","f-8","f-9","f-10"] },
-  { id: "fs-3", name: "Alisa (Liz) H.", bio: "30+ years experience", imageUrl: "/images/gallery/gallery-04.jpg", specialties: ["Cutting", "Coloring"], serviceIds: ["f-1","f-2","f-3","f-4","f-5","f-6","f-7","f-8","f-9","f-10"] },
-];
+// Step layout (matches BookingProgress):
+//   0  Service
+//   1  Date & Time
+//   2  Stylist     (skipped when "Any Stylist" was implicitly chosen)
+//   3  Your Info
+//   4  Confirm
+//   5  Success
+const STEP_SERVICE = 0;
+const STEP_DATETIME = 1;
+const STEP_STYLIST = 2;
+const STEP_INFO = 3;
+const STEP_CONFIRM = 4;
+const STEP_DONE = 5;
 
 interface Service {
   id: string;
@@ -62,18 +51,30 @@ interface BookingResult {
   date: string;
   startTime: string;
   endTime: string;
+  status?: string;
 }
+
+const FALLBACK_SERVICES: Record<string, Service[]> = {
+  Haircuts: [
+    { id: "f-1", category: "Haircuts", name: "Wash + Cut + Style", priceText: "$80+", duration: 70 },
+    { id: "f-2", category: "Haircuts", name: "Clipper Cut", priceText: "$28", duration: 25 },
+    { id: "f-3", category: "Haircuts", name: "Scissor Cut", priceText: "$40", duration: 25 },
+  ],
+};
+const FALLBACK_STYLISTS: Stylist[] = [];
 
 export default function BookPage() {
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-  const [step, setStep] = useState(0);
+  const searchParams = useSearchParams();
+  const [step, setStep] = useState(STEP_SERVICE);
   const [services, setServices] = useState<Record<string, Service[]>>({});
   const [allStylists, setAllStylists] = useState<Stylist[]>([]);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
-  const [selectedStylist, setSelectedStylist] = useState<Stylist | null>(null);
+  const [selectedStylist, setSelectedStylist] = useState<Stylist | "any" | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [clientInfo, setClientInfo] = useState({ name: "", email: "", phone: "", notes: "" });
+  const [policyAccepted, setPolicyAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BookingResult | null>(null);
@@ -82,10 +83,14 @@ export default function BookPage() {
   const [discountResult, setDiscountResult] = useState<{ code: string; description: string; discountAmount: number; finalPrice: number } | null>(null);
   const [discountError, setDiscountError] = useState("");
   const [checkingDiscount, setCheckingDiscount] = useState(false);
+  // Stripe deposit (PaymentIntent id captured here once paid)
+  const [depositPaymentIntent, setDepositPaymentIntent] = useState<string | null>(null);
+  const [depositSubmitting, setDepositSubmitting] = useState(false);
 
   const totalPriceMin = selectedServices.reduce((sum, s) => sum + (s.priceMin || 0), 0);
   const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration || 0), 0);
   const anyPricePlus = selectedServices.some((s) => s.priceText.includes("+"));
+  const requiresDeposit = totalDuration >= BOOKING.DEPOSIT_TRIGGER_MINUTES;
 
   const toggleService = (service: Service) => {
     setSelectedServices((prev) => {
@@ -93,12 +98,13 @@ export default function BookPage() {
       if (exists) return prev.filter((s) => s.id !== service.id);
       return [...prev, service];
     });
-    // Changing services invalidates downstream selection
+    // Service change invalidates downstream selections.
     setSelectedStylist(null);
     setSelectedDate(null);
     setSelectedTime(null);
     setDiscountResult(null);
     setDiscountError("");
+    setDepositPaymentIntent(null);
   };
 
   const applyDiscount = async () => {
@@ -125,10 +131,10 @@ export default function BookPage() {
     }
   };
 
-  // Warn before leaving with unsaved booking progress
+  // Warn before leaving with unsaved booking progress.
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (step > 0 && step < 5) {
+      if (step > 0 && step < STEP_DONE) {
         e.preventDefault();
       }
     };
@@ -136,7 +142,8 @@ export default function BookPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [step]);
 
-  // Auto-fill returning customer info from localStorage
+  // Auto-fill returning customer info from localStorage; query params (used
+  // by the "New Appointment for this Client" button in admin) win over it.
   useEffect(() => {
     try {
       const saved = localStorage.getItem("thelook_client");
@@ -150,42 +157,24 @@ export default function BookPage() {
         }));
       }
     } catch {}
-  }, []);
-
-  // Warn before leaving with unsaved booking progress
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (step > 0 && step < 5) {
-        e.preventDefault();
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [step]);
-
-  // Auto-fill returning customer info from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("thelook_client");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setClientInfo((prev) => ({
-          ...prev,
-          name: parsed.name || "",
-          email: parsed.email || "",
-          phone: parsed.phone || "",
-        }));
-      }
-    } catch {}
-  }, []);
+    const qpEmail = searchParams?.get("email");
+    const qpName = searchParams?.get("name");
+    const qpPhone = searchParams?.get("phone");
+    if (qpEmail || qpName || qpPhone) {
+      setClientInfo((prev) => ({
+        ...prev,
+        name: qpName || prev.name,
+        email: qpEmail || prev.email,
+        phone: qpPhone || prev.phone,
+      }));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetch("/api/services")
       .then((r) => r.json())
       .then((data) => {
         if (data && Object.keys(data).length > 0) {
-          // Normalize snake_case fields from the API into the camelCase shape
-          // this page and its child components use internally.
           const normalized: Record<string, Service[]> = {};
           for (const cat of Object.keys(data)) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -217,18 +206,75 @@ export default function BookPage() {
       .catch(() => setAllStylists(FALLBACK_STYLISTS));
   }, []);
 
-  const canProceed = () => {
+  const isAny = selectedStylist === "any";
+  const stylistObject = isAny ? null : (selectedStylist as Stylist | null);
+  // For availability lookup before stylist is picked, use "any".
+  const availabilityStylistId = stylistObject ? stylistObject.id : "any";
+
+  const canProceed = (): boolean => {
     switch (step) {
-      case 0: return selectedServices.length > 0;
-      case 1: return !!selectedStylist;
-      case 2: return !!selectedDate && !!selectedTime;
-      case 3: return !!clientInfo.name && !!clientInfo.email && (!turnstileSiteKey || !!turnstileToken);
+      case STEP_SERVICE: return selectedServices.length > 0;
+      case STEP_DATETIME: return !!selectedDate && !!selectedTime;
+      case STEP_STYLIST: return !!selectedStylist;
+      case STEP_INFO:
+        return (
+          !!clientInfo.name &&
+          !!clientInfo.email &&
+          policyAccepted &&
+          (!turnstileSiteKey || !!turnstileToken) &&
+          (!requiresDeposit || !!depositPaymentIntent)
+        );
       default: return false;
+    }
+  };
+
+  // Step transitions: skip the Stylist step entirely when the customer
+  // implicitly defers to "Any Stylist" by clicking Continue without entering
+  // it explicitly. Right now we always show it (so the customer can choose),
+  // but back/forward navigation must respect that anyone can pick "Any".
+  const nextStep = () => {
+    if (step === STEP_SERVICE) setStep(STEP_DATETIME);
+    else if (step === STEP_DATETIME) setStep(STEP_STYLIST);
+    else if (step === STEP_STYLIST) setStep(STEP_INFO);
+    else if (step === STEP_INFO) setStep(STEP_CONFIRM);
+  };
+
+  const prevStep = () => {
+    if (step > STEP_SERVICE) setStep(step - 1);
+  };
+
+  const payDeposit = async () => {
+    if (!requiresDeposit || depositPaymentIntent) return;
+    setDepositSubmitting(true);
+    try {
+      const res = await fetch("/api/deposits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountCents: BOOKING.DEPOSIT_AMOUNT_CENTS,
+          clientEmail: clientInfo.email,
+          clientName: clientInfo.name,
+          description: selectedServices.map((s) => s.name).join(", "),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.paymentIntentId) {
+        setError(data.error || "Failed to create deposit.");
+        return;
+      }
+      setDepositPaymentIntent(data.paymentIntentId);
+      setError(null);
+    } finally {
+      setDepositSubmitting(false);
     }
   };
 
   const handleSubmit = async () => {
     if (selectedServices.length === 0 || !selectedStylist || !selectedDate || !selectedTime) return;
+    if (requiresDeposit && !depositPaymentIntent) {
+      setError("Deposit required to confirm this booking.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -238,13 +284,16 @@ export default function BookPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           serviceIds: selectedServices.map((s) => s.id),
-          stylistId: selectedStylist.id,
+          stylistId: isAny ? BOOKING.ANY_STYLIST_ID : (selectedStylist as Stylist).id,
+          anyStylist: isAny,
           date: selectedDate,
           startTime: selectedTime,
           clientName: clientInfo.name,
           clientEmail: clientInfo.email,
           clientPhone: clientInfo.phone || undefined,
           notes: clientInfo.notes || undefined,
+          policyAccepted,
+          depositPaymentIntentId: depositPaymentIntent || undefined,
           turnstileToken: turnstileToken || undefined,
         }),
       });
@@ -258,8 +307,7 @@ export default function BookPage() {
 
       const data = await res.json();
       setResult(data);
-      setStep(5);
-      // Save customer info for next visit
+      setStep(STEP_DONE);
       try {
         localStorage.setItem("thelook_client", JSON.stringify({
           name: clientInfo.name,
@@ -296,37 +344,27 @@ export default function BookPage() {
     ? `$${Math.round(totalPriceMin / 100)}${anyPricePlus ? "+" : ""}`
     : selectedServices.map((s) => s.priceText).join(" + ");
 
+  const stylistDisplayName = isAny ? "Any available stylist" : stylistObject?.name || "";
+
   return (
     <>
       <Navbar />
       <main className="pt-24 pb-20 min-h-screen bg-cream">
         <div className="max-w-4xl mx-auto px-6">
-          {step < 5 && <BookingProgress current={step} />}
+          {step < STEP_DONE && <BookingProgress current={step} />}
 
-          {/* Step 0: Services (multi-select) */}
-          {step === 0 && (
+          {step === STEP_SERVICE && (
             <ServicePicker
               services={services}
               selected={selectedServices}
               onToggle={toggleService}
-              onContinue={() => { if (selectedServices.length > 0) setStep(1); }}
+              onContinue={() => { if (selectedServices.length > 0) setStep(STEP_DATETIME); }}
             />
           )}
 
-          {/* Step 1: Stylist */}
-          {step === 1 && selectedServices.length > 0 && (
-            <StylistPicker
-              stylists={allStylists}
-              serviceIds={selectedServices.map((s) => s.id)}
-              onSelect={(s) => { setSelectedStylist(s); setStep(2); }}
-              selected={selectedStylist}
-            />
-          )}
-
-          {/* Step 2: Date & Time */}
-          {step === 2 && selectedStylist && selectedServices.length > 0 && (
+          {step === STEP_DATETIME && selectedServices.length > 0 && (
             <DateTimePicker
-              stylistId={selectedStylist.id}
+              stylistId={availabilityStylistId}
               serviceIds={selectedServices.map((s) => s.id)}
               selectedDate={selectedDate}
               selectedTime={selectedTime}
@@ -334,18 +372,29 @@ export default function BookPage() {
             />
           )}
 
-          {/* Step 3: Client Info */}
-          {step === 3 && (
+          {step === STEP_STYLIST && selectedServices.length > 0 && (
+            <StylistPicker
+              stylists={allStylists}
+              serviceIds={selectedServices.map((s) => s.id)}
+              date={selectedDate}
+              startTime={selectedTime}
+              onSelect={(s) => { setSelectedStylist(s); setStep(STEP_INFO); }}
+              selected={selectedStylist}
+            />
+          )}
+
+          {step === STEP_INFO && (
             <ClientInfoForm
               info={clientInfo}
               onChange={setClientInfo}
               turnstileSiteKey={turnstileSiteKey}
               onTurnstileChange={setTurnstileToken}
+              policyAccepted={policyAccepted}
+              onPolicyChange={setPolicyAccepted}
             />
           )}
 
-          {/* Step 4: Review & Confirm */}
-          {step === 4 && selectedServices.length > 0 && selectedStylist && selectedDate && selectedTime && (
+          {step === STEP_CONFIRM && selectedServices.length > 0 && selectedStylist && selectedDate && selectedTime && (
             <div className="max-w-lg mx-auto">
               <h2 className="font-heading text-3xl mb-2 text-center">Review &amp; Confirm</h2>
               <p className="text-navy/50 font-body text-sm text-center mb-8">
@@ -375,7 +424,7 @@ export default function BookPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-navy/50 text-sm font-body">Stylist</span>
-                  <span className="font-body font-bold text-sm">{selectedStylist.name}</span>
+                  <span className="font-body font-bold text-sm">{stylistDisplayName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-navy/50 text-sm font-body">Date</span>
@@ -390,8 +439,25 @@ export default function BookPage() {
                   <p className="text-navy/50 text-sm font-body">{clientInfo.email}</p>
                   {clientInfo.phone && <p className="text-navy/50 text-sm font-body">{clientInfo.phone}</p>}
                 </div>
+                {requiresDeposit && (
+                  <div className="border-t border-navy/10 pt-4">
+                    <p className="text-navy/50 text-sm font-body mb-2">Required deposit</p>
+                    {depositPaymentIntent ? (
+                      <p className="text-green-700 text-sm font-body">$50 deposit collected.</p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={payDeposit}
+                        disabled={depositSubmitting}
+                        className="w-full bg-navy text-white text-sm font-body uppercase tracking-widest py-3 hover:bg-navy/90 disabled:opacity-60"
+                      >
+                        {depositSubmitting ? "Processing..." : "Pay $50 deposit"}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-              {/* Discount code */}
+
               <div className="border-t border-navy/10 pt-4 mt-4">
                 <p className="text-navy/50 text-xs font-body mb-2">Have a discount code?</p>
                 <div className="flex gap-2">
@@ -422,27 +488,26 @@ export default function BookPage() {
 
               {error && <p className="text-red-600 text-sm font-body mt-4 text-center">{error}</p>}
               <p className="text-navy/40 text-xs font-body mt-4 text-center">
-                A $50 deposit may be required for select color/styling services. 25% cancellation fee applies for no-shows or cancellations within 24 hours.
+                After you submit, your booking will be reviewed by the salon. You&apos;ll get an email
+                once it&apos;s approved.
               </p>
             </div>
           )}
 
-          {/* Step 5: Success */}
-          {step === 5 && result && <BookingConfirmation result={result} />}
+          {step === STEP_DONE && result && <BookingConfirmation result={result} />}
 
-          {/* Navigation buttons (step 0 uses the sticky bar inside ServicePicker) */}
-          {step > 0 && step < 5 && (
+          {step > STEP_SERVICE && step < STEP_DONE && (
             <div className="flex justify-between max-w-2xl mx-auto mt-10">
               <button
-                onClick={() => setStep(step - 1)}
+                onClick={prevStep}
                 className="border border-navy/20 text-navy/60 hover:text-navy hover:border-navy/40 tracking-widest uppercase text-sm px-8 py-3 transition-colors font-body"
               >
                 Back
               </button>
 
-              {step < 4 ? (
+              {step < STEP_CONFIRM ? (
                 <button
-                  onClick={() => canProceed() && setStep(step + 1)}
+                  onClick={() => canProceed() && nextStep()}
                   disabled={!canProceed()}
                   className="bg-rose hover:bg-rose-light disabled:opacity-40 disabled:cursor-not-allowed text-white tracking-widest uppercase text-sm px-8 py-3 transition-colors font-body"
                 >
@@ -451,7 +516,7 @@ export default function BookPage() {
               ) : (
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting}
+                  disabled={submitting || (requiresDeposit && !depositPaymentIntent)}
                   className="bg-rose hover:bg-rose-light disabled:opacity-60 text-white tracking-widest uppercase text-sm px-8 py-3 transition-colors font-body"
                 >
                   {submitting ? "Booking..." : "Confirm Booking"}

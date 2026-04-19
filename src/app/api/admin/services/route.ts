@@ -3,7 +3,19 @@ import { auth } from "@/lib/auth";
 import { adminServiceSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
+import { revalidatePath } from "next/cache";
 import { NextRequest } from "next/server";
+
+function revalidatePublic() {
+  try {
+    revalidatePath("/");
+    revalidatePath("/services");
+    revalidatePath("/services/[slug]", "page");
+    revalidatePath("/book");
+  } catch {
+    // Best-effort.
+  }
+}
 
 export async function GET() {
   const session = await auth();
@@ -71,10 +83,11 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     logError("admin/services POST", error);
-    return apiError("Failed to create service.", 500);
+    return apiError(`Failed to create service: ${error.message || "unknown"}`, 500);
   }
 
-  logAdminAction("service.create", JSON.stringify({ name: payload.name }));
+  await logAdminAction("service.create", JSON.stringify({ name: payload.name }));
+  revalidatePublic();
 
   return apiSuccess(data, 201);
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SessionProvider, useSession } from "next-auth/react";
 import KeyboardShortcuts from "@/components/admin/KeyboardShortcuts";
+import NotificationsBell from "@/components/admin/NotificationsBell";
 
 type NavItem = {
   href: string;
@@ -29,6 +30,7 @@ const navItems: NavItem[] = [
   { href: "/admin/schedule", label: "Schedule", adminOnly: false },
   { href: "/admin/my-profile", label: "My Profile", adminOnly: false, stylistOnly: true },
   { href: "/admin/users", label: "Users", adminOnly: true },
+  { href: "/admin/settings", label: "Settings", adminOnly: true },
   { href: "/admin/activity", label: "Activity Log", adminOnly: true },
 ];
 
@@ -82,9 +84,14 @@ function AdminSidebar() {
 
   const navContent = (
     <>
-      <Link href="/" className="block font-heading text-xl text-white tracking-wider mb-1">
-        THE LOOK
-      </Link>
+      <div className="flex items-start justify-between mb-1">
+        <Link href="/" className="block font-heading text-xl text-white tracking-wider">
+          THE LOOK
+        </Link>
+        <div className="hidden lg:block -mt-1">
+          <NotificationsBell />
+        </div>
+      </div>
       <p className="text-gold text-xs tracking-[0.2em] uppercase font-body mb-8">Admin Panel</p>
 
       <nav className="space-y-1">
@@ -129,19 +136,22 @@ function AdminSidebar() {
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-navy z-40 px-4 py-3 flex items-center justify-between">
         <span className="font-heading text-lg text-white tracking-wider">THE LOOK</span>
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle admin menu"
-          className="text-white/70 hover:text-white p-1"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {mobileOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationsBell />
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle admin menu"
+            className="text-white/70 hover:text-white p-1"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {mobileOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Mobile overlay */}

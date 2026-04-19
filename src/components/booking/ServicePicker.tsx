@@ -112,39 +112,37 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
                             type="button"
                             onClick={() => onToggle(service)}
                             aria-pressed={isSelected}
-                            className={`w-full px-6 py-4 flex items-center justify-between text-left transition-all duration-200 ${
+                            className={`w-full px-6 py-4 flex items-center gap-4 text-left transition-all duration-200 ${
                               isSelected
                                 ? "bg-rose/8 border-l-[3px] border-rose"
                                 : "hover:bg-cream/40 border-l-[3px] border-transparent"
                             }`}
                           >
-                            <div className="flex items-center gap-3">
-                              <span
-                                className={`w-5 h-5 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${
-                                  isSelected
-                                    ? "bg-rose border-rose text-white"
-                                    : "bg-white border-navy/25"
-                                }`}
-                                aria-hidden
-                              >
-                                {isSelected && (
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
-                              </span>
-                              <div>
-                                <p className={`font-body text-sm ${isSelected ? "text-rose font-medium" : "text-navy"}`}>
-                                  {service.name}
-                                </p>
-                                <p className="font-body text-xs text-navy/40 mt-0.5">
-                                  {formatDuration(service.duration)}
-                                </p>
-                              </div>
-                            </div>
-                            <span className="text-gold font-heading text-base shrink-0 ml-4">
+                            <span
+                              className={`w-5 h-5 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${
+                                isSelected
+                                  ? "bg-rose border-rose text-white"
+                                  : "bg-white border-navy/25"
+                              }`}
+                              aria-hidden
+                            >
+                              {isSelected && (
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </span>
+                            <span className="text-gold font-heading text-base shrink-0 w-20 text-left">
                               {service.priceText}
                             </span>
+                            <div className="flex-1 min-w-0">
+                              <p className={`font-body text-sm ${isSelected ? "text-rose font-medium" : "text-navy"}`}>
+                                {service.name}
+                              </p>
+                              <p className="font-body text-xs text-navy/40 mt-0.5">
+                                {formatDuration(service.duration)}
+                              </p>
+                            </div>
                           </button>
                         );
                       })}

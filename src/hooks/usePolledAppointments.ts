@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { POLLING } from "@/lib/constants";
+import { todayISOInLA } from "@/lib/datetime";
 
 interface Appointment {
   id: string;
@@ -45,7 +46,7 @@ export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}
     }
 
     setLoading(true);
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayISOInLA();
     const res = await fetch(`/api/admin/appointments?from=${today}`);
     if (!res.ok) {
       setError("Failed to fetch appointments.");

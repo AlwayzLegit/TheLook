@@ -73,6 +73,16 @@ export const appointments = pgTable("appointments", {
   cancelToken: varchar("cancel_token", { length: 64 }).unique(),
   reminderSent: boolean("reminder_sent").default(false),
   reviewRequestSentAt: timestamp("review_request_sent_at"),
+  // True when the client picked a specific stylist; false when they used
+  // "Any Stylist" and the salon assigned someone.
+  requestedStylist: boolean("requested_stylist").default(true),
+  // Filled in once the client checks the policy box at booking time.
+  policyAcceptedAt: timestamp("policy_accepted_at"),
+  // Required deposit in cents (0 = no deposit). Set when the appointment is
+  // created so admins can see who still needs to pay.
+  depositRequiredCents: integer("deposit_required_cents").default(0),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: varchar("approved_by", { length: 200 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -229,6 +239,41 @@ export const discountUsage = pgTable("discount_usage", {
   appointmentId: uuid("appointment_id").references(() => appointments.id),
   clientEmail: varchar("client_email", { length: 200 }).notNull(),
   usedAt: timestamp("used_at").defaultNow(),
+});
+
+// Salon-wide key/value config (staff notification recipients, deposit threshold).
+export const salonSettings = pgTable("salon_settings", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  value: text("value"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// In-dashboard notifications for admins / individual stylists.
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  recipientRole: varchar("recipient_role", { length: 20 }),
+  recipientStylistId: uuid("recipient_stylist_id").references(() => stylists.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 50 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body"),
+  appointmentId: uuid("appointment_id").references(() => appointments.id, { onDelete: "set null" }),
+  url: varchar("url", { length: 500 }),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Per-area variants for services like Facial Hair Removal.
+export const serviceVariants = pgTable("service_variants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  serviceId: uuid("service_id").notNull().references(() => services.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 120 }).notNull(),
+  priceText: varchar("price_text", { length: 50 }).notNull(),
+  priceMin: integer("price_min").notNull(),
+  duration: integer("duration").notNull(),
+  active: boolean("active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const clientPhotos = pgTable("client_photos", {

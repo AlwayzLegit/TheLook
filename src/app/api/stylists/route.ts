@@ -26,10 +26,25 @@ export async function GET() {
     return apiError("Failed to fetch stylist services.", 500);
   }
 
+  const parseSpecialties = (raw: unknown): string[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw as string[];
+    if (typeof raw !== "string") return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      // Legacy data might be a comma-separated string. Don't crash the
+      // booking page just because one stylist has malformed specialties.
+      return raw.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = (allStylists || []).map((s: any) => ({
     ...s,
-    specialties: s.specialties ? JSON.parse(s.specialties) : [],
+    imageUrl: s.image_url ?? null,
+    specialties: parseSpecialties(s.specialties),
     serviceIds: (allMappings || [])
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((m: any) => m.stylist_id === s.id)

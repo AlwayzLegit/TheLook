@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
+import Logo from "./Logo";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -108,14 +108,8 @@ export default function Navbar() {
 
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex items-center justify-between h-20">
-            <Link href="/" className="relative">
-              <Image
-                src="/images/logo.png"
-                alt="The Look Hair Salon"
-                width={100}
-                height={53}
-                className="brightness-0 invert opacity-90 hover:opacity-100 transition-opacity"
-              />
+            <Link href="/" className="relative text-white opacity-90 hover:opacity-100 transition-opacity">
+              <Logo width={120} height={64} />
             </Link>
 
             {/* Desktop Navigation */}

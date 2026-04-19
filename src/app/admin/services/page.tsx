@@ -102,8 +102,11 @@ export default function ServicesPage() {
         setToast({ type: "success", message: editing ? "Service updated." : "Service created." });
         fetchServices();
       } else {
-        setToast({ type: "error", message: "Failed to save service." });
+        const data = await res.json().catch(() => ({}));
+        setToast({ type: "error", message: data.error || "Failed to save service." });
       }
+    } catch (err) {
+      setToast({ type: "error", message: err instanceof Error ? err.message : "Network error." });
     } finally {
       setSaving(false);
     }

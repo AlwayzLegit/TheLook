@@ -5,12 +5,21 @@ export const appointmentCreateSchema = z.object({
   serviceId: z.string().uuid().optional(),
   serviceIds: z.array(z.string().uuid()).min(1).max(8).optional(),
   stylistId: z.string().uuid(),
+  // Set when the customer chose "Any Stylist" — server then picks an available
+  // stylist for the chosen date/time.
+  anyStylist: z.boolean().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   clientName: z.string().trim().min(1).max(200),
   clientEmail: z.string().trim().email().max(200),
   clientPhone: z.string().trim().max(50).optional(),
   notes: z.string().trim().max(2000).optional(),
+  // Required: customer must accept the no-show / 24h cancel / deposit policy.
+  policyAccepted: z.boolean().refine((v) => v === true, {
+    message: "You must accept the salon policy to book.",
+  }),
+  // Optional Stripe PaymentIntent id when a deposit was collected up-front.
+  depositPaymentIntentId: z.string().trim().max(255).optional(),
   turnstileToken: z.string().trim().optional(),
 }).refine((d) => !!d.serviceId || (d.serviceIds && d.serviceIds.length > 0), {
   message: "serviceId or serviceIds is required",

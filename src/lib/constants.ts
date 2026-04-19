@@ -8,6 +8,13 @@ export const RATE_LIMITS = {
 export const BOOKING = {
   MAX_ADVANCE_DAYS: 60,
   SLOT_INCREMENT_MINUTES: 30,
+  // Sentinel UUID stored in the stylists table (active=false). The server
+  // detects this and assigns an available real stylist before creating the
+  // appointment row, so all FK constraints stay valid.
+  ANY_STYLIST_ID: "00000000-0000-0000-0000-000000000001",
+  // Appointments at or above this duration require a deposit to confirm.
+  DEPOSIT_TRIGGER_MINUTES: 100,
+  DEPOSIT_AMOUNT_CENTS: 5000, // $50
 } as const;
 
 export const POLLING = {

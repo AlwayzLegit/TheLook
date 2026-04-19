@@ -7,6 +7,8 @@ import { usePolledAppointments } from "@/hooks/usePolledAppointments";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import { downloadIcs } from "@/lib/icsExport";
+import { todayISOInLA, addDaysISOInLA } from "@/lib/datetime";
+import AppointmentCalendar from "@/components/admin/AppointmentCalendar";
 
 interface Service {
   id: string;
@@ -68,6 +70,7 @@ export default function AppointmentsPage() {
   const [clientHistoryId, setClientHistoryId] = useState<string | null>(null);
   const [clientHistory, setClientHistory] = useState<EnrichedAppointment[]>([]);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [view, setView] = useState<"calendar" | "list">("calendar");
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -99,28 +102,21 @@ export default function AppointmentsPage() {
   }));
 
   const applyDatePreset = (preset: "today" | "tomorrow" | "thisWeek" | "clear") => {
-    const today = new Date();
-    const toIso = (d: Date) => d.toISOString().split("T")[0];
     if (preset === "today") {
-      const d = toIso(today);
+      const d = todayISOInLA();
       setDateFrom(d);
       setDateTo(d);
       return;
     }
     if (preset === "tomorrow") {
-      const d = new Date(today);
-      d.setDate(today.getDate() + 1);
-      const iso = toIso(d);
-      setDateFrom(iso);
-      setDateTo(iso);
+      const d = addDaysISOInLA(1);
+      setDateFrom(d);
+      setDateTo(d);
       return;
     }
     if (preset === "thisWeek") {
-      const start = new Date(today);
-      const end = new Date(today);
-      end.setDate(today.getDate() + 7);
-      setDateFrom(toIso(start));
-      setDateTo(toIso(end));
+      setDateFrom(todayISOInLA());
+      setDateTo(addDaysISOInLA(7));
       return;
     }
     setDateFrom("");
@@ -292,6 +288,25 @@ export default function AppointmentsPage() {
         <p className="mb-4 text-sm font-body text-red-600">{error}</p>
       ) : null}
 
+      <div className="inline-flex border border-navy/20 mb-4">
+        <button
+          onClick={() => setView("calendar")}
+          className={`px-4 py-1.5 text-xs font-body uppercase tracking-widest transition-colors ${
+            view === "calendar" ? "bg-navy text-white" : "text-navy hover:bg-navy/5"
+          }`}
+        >
+          Calendar
+        </button>
+        <button
+          onClick={() => setView("list")}
+          className={`px-4 py-1.5 text-xs font-body uppercase tracking-widest border-l border-navy/20 transition-colors ${
+            view === "list" ? "bg-navy text-white" : "text-navy hover:bg-navy/5"
+          }`}
+        >
+          List
+        </button>
+      </div>
+
       <div className="flex flex-wrap gap-3 mb-4">
         <button
           onClick={() => applyDatePreset("today")}
@@ -394,11 +409,29 @@ export default function AppointmentsPage() {
         </button>
       </div>
 
-      {loading ? (
+      {view === "calendar" && (
+        <div className="mb-6">
+          <AppointmentCalendar
+            appointments={filteredAppts.map((a) => ({
+              id: a.id,
+              date: a.date,
+              start_time: a.start_time,
+              end_time: a.end_time,
+              status: a.status,
+              client_name: a.client_name,
+              serviceName: a.serviceName,
+              stylistName: a.stylistName,
+            }))}
+            onSelectAppointment={(id) => setEditingId(id)}
+          />
+        </div>
+      )}
+
+      {view === "list" && loading ? (
         <p className="text-navy/40 font-body text-sm">Loading appointments...</p>
-      ) : filteredAppts.length === 0 ? (
+      ) : view === "list" && filteredAppts.length === 0 ? (
         <p className="text-navy/40 font-body text-sm">No appointments found.</p>
-      ) : (
+      ) : view === "list" ? (
         <div className="bg-white border border-navy/10 divide-y divide-navy/5">
           {filteredAppts.map((appt) => (
             <div key={appt.id} className="px-6 py-4">
@@ -534,7 +567,7 @@ export default function AppointmentsPage() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
       {/* Client history panel */}
       {clientHistoryId && clientHistory.length > 0 && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setClientHistoryId(null)}>

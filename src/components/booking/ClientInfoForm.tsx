@@ -14,6 +14,8 @@ interface Props {
   onChange: (info: ClientInfo) => void;
   turnstileSiteKey?: string;
   onTurnstileChange?: (token: string | null) => void;
+  policyAccepted: boolean;
+  onPolicyChange: (v: boolean) => void;
 }
 
 export default function ClientInfoForm({
@@ -21,6 +23,8 @@ export default function ClientInfoForm({
   onChange,
   turnstileSiteKey,
   onTurnstileChange,
+  policyAccepted,
+  onPolicyChange,
 }: Props) {
   return (
     <div>
@@ -80,6 +84,27 @@ export default function ClientInfoForm({
             placeholder="Any special requests or details about what you're looking for..."
             className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors resize-none"
           />
+        </div>
+
+        <div className="bg-cream/50 border border-navy/10 p-4 text-sm font-body text-navy/70">
+          <p className="font-bold text-navy mb-2">Salon policy</p>
+          <ul className="list-disc list-inside space-y-1 text-xs leading-relaxed">
+            <li>No-shows are charged 100% of the service price.</li>
+            <li>Cancellations within 24 hours incur a 25% fee.</li>
+            <li>A $50 deposit is required for appointments lasting 100+ minutes.</li>
+          </ul>
+          <label className="flex items-start gap-2 mt-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={policyAccepted}
+              onChange={(e) => onPolicyChange(e.target.checked)}
+              className="w-4 h-4 mt-0.5"
+              required
+            />
+            <span className="text-xs">
+              I&apos;ve read and agree to the no-show, cancellation, and deposit policy. *
+            </span>
+          </label>
         </div>
 
         {turnstileSiteKey && onTurnstileChange ? (

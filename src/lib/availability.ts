@@ -1,5 +1,12 @@
 import { supabase, hasSupabaseConfig } from "./supabase";
 import { BOOKING } from "./constants";
+import {
+  addDaysISOInLA,
+  dayOfWeekInLA,
+  isPastDateInLA,
+  nowMinutesInLA,
+  todayISOInLA,
+} from "./datetime";
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
@@ -18,20 +25,16 @@ export async function getAvailableSlots(
   serviceIdOrIds: string | string[],
   date: string
 ): Promise<string[]> {
-  const dateObj = new Date(date + "T00:00:00");
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const maxDate = new Date(today);
-  maxDate.setDate(maxDate.getDate() + BOOKING.MAX_ADVANCE_DAYS);
-
-  if (dateObj < today || dateObj > maxDate) return [];
+  const todayISO = todayISOInLA();
+  const maxISO = addDaysISOInLA(BOOKING.MAX_ADVANCE_DAYS);
+  if (isPastDateInLA(date) || date > maxISO) return [];
 
   // Local/dev fallback when Supabase isn't configured.
   if (!hasSupabaseConfig) {
     return ["10:00", "10:30", "11:00", "11:30", "13:00", "14:00", "15:00", "16:00"];
   }
 
-  const dayOfWeek = dateObj.getDay();
+  const dayOfWeek = dayOfWeekInLA(date);
 
   // Get all schedule rules
   const { data: allRules, error: rulesError } = await supabase
@@ -101,7 +104,12 @@ export async function getAvailableSlots(
 
   // Generate 30-min aligned slots
   const allSlots: string[] = [];
+  // For today, drop any slots that have already started in LA time. Add a
+  // 15-min lead so customers can't book a slot starting right now.
+  const isToday = date === todayISO;
+  const cutoffMins = isToday ? nowMinutesInLA() + 15 : -1;
   for (let start = openMins; start + duration <= closeMins; start += BOOKING.SLOT_INCREMENT_MINUTES) {
+    if (start < cutoffMins) continue;
     allSlots.push(minutesToTime(start));
   }
 

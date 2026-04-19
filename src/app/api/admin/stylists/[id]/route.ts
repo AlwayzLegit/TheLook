@@ -4,7 +4,18 @@ import { getSessionUser, isAdmin } from "@/lib/roles";
 import { adminStylistSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
+import { revalidatePath } from "next/cache";
 import { NextRequest } from "next/server";
+
+function revalidatePublic() {
+  try {
+    revalidatePath("/");
+    revalidatePath("/stylists");
+    revalidatePath("/book");
+  } catch {
+    // Best-effort: not fatal.
+  }
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -23,11 +34,15 @@ export async function PATCH(
   }
   const payload = parsed.data;
 
+  const specialtiesJson = Array.isArray(payload.specialties)
+    ? JSON.stringify(payload.specialties)
+    : payload.specialties;
+
   const updateData: Record<string, unknown> = {
     name: payload.name,
     bio: payload.bio,
     image_url: payload.image_url,
-    specialties: payload.specialties,
+    specialties: specialtiesJson,
     active: payload.active,
     sort_order: payload.sort_order,
     updated_at: new Date().toISOString(),
@@ -46,10 +61,11 @@ export async function PATCH(
 
   if (error) {
     logError("admin/stylists PATCH", error);
-    return apiError("Failed to update stylist.", 500);
+    return apiError(`Failed to update stylist: ${error.message || "unknown"}`, 500);
   }
 
-  logAdminAction("stylist.update", JSON.stringify({ id, name: payload.name }));
+  await logAdminAction("stylist.update", JSON.stringify({ id, name: payload.name }));
+  revalidatePublic();
 
   return apiSuccess(data);
 }
@@ -75,7 +91,8 @@ export async function DELETE(
     return apiError("Failed to delete stylist.", 500);
   }
 
-  logAdminAction("stylist.delete", JSON.stringify({ id }));
+  await logAdminAction("stylist.delete", JSON.stringify({ id }));
+  revalidatePublic();
 
   return apiSuccess({ success: true });
 }

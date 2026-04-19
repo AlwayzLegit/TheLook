@@ -30,6 +30,22 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this message? This cannot be undone.")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/messages/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        alert("Failed to delete message.");
+        return;
+      }
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -104,6 +120,13 @@ export default function MessagesPage() {
                         Call {msg.phone}
                       </a>
                     )}
+                    <button
+                      onClick={() => handleDelete(msg.id)}
+                      disabled={deletingId === msg.id}
+                      className="ml-auto text-xs font-body text-red-600 border border-red-200 px-3 py-1.5 hover:bg-red-50 disabled:opacity-60"
+                    >
+                      {deletingId === msg.id ? "Deleting..." : "Delete"}
+                    </button>
                   </div>
                 </div>
               )}

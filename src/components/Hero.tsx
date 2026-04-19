@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
+import Logo from "./Logo";
 
 export default function Hero() {
   const ref = useRef(null);
@@ -59,12 +60,10 @@ export default function Hero() {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="mb-3"
         >
-          <Image
-            src="/images/logo.png"
-            alt="The Look"
-            width={170}
-            height={90}
-            className="mx-auto brightness-0 invert drop-shadow-[0_2px_10px_rgba(196,162,101,0.3)]"
+          <Logo
+            width={210}
+            height={112}
+            className="mx-auto text-white drop-shadow-[0_2px_10px_rgba(196,162,101,0.3)]"
           />
         </motion.div>
 

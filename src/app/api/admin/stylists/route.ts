@@ -4,6 +4,7 @@ import { getSessionUser, isAdmin } from "@/lib/roles";
 import { adminStylistSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
+import { revalidatePath } from "next/cache";
 import { NextRequest } from "next/server";
 
 export async function GET() {
@@ -44,6 +45,13 @@ export async function POST(request: NextRequest) {
 
   const slug = payload.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
+  // Specialties is stored as a JSON-encoded text column; the validator allows
+  // either a string array or a pre-encoded string. Always re-encode arrays so
+  // the public /api/stylists endpoint can JSON.parse it cleanly.
+  const specialtiesJson = Array.isArray(payload.specialties)
+    ? JSON.stringify(payload.specialties)
+    : (payload.specialties || JSON.stringify([]));
+
   const { data, error } = await supabase
     .from("stylists")
     .insert({
@@ -51,7 +59,7 @@ export async function POST(request: NextRequest) {
       slug: slug,
       bio: payload.bio,
       image_url: payload.image_url,
-      specialties: payload.specialties,
+      specialties: specialtiesJson,
       active: payload.active ?? true,
       sort_order: payload.sort_order ?? 0,
     })
@@ -60,10 +68,37 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     logError("admin/stylists POST", error);
-    return apiError("Failed to create stylist.", 500);
+    return apiError(`Failed to create stylist: ${error.message || "unknown"}`, 500);
   }
 
-  logAdminAction("stylist.create", JSON.stringify({ name: payload.name }));
+  // New stylists need stylist_services rows or they won't appear in the
+  // booking flow. Default to mapping every active service so the stylist is
+  // immediately bookable; admins can prune later from the services modal.
+  if (data?.id) {
+    const { data: activeServices } = await supabase
+      .from("services")
+      .select("id")
+      .eq("active", true);
+    const mappings = (activeServices || []).map((s: { id: string }) => ({
+      stylist_id: data.id as string,
+      service_id: s.id,
+    }));
+    if (mappings.length > 0) {
+      const { error: mErr } = await supabase.from("stylist_services").insert(mappings);
+      if (mErr) logError("admin/stylists POST (services)", mErr);
+    }
+  }
+
+  await logAdminAction("stylist.create", JSON.stringify({ name: payload.name }));
+
+  // Bust ISR caches so the new stylist appears on the live site immediately.
+  try {
+    revalidatePath("/");
+    revalidatePath("/stylists");
+    revalidatePath("/book");
+  } catch {
+    // revalidatePath fails when called outside of a server context — fine to ignore.
+  }
 
   return apiSuccess(data, 201);
 }
