@@ -10,6 +10,7 @@ import StylistPicker from "@/components/booking/StylistPicker";
 import DateTimePicker from "@/components/booking/DateTimePicker";
 import ClientInfoForm from "@/components/booking/ClientInfoForm";
 import BookingConfirmation from "@/components/booking/BookingConfirmation";
+import DepositForm from "@/components/booking/DepositForm";
 import { BOOKING } from "@/lib/constants";
 
 // Step layout (matches BookingProgress):
@@ -85,7 +86,6 @@ export default function BookPage() {
   const [checkingDiscount, setCheckingDiscount] = useState(false);
   // Stripe deposit (PaymentIntent id captured here once paid)
   const [depositPaymentIntent, setDepositPaymentIntent] = useState<string | null>(null);
-  const [depositSubmitting, setDepositSubmitting] = useState(false);
 
   const totalPriceMin = selectedServices.reduce((sum, s) => sum + (s.priceMin || 0), 0);
   const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration || 0), 0);
@@ -241,32 +241,6 @@ export default function BookPage() {
 
   const prevStep = () => {
     if (step > STEP_SERVICE) setStep(step - 1);
-  };
-
-  const payDeposit = async () => {
-    if (!requiresDeposit || depositPaymentIntent) return;
-    setDepositSubmitting(true);
-    try {
-      const res = await fetch("/api/deposits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amountCents: BOOKING.DEPOSIT_AMOUNT_CENTS,
-          clientEmail: clientInfo.email,
-          clientName: clientInfo.name,
-          description: selectedServices.map((s) => s.name).join(", "),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.paymentIntentId) {
-        setError(data.error || "Failed to create deposit.");
-        return;
-      }
-      setDepositPaymentIntent(data.paymentIntentId);
-      setError(null);
-    } finally {
-      setDepositSubmitting(false);
-    }
   };
 
   const handleSubmit = async () => {
@@ -441,18 +415,25 @@ export default function BookPage() {
                 </div>
                 {requiresDeposit && (
                   <div className="border-t border-navy/10 pt-4">
-                    <p className="text-navy/50 text-sm font-body mb-2">Required deposit</p>
+                    <p className="text-navy/50 text-sm font-body mb-3">
+                      Required deposit — ${BOOKING.DEPOSIT_AMOUNT_CENTS / 100}
+                    </p>
                     {depositPaymentIntent ? (
-                      <p className="text-green-700 text-sm font-body">$50 deposit collected.</p>
+                      <p className="text-green-700 text-sm font-body">
+                        ✓ ${BOOKING.DEPOSIT_AMOUNT_CENTS / 100} deposit collected.
+                      </p>
+                    ) : clientInfo.email ? (
+                      <DepositForm
+                        amountCents={BOOKING.DEPOSIT_AMOUNT_CENTS}
+                        clientEmail={clientInfo.email}
+                        clientName={clientInfo.name}
+                        description={selectedServices.map((s) => s.name).join(", ")}
+                        onSuccess={(pid) => setDepositPaymentIntent(pid)}
+                      />
                     ) : (
-                      <button
-                        type="button"
-                        onClick={payDeposit}
-                        disabled={depositSubmitting}
-                        className="w-full bg-navy text-white text-sm font-body uppercase tracking-widest py-3 hover:bg-navy/90 disabled:opacity-60"
-                      >
-                        {depositSubmitting ? "Processing..." : "Pay $50 deposit"}
-                      </button>
+                      <p className="text-navy/50 text-xs font-body">
+                        Fill in your info to pay the deposit.
+                      </p>
                     )}
                   </div>
                 )}

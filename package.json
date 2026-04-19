@@ -17,6 +17,8 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
     "@react-email/components": "^1.0.10",
+    "@stripe/react-stripe-js": "^6.2.0",
+    "@stripe/stripe-js": "^9.2.0",
     "@supabase/supabase-js": "^2.102.1",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import ImageUpload from "@/components/admin/ImageUpload";
+import ServiceVariantsEditor from "@/components/admin/ServiceVariantsEditor";
 
 interface Service {
   id: string;
@@ -330,6 +331,13 @@ export default function ServicesPage() {
                 </button>
               </div>
             </form>
+
+            {editing && (
+              <ServiceVariantsEditor
+                serviceId={editing.id}
+                onToast={(type, message) => setToast({ type, message })}
+              />
+            )}
           </div>
         </div>
       )}
