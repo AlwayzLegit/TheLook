@@ -24,8 +24,21 @@ export function isStripeEnabled() {
 
 async function getStripe(): Promise<Stripe | null> {
   if (!isStripeEnabled()) return null;
+  const key = process.env.STRIPE_SECRET_KEY!;
+  // Loud guard: if someone pasted the publishable key (pk_...) into
+  // STRIPE_SECRET_KEY by mistake, every server-side Stripe call fails with
+  // "This API call cannot be made with a publishable API key." Surface that
+  // as a clear config error instead of a raw Stripe error.
+  if (!key.startsWith("sk_")) {
+    throw new Error(
+      "STRIPE_SECRET_KEY is misconfigured — it must start with 'sk_'. " +
+      "Check Vercel env vars: STRIPE_SECRET_KEY should be your secret key " +
+      "(sk_live_... or sk_test_...), and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY " +
+      "should be the publishable key (pk_live_... or pk_test_...).",
+    );
+  }
   const { default: StripeSdk } = await import("stripe");
-  return new StripeSdk(process.env.STRIPE_SECRET_KEY!, {
+  return new StripeSdk(key, {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     apiVersion: "2024-11-20.acacia" as any,
   });
