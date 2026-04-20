@@ -27,13 +27,10 @@ AS $$
 DECLARE
   purged integer;
 BEGIN
-  WITH del AS (
-    DELETE FROM public.appointments
-    WHERE archived_at IS NOT NULL
-      AND archived_at < now() - interval '30 days'
-    RETURNING id
-  )
-  SELECT count(*) INTO purged FROM del;
+  DELETE FROM public.appointments
+  WHERE archived_at IS NOT NULL
+    AND archived_at < now() - interval '30 days';
+  GET DIAGNOSTICS purged = ROW_COUNT;
   RETURN purged;
 END;
 $$;
