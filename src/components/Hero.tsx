@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
-import Logo from "./Logo";
 
 export default function Hero() {
   const ref = useRef(null);
@@ -53,28 +52,15 @@ export default function Hero() {
           <span className="w-12 h-[1px] bg-gradient-to-l from-transparent to-gold/60" />
         </motion.div>
 
-        {/* Logo */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="mb-3"
-        >
-          <Logo
-            width={210}
-            height={112}
-            className="mx-auto text-white drop-shadow-[0_2px_10px_rgba(196,162,101,0.3)]"
-          />
-        </motion.div>
-
-        {/* Heading with shimmer */}
+        {/* Welcome headline — the navbar already shows the logo, so the hero
+            opens with a warmer welcome message instead of repeating the brand. */}
         <motion.h1
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-          className="font-heading text-5xl md:text-7xl lg:text-8xl text-white tracking-wider mb-5"
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="font-heading text-4xl md:text-5xl lg:text-6xl text-white tracking-wide mb-5 leading-[1.15]"
         >
-          <span className="text-shimmer">HAIR SALON</span>
+          <span className="text-shimmer">Your new look is just one appointment away.</span>
         </motion.h1>
 
         {/* Ornamental divider */}
