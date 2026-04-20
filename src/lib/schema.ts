@@ -256,6 +256,11 @@ export const clientProfiles = pgTable("client_profiles", {
   // Stripe Customer id — populated on first successful deposit. Lets admins
   // charge a saved card off-session for cancellation fees.
   stripeCustomerId: varchar("stripe_customer_id", { length: 80 }),
+  // Banned clients are blocked from booking. Surfaced on the booking form
+  // + admin client list.
+  banned: boolean("banned").default(false).notNull(),
+  bannedReason: text("banned_reason"),
+  importedAt: timestamp("imported_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

@@ -126,6 +126,25 @@ export async function POST(request: NextRequest) {
     return apiError("Booking backend is not configured locally. Add Supabase env vars to enable real bookings.", 503);
   }
 
+  // Refuse bookings from banned clients. The /admin/clients UI lets staff
+  // toggle a client's banned flag + reason; the booking form surfaces a
+  // generic "call us" message so we don't broadcast why.
+  try {
+    const { data: profile } = await supabase
+      .from("client_profiles")
+      .select("banned")
+      .eq("email", clientEmail.toLowerCase())
+      .maybeSingle();
+    if (profile?.banned) {
+      return apiError(
+        "We're unable to book this appointment online. Please call the salon at (818) 662-5665.",
+        403,
+      );
+    }
+  } catch {
+    // Pre-migration profiles have no banned column — fall through.
+  }
+
   // Resolve "Any Stylist" up-front so the rest of the flow uses a real id.
   const wantsAny = anyStylist === true || requestedStylistId === BOOKING.ANY_STYLIST_ID;
   let stylistId = requestedStylistId;

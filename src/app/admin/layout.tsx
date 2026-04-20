@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { SessionProvider, useSession } from "next-auth/react";
 import KeyboardShortcuts from "@/components/admin/KeyboardShortcuts";
 import NotificationsBell from "@/components/admin/NotificationsBell";
+import IdleTimeout from "@/components/admin/IdleTimeout";
 
 // Stylist self-service accounts are disabled for now — the salon runs as
 // admin-only. When stylists get their own logins later, restore the role
@@ -175,6 +176,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <AdminSidebar />
         <div className="flex-1 min-w-0 pt-14 lg:pt-0">{children}</div>
         <KeyboardShortcuts />
+        <IdleTimeout />
       </div>
     </SessionProvider>
   );

@@ -39,14 +39,18 @@ const ANY_STYLIST: Stylist = {
 export default function StylistPicker({
   stylists, serviceIds, variantIds, date, startTime, onSelect, selected,
 }: Props) {
-  // For each stylist, asynchronously check whether they're free at the chosen
-  // slot. Skipped when date/startTime aren't both set.
-  const [freeMap, setFreeMap] = useState<Record<string, boolean>>({});
+  // For each stylist, asynchronously check their availability at the chosen
+  // slot. Tracks three states so we can surface the right disabled reason:
+  //   "free"   — free at the requested time (tile enabled)
+  //   "booked" — scheduled that day but that slot is taken
+  //   "off"    — not scheduled that day at all
+  type Avail = "free" | "booked" | "off";
+  const [availMap, setAvailMap] = useState<Record<string, Avail>>({});
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     if (!date || !startTime || serviceIds.length === 0) {
-      setFreeMap({});
+      setAvailMap({});
       return;
     }
     let cancelled = false;
@@ -64,19 +68,20 @@ export default function StylistPicker({
             const r = await fetch(
               `/api/availability?stylistId=${s.id}&date=${date}&${serviceIds.map((id) => `serviceIds=${id}`).join("&")}${variantQs}`,
             );
-            if (!r.ok) return [s.id, false] as const;
+            if (!r.ok) return [s.id, "off" as Avail] as const;
             const data = await r.json();
             const slots: string[] = data.slots || [];
-            return [s.id, slots.includes(startTime)] as const;
+            if (slots.length === 0) return [s.id, "off" as Avail] as const;
+            return [s.id, slots.includes(startTime) ? "free" : "booked"] as const;
           } catch {
-            return [s.id, false] as const;
+            return [s.id, "off" as Avail] as const;
           }
         })
       );
       if (cancelled) return;
-      const map: Record<string, boolean> = {};
-      for (const [id, ok] of results) map[id] = ok;
-      setFreeMap(map);
+      const map: Record<string, Avail> = {};
+      for (const [id, state] of results) map[id] = state;
+      setAvailMap(map);
       setChecking(false);
     })();
     return () => { cancelled = true; };
@@ -104,7 +109,8 @@ export default function StylistPicker({
         {tiles.map((stylist) => {
           const isAny = stylist.id === BOOKING.ANY_STYLIST_ID;
           const offersAll = isAny || serviceIds.every((id) => stylist.serviceIds.includes(id));
-          const free = isAny || !date || !startTime || freeMap[stylist.id] === true;
+          const state: Avail | null = isAny || !date || !startTime ? "free" : (availMap[stylist.id] ?? null);
+          const free = state === "free";
           const available = offersAll && (free || isAny);
           const isSelected =
             selected === "any"
@@ -160,7 +166,7 @@ export default function StylistPicker({
               )}
               {offersAll && !free && date && startTime && !isAny && (
                 <p className="text-xs text-navy/40 font-body mt-3 text-center">
-                  Booked at this time
+                  {state === "off" ? "Off today" : "Not available at this time"}
                 </p>
               )}
             </button>
