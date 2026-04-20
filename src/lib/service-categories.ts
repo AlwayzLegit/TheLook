@@ -27,7 +27,7 @@ export const SERVICE_CATEGORIES: ServiceCategoryMeta[] = [
       "Expert hair coloring services including balayage, highlights, ombré, root touch-ups, color gloss, and full bleaching. Vibrant, long-lasting color at The Look Hair Salon in Glendale, CA.",
     heroImage: "/images/Highlights.jpg",
     bookingNote:
-      "A $50 deposit is required for color services — credited toward your final bill and refundable with 24+ hours' notice. A 25% cancellation fee applies to no-shows or cancellations within 24 hours. Please arrive with clean, product-free hair for best results.",
+      "A $50 non-refundable deposit is required for color services — it's credited toward your final bill at the appointment. A 25% cancellation fee applies to no-shows or cancellations within 24 hours. Please arrive with clean, product-free hair for best results.",
   },
   {
     slug: "styling",

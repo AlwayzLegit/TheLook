@@ -60,27 +60,32 @@ export const strings = {
   // Policies — single source of truth. Import these everywhere the deposit /
   // cancellation rules are displayed (booking, emails, FAQ, terms, service
   // pages). Change here and every surface updates.
+  //
+  // Current rule set (latest owner guidance):
+  //   1. $50 deposit charged at booking.
+  //   2. Deposit is NON-REFUNDABLE. Applied to the service total at the
+  //      appointment; forfeited if the client cancels or no-shows.
+  //   3. In addition to losing the deposit, a 25% cancellation fee is
+  //      charged on no-shows or same-day cancellations.
   depositHeadline: "Deposit & cancellation policy",
-  // Headline sentence reused as a standalone banner where a single line is
-  // enough (admin emails, footer notes, etc.).
   cancellationFeeLine:
     "A 25% cancellation fee will be charged on no-shows or cancellations within 24 hours of the scheduled appointment.",
   depositPolicyLong:
-    "Your deposit is applied toward the total cost of your service at the time of your appointment. " +
-    "To receive a refund, cancellations must be made at least 24 hours in advance. " +
-    "Cancellations made within 24 hours of the scheduled appointment will result in the loss of the deposit. " +
-    "A 25% cancellation fee will also be charged on no-shows or cancellations within 24 hours of the scheduled appointment.",
+    "You will be charged a $50 deposit upon booking your appointment. The deposit is non-refundable. " +
+    "The amount of your deposit will be applied to the cost of your service at the time of your appointment. " +
+    "If you need to cancel, you will lose your deposit, and a 25% cancellation fee will be charged " +
+    "on no-shows or cancellations within 24 hours of the scheduled appointment.",
   depositPolicyBullets: [
-    "Your deposit counts toward your service total — it's not an extra fee.",
-    "Cancel 24+ hours ahead: deposit is fully refunded.",
-    "Cancel within 24 hours: deposit is forfeited.",
-    "A 25% cancellation fee is charged on no-shows or cancellations within 24 hours of the scheduled appointment.",
+    "$50 deposit is charged at booking. It's non-refundable.",
+    "The deposit is applied to your service total at the appointment.",
+    "Cancel or no-show? You lose the deposit.",
+    "A 25% cancellation fee is also charged for no-shows or cancellations within 24 hours of the scheduled appointment.",
   ] as readonly string[],
-  noShowBullet: "No-shows are charged the full service price.",
+  noShowBullet: "No-shows forfeit the deposit and are charged the 25% cancellation fee.",
   depositNote:
-    "A $50 deposit is required for appointments 100+ minutes long. The deposit credits to your final bill and is refundable up to 24 hours before your appointment. A 25% cancellation fee is charged on no-shows or cancellations within 24 hours.",
+    "A $50 non-refundable deposit is charged at booking for appointments 100+ minutes long. The deposit credits to your final bill. A 25% cancellation fee is charged on no-shows or cancellations within 24 hours.",
   cancellationPolicyShort:
-    "Cancellations need 24+ hours' notice. A 25% cancellation fee is charged on no-shows or cancellations within 24 hours of the scheduled appointment, and any deposit is forfeited.",
+    "Your deposit is non-refundable. A 25% cancellation fee is charged on no-shows or cancellations within 24 hours of the scheduled appointment.",
 } as const;
 
 export type StringKey = keyof typeof strings;

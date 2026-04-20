@@ -498,9 +498,10 @@ export default function BookPage() {
                       Required deposit — ${BOOKING.DEPOSIT_AMOUNT_CENTS / 100}
                     </p>
                     <p className="text-navy/50 text-xs font-body mb-3 leading-relaxed">
-                      Credited toward your service total at the appointment. Fully refundable if you
-                      cancel 24+ hours ahead; forfeited for cancellations within 24 hours or no-shows.
-                      A 25% cancellation fee also applies for same-day cancellations or no-shows.
+                      This deposit is <strong>non-refundable</strong>. It&apos;s applied to your
+                      service total at the appointment. If you cancel or no-show, the deposit is
+                      forfeited. A 25% cancellation fee also applies to same-day cancellations or
+                      no-shows.
                     </p>
                     {depositPaymentIntent ? (
                       <p className="text-green-700 text-sm font-body">
