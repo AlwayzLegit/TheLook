@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
   const stylistId = searchParams.get("stylistId");
   // "true" -> archived tab (show only archived), anything else -> active list.
   const archived = searchParams.get("archived") === "true";
+  // B-27: hide is_test rows by default; admin can opt-in via ?includeTest=true.
+  const includeTest = searchParams.get("includeTest") === "true";
 
   // Lazy purge: any archived appointment older than 30 days gets deleted
   // on the next admin list load. Cheap with the partial index on
@@ -42,15 +44,16 @@ export async function GET(request: NextRequest) {
     (err: unknown) => logError("admin/appointments purge-archived", err),
   );
 
-  const buildQuery = (withArchiveFilter: boolean) => {
+  const buildQuery = (opts: { archive: boolean; testFilter: boolean }) => {
     let q = supabase
       .from("appointments")
       .select("*")
       .order("date", { ascending: false })
       .order("start_time", { ascending: false });
-    if (withArchiveFilter) {
+    if (opts.archive) {
       q = archived ? q.not("archived_at", "is", null) : q.is("archived_at", null);
     }
+    if (opts.testFilter && !includeTest) q = q.eq("is_test", false);
     if (dateFrom) q = q.gte("date", dateFrom);
     if (dateTo) q = q.lte("date", dateTo);
     if (status) q = q.eq("status", status);
@@ -58,17 +61,17 @@ export async function GET(request: NextRequest) {
     return q;
   };
 
-  // Retry without the archive filter if the migration hasn't been applied
-  // yet. Follows the same defensive pattern as approved_at in the PATCH
-  // route — a schema-behind admin shouldn't get a 500.
-  let { data: rows, error } = await buildQuery(true);
+  // Retry strategy mirrors the approved_at pattern: drop whichever filter
+  // the schema doesn't know yet so a schema-behind admin still gets data.
+  let { data: rows, error } = await buildQuery({ archive: true, testFilter: true });
+  if (error && /is_test/i.test(error.message || "")) {
+    logError("admin/appointments GET (is_test col missing, retrying)", error);
+    ({ data: rows, error } = await buildQuery({ archive: true, testFilter: false }));
+  }
   if (error && /archived_at/i.test(error.message || "")) {
     logError("admin/appointments GET (archived_at col missing, retrying)", error);
-    if (archived) {
-      // Nothing to show yet if the column doesn't exist.
-      return apiSuccess([]);
-    }
-    ({ data: rows, error } = await buildQuery(false));
+    if (archived) return apiSuccess([]);
+    ({ data: rows, error } = await buildQuery({ archive: false, testFilter: false }));
   }
 
   if (error) {
@@ -133,6 +136,9 @@ const adminBookingSchema = z.object({
   staffNotes: z.string().trim().max(2000).optional().nullable(),
   status: z.enum(["pending", "confirmed", "completed"]).default("confirmed"),
   overrideConflicts: z.boolean().optional(),
+  // Admin-marked test booking — excluded from emails, analytics, dashboard
+  // counts, and crons. Defaults false so accidental flagging takes intent.
+  isTest: z.boolean().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -198,7 +204,7 @@ export async function POST(request: NextRequest) {
   const appointmentId = crypto.randomUUID();
   const cancelToken = crypto.randomUUID().replace(/-/g, "");
 
-  const { error: insertErr } = await supabase.from("appointments").insert({
+  const insertPayload: Record<string, unknown> = {
     id: appointmentId,
     service_id: p.serviceIds[0],
     stylist_id: p.stylistId,
@@ -218,7 +224,13 @@ export async function POST(request: NextRequest) {
     approved_at: p.status === "confirmed" ? new Date().toISOString() : null,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     approved_by: p.status === "confirmed" ? ((session.user as any)?.email || "admin") : null,
-  });
+    is_test: p.isTest === true,
+  };
+  let { error: insertErr } = await supabase.from("appointments").insert(insertPayload);
+  if (insertErr && /is_test/i.test(insertErr.message || "")) {
+    delete insertPayload.is_test;
+    ({ error: insertErr } = await supabase.from("appointments").insert(insertPayload));
+  }
   if (insertErr) {
     logError("admin/appointments POST", insertErr);
     return apiError(`Failed to create appointment: ${insertErr.message}`, 500);

@@ -92,13 +92,25 @@ export async function GET(request: NextRequest) {
   const ninetyDaysAgo = new Date();
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-  // Get all unique clients with their last appointment
-  const { data: recentAppts } = await supabase
+  // Get all unique clients with their last appointment. Skip is_test rows
+  // so QA bookings never trigger a real winback email; tolerate the column
+  // being missing on pre-migration installs.
+  // eslint-disable-next-line prefer-const
+  let { data: recentAppts, error: recentErr } = await supabase
     .from("appointments")
     .select("client_email, client_name, date")
     .gte("date", ninetyDaysAgo.toISOString().split("T")[0])
     .lte("date", sixtyDaysAgo.toISOString().split("T")[0])
-    .eq("status", "completed");
+    .eq("status", "completed")
+    .eq("is_test", false);
+  if (recentErr && /is_test/i.test(recentErr.message || "")) {
+    ({ data: recentAppts } = await supabase
+      .from("appointments")
+      .select("client_email, client_name, date")
+      .gte("date", ninetyDaysAgo.toISOString().split("T")[0])
+      .lte("date", sixtyDaysAgo.toISOString().split("T")[0])
+      .eq("status", "completed"));
+  }
 
   // Group by email, find those whose LAST appointment was in this window
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { loadStripe, Stripe } from "@stripe/stripe-js";
+import type { Stripe } from "@stripe/stripe-js";
 import {
   Elements,
   PaymentElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import { getStripeBrowser } from "@/lib/stripeBrowser";
 
 interface Props {
   amountCents: number;
@@ -15,17 +16,6 @@ interface Props {
   clientName: string;
   description: string;
   onSuccess: (paymentIntentId: string) => void;
-}
-
-// Lazy-load Stripe.js exactly once per page load. Returns null while loading
-// OR when NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY isn't set, in which case the UI
-// gracefully falls back to an explanation message.
-let _stripePromise: Promise<Stripe | null> | null = null;
-function getStripe(): Promise<Stripe | null> | null {
-  const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-  if (!key) return null;
-  if (!_stripePromise) _stripePromise = loadStripe(key);
-  return _stripePromise;
 }
 
 function CardForm({
@@ -94,10 +84,27 @@ export default function DepositForm({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const stripePromise = getStripe();
+  // null = config missing, "loading" = waiting on script, "failed" = retried
+  // and gave up, Stripe instance = loaded.
+  const [stripe, setStripe] = useState<Stripe | null | "failed" | "loading">("loading");
 
   useEffect(() => {
-    if (!stripePromise || !clientEmail) return;
+    const promise = getStripeBrowser();
+    if (!promise) {
+      setStripe("failed");
+      return;
+    }
+    let cancelled = false;
+    promise.then(
+      (s) => { if (!cancelled) setStripe(s); },
+      () => { if (!cancelled) setStripe("failed"); },
+    );
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (stripe === "loading" || stripe === "failed" || stripe === null) return;
+    if (!clientEmail) return;
     let cancelled = false;
     (async () => {
       try {
@@ -119,13 +126,26 @@ export default function DepositForm({
       }
     })();
     return () => { cancelled = true; };
-  }, [amountCents, clientEmail, clientName, description, stripePromise]);
+  }, [amountCents, clientEmail, clientName, description, stripe]);
 
-  if (!stripePromise) {
+  if (stripe === null) {
     return (
       <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 font-body text-sm">
         Card payments aren&apos;t configured on this site. Please call
         (818) 662-5665 to pay the deposit by phone.
+      </div>
+    );
+  }
+
+  if (stripe === "failed") {
+    return (
+      <div className="p-4 bg-amber-50 border border-amber-300 text-amber-900 font-body text-sm space-y-2">
+        <p className="font-bold">We&apos;re having trouble loading our payment system.</p>
+        <p>
+          Please try again in a moment, or call{" "}
+          <a href="tel:18186625665" className="underline">(818)&nbsp;662-5665</a>{" "}
+          to pay the deposit by phone.
+        </p>
       </div>
     );
   }
@@ -138,7 +158,7 @@ export default function DepositForm({
     );
   }
 
-  if (!clientSecret || !paymentIntentId) {
+  if (stripe === "loading" || !clientSecret || !paymentIntentId) {
     return (
       <div className="p-4 text-navy/50 font-body text-sm text-center">
         Loading secure payment form…
@@ -147,7 +167,7 @@ export default function DepositForm({
   }
 
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "stripe" } }}>
+    <Elements stripe={stripe} options={{ clientSecret, appearance: { theme: "stripe" } }}>
       <CardForm amountCents={amountCents} paymentIntentId={paymentIntentId} onSuccess={onSuccess} />
     </Elements>
   );

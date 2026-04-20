@@ -155,5 +155,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   session: {
     strategy: "jwt",
+    // B-11 — sliding 4-hour idle window. Auth.js refreshes the JWT on every
+    // request, so an active admin keeps their session; an idle one is
+    // signed out automatically.
+    maxAge: 4 * 60 * 60,
+    updateAge: 30 * 60,
+  },
+  jwt: {
+    maxAge: 4 * 60 * 60,
+  },
+  cookies: {
+    // Force Secure + HttpOnly + SameSite=Lax on the session cookie. Auth.js
+    // already does this in production by default, but we set it explicitly
+    // so a misconfigured env can't downgrade it. Lax is required so the
+    // post-OAuth top-level redirect still carries the cookie.
+    sessionToken: {
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-authjs.session-token"
+          : "authjs.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
   },
 });

@@ -76,17 +76,40 @@ export async function getAvailableSlots(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const salonWeekly = (weeklyRules || []).find((r: any) => !r.stylist_id);
 
-  const rule = stylistOverride || salonOverride || stylistWeekly || salonWeekly;
-  const fallbackWeekly: Record<number, { start_time: string; end_time: string; is_closed: boolean }> = {
-    0: { start_time: "10:00", end_time: "17:00", is_closed: false }, // Sunday
-    1: { start_time: "10:00", end_time: "18:00", is_closed: false }, // Monday
-    2: { start_time: "10:00", end_time: "18:00", is_closed: true },  // Tuesday closed
-    3: { start_time: "10:00", end_time: "18:00", is_closed: false }, // Wednesday
-    4: { start_time: "10:00", end_time: "18:00", is_closed: false }, // Thursday
-    5: { start_time: "10:00", end_time: "18:00", is_closed: false }, // Friday
-    6: { start_time: "10:00", end_time: "18:00", is_closed: false }, // Saturday
-  };
-  const activeRule = rule || fallbackWeekly[dayOfWeek];
+  // B-04: a stylist with NO rule for the requested day is closed for that
+  // day — the salon being open doesn't auto-grant per-stylist availability.
+  // Fall back to salon hours ONLY when the stylist has zero weekly rules
+  // configured anywhere (newly-added stylist), so an empty schedule isn't a
+  // hard outage. Once any rule is set, missing days mean "off".
+  const { data: anyStylistRules } = await supabase
+    .from("schedule_rules")
+    .select("id")
+    .eq("rule_type", "weekly")
+    .eq("stylist_id", stylistId)
+    .limit(1);
+  const stylistHasAnySchedule = (anyStylistRules || []).length > 0;
+
+  let activeRule: { start_time: string | null; end_time: string | null; is_closed: boolean } | undefined;
+  if (stylistOverride) activeRule = stylistOverride;
+  else if (stylistWeekly) activeRule = stylistWeekly;
+  else if (stylistHasAnySchedule) {
+    // Stylist has a schedule, but no rule for this day — they're off.
+    return [];
+  } else if (salonOverride) activeRule = salonOverride;
+  else if (salonWeekly) activeRule = salonWeekly;
+  else {
+    // No rules at all anywhere — fall back to constants so dev/local works.
+    const fallbackWeekly: Record<number, { start_time: string; end_time: string; is_closed: boolean }> = {
+      0: { start_time: "10:00", end_time: "17:00", is_closed: false },
+      1: { start_time: "10:00", end_time: "18:00", is_closed: false },
+      2: { start_time: "10:00", end_time: "18:00", is_closed: true },
+      3: { start_time: "10:00", end_time: "18:00", is_closed: false },
+      4: { start_time: "10:00", end_time: "18:00", is_closed: false },
+      5: { start_time: "10:00", end_time: "18:00", is_closed: false },
+      6: { start_time: "10:00", end_time: "18:00", is_closed: false },
+    };
+    activeRule = fallbackWeekly[dayOfWeek];
+  }
 
   if (!activeRule || activeRule.is_closed || !activeRule.start_time || !activeRule.end_time) return [];
 

@@ -45,6 +45,7 @@ export default function NewAppointmentModal({
   const [staffNotes, setStaffNotes] = useState("");
   const [status, setStatus] = useState<"pending" | "confirmed" | "completed">("confirmed");
   const [overrideConflicts, setOverrideConflicts] = useState(false);
+  const [isTest, setIsTest] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -137,6 +138,7 @@ export default function NewAppointmentModal({
           staffNotes: staffNotes || null,
           status,
           overrideConflicts,
+          isTest,
         }),
       });
       const data = await res.json();
@@ -340,6 +342,18 @@ export default function NewAppointmentModal({
             />
             <span className="text-sm font-body">
               Override conflicts (book even if the stylist is busy or off-hours)
+            </span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isTest}
+              onChange={(e) => setIsTest(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <span className="text-sm font-body">
+              Test booking (excluded from emails, dashboard, analytics, and crons)
             </span>
           </label>
 

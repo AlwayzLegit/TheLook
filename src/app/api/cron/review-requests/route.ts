@@ -20,12 +20,23 @@ export async function GET(request: NextRequest) {
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.toISOString().split("T")[0];
 
-  const { data: eligible, error } = await supabase
+  // is_test rows must never trigger a real review request — pre-migration
+  // installs lack the column so retry without the filter on schema error.
+  let { data: eligible, error } = await supabase
     .from("appointments")
     .select("*")
     .eq("status", "completed")
     .eq("date", yesterdayStr)
-    .is("review_request_sent_at", null);
+    .is("review_request_sent_at", null)
+    .eq("is_test", false);
+  if (error && /is_test/i.test(error.message || "")) {
+    ({ data: eligible, error } = await supabase
+      .from("appointments")
+      .select("*")
+      .eq("status", "completed")
+      .eq("date", yesterdayStr)
+      .is("review_request_sent_at", null));
+  }
 
   if (error) {
     logError("cron/review-requests GET", error);

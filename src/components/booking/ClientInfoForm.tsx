@@ -16,6 +16,11 @@ interface Props {
   onTurnstileChange?: (token: string | null) => void;
   policyAccepted: boolean;
   onPolicyChange: (v: boolean) => void;
+  // True when the booking is long enough to trigger the $50 deposit. Drives
+  // which policy card + which consent line we show — short bookings get the
+  // cancellation-only language since no deposit is charged.
+  requiresDeposit: boolean;
+  depositAmountCents: number;
 }
 
 export default function ClientInfoForm({
@@ -25,7 +30,10 @@ export default function ClientInfoForm({
   onTurnstileChange,
   policyAccepted,
   onPolicyChange,
+  requiresDeposit,
+  depositAmountCents,
 }: Props) {
+  const depositDollars = Math.round(depositAmountCents / 100);
   return (
     <div>
       <h2 className="font-heading text-3xl mb-2 text-center">Your Information</h2>
@@ -92,27 +100,52 @@ export default function ClientInfoForm({
           />
         </div>
 
-        {/* Two separate policy cards so customers clearly see the deposit
-            rule AND the 25% cancellation fee before agreeing. */}
+        {/* Policy disclaimers — depending on whether the booking triggers the
+            deposit, show either the deposit + cancellation pair OR a card-on-
+            file-only card. The consent line below mirrors. */}
         <div className="space-y-3">
-          <div className="bg-cream/50 border border-navy/10 p-4 text-sm font-body text-navy/70">
-            <p className="font-bold text-navy mb-2">Deposit Policy</p>
-            <p className="text-xs leading-relaxed">
-              You will be charged a <strong>$50 deposit</strong> upon booking your appointment.
-              The deposit is <strong>non-refundable</strong>. The amount of your deposit will be
-              applied to the cost of your service at the time of your appointment. If you need
-              to cancel, you will lose your deposit.
-            </p>
-          </div>
+          {requiresDeposit ? (
+            <>
+              <div className="bg-cream/50 border border-navy/10 p-4 text-sm font-body text-navy/70">
+                <p className="font-bold text-navy mb-2">Deposit Policy</p>
+                <p className="text-xs leading-relaxed">
+                  You will be charged a <strong>${depositDollars} deposit</strong> upon booking
+                  your appointment. The deposit is <strong>non-refundable</strong>. The amount of
+                  your deposit will be applied to the cost of your service at the time of your
+                  appointment. If you need to cancel, you will lose your deposit.
+                </p>
+              </div>
 
-          <div className="bg-rose/5 border border-rose/30 p-4 text-sm font-body text-navy/70">
-            <p className="font-bold text-navy mb-2">Cancellation Policy</p>
-            <p className="text-xs leading-relaxed">
-              A <strong>25% cancellation fee</strong> (calculated on the total appointment value)
-              will be charged on no-shows or cancellations within 24&nbsp;hours of the scheduled
-              appointment. The fee is charged automatically to the card on file.
-            </p>
-          </div>
+              <div className="bg-rose/5 border border-rose/30 p-4 text-sm font-body text-navy/70">
+                <p className="font-bold text-navy mb-2">Cancellation Policy</p>
+                <p className="text-xs leading-relaxed">
+                  A <strong>25% cancellation fee</strong> (calculated on the total appointment
+                  value) will be charged on no-shows or cancellations within 24&nbsp;hours of the
+                  scheduled appointment. The fee is charged automatically to the card on file.
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bg-cream/50 border border-navy/10 p-4 text-sm font-body text-navy/70">
+                <p className="font-bold text-navy mb-2">Card on file</p>
+                <p className="text-xs leading-relaxed">
+                  No deposit is charged for this booking. We&apos;ll save your card on file
+                  securely with Stripe so the salon can charge the 25% cancellation fee if
+                  you no-show or cancel within 24&nbsp;hours of your appointment.
+                </p>
+              </div>
+
+              <div className="bg-rose/5 border border-rose/30 p-4 text-sm font-body text-navy/70">
+                <p className="font-bold text-navy mb-2">Cancellation Policy</p>
+                <p className="text-xs leading-relaxed">
+                  A <strong>25% cancellation fee</strong> (calculated on the total appointment
+                  value) will be charged on no-shows or cancellations within 24&nbsp;hours of the
+                  scheduled appointment. The fee is charged automatically to the card on file.
+                </p>
+              </div>
+            </>
+          )}
 
           <label className="flex items-start gap-2 pt-1 cursor-pointer">
             <input
@@ -123,10 +156,21 @@ export default function ClientInfoForm({
               required
             />
             <span className="text-xs text-navy/70">
-              I have read and agree to the <strong>deposit policy</strong> and the{" "}
-              <strong>cancellation policy</strong> above. I authorize The Look Hair Salon to save
-              my card on file and charge the 25% cancellation fee if I no-show or cancel within
-              24&nbsp;hours of my appointment. *
+              {requiresDeposit ? (
+                <>
+                  I have read and agree to the <strong>deposit policy</strong> and the{" "}
+                  <strong>cancellation policy</strong> above. I authorize The Look Hair Salon to
+                  save my card on file and charge the 25% cancellation fee if I no-show or
+                  cancel within 24&nbsp;hours of my appointment. *
+                </>
+              ) : (
+                <>
+                  I have read and agree to the <strong>cancellation policy</strong> above. I
+                  authorize The Look Hair Salon to save my card on file and charge the 25%
+                  cancellation fee if I no-show or cancel within 24&nbsp;hours of my
+                  appointment. *
+                </>
+              )}
             </span>
           </label>
         </div>

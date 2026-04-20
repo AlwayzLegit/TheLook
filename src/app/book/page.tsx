@@ -456,6 +456,8 @@ export default function BookPage() {
               onTurnstileChange={setTurnstileToken}
               policyAccepted={policyAccepted}
               onPolicyChange={setPolicyAccepted}
+              requiresDeposit={requiresDeposit}
+              depositAmountCents={BOOKING.DEPOSIT_AMOUNT_CENTS}
             />
           )}
 

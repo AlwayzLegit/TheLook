@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 
@@ -7,10 +7,16 @@ const siteUrl = (() => {
   return raw.startsWith("http") ? raw : `https://${raw}`;
 })();
 
+// Next.js 15 moved themeColor / colorScheme / viewport out of metadata into
+// a dedicated `viewport` export. Keeping it on `metadata` triggers a build
+// warning and stops the meta tag from rendering.
+export const viewport: Viewport = {
+  themeColor: "#282936",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   manifest: "/manifest.json",
-  themeColor: "#282936",
   title: "The Look Hair Salon | Beauty Hair Salon | Glendale, CA",
   description:
     "Family owned & operated since 2011. Over 25 years in the beauty industry — specializing in cutting, coloring, balayage, ombré, highlights, extensions & styling in Glendale, CA.",

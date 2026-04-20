@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { loadStripe, Stripe } from "@stripe/stripe-js";
+import type { Stripe } from "@stripe/stripe-js";
 import {
   Elements,
   PaymentElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import { getStripeBrowser } from "@/lib/stripeBrowser";
 
 interface Props {
   clientEmail: string;
@@ -15,14 +16,6 @@ interface Props {
   clientPhone?: string;
   description: string;
   onSuccess: (setupIntentId: string) => void;
-}
-
-let _stripePromise: Promise<Stripe | null> | null = null;
-function getStripeBrowser(): Promise<Stripe | null> | null {
-  const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-  if (!key) return null;
-  if (!_stripePromise) _stripePromise = loadStripe(key);
-  return _stripePromise;
 }
 
 function CardForm({
@@ -90,10 +83,27 @@ export default function SaveCardForm({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [setupIntentId, setSetupIntentId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const stripePromise = getStripeBrowser();
+  // Track Stripe.js load explicitly so a hung script surfaces a "call us"
+  // panel instead of an indefinite spinner. null = still loading.
+  const [stripe, setStripe] = useState<Stripe | null | "failed" | "loading">("loading");
 
   useEffect(() => {
-    if (!stripePromise || !clientEmail) return;
+    const promise = getStripeBrowser();
+    if (!promise) {
+      setStripe("failed");
+      return;
+    }
+    let cancelled = false;
+    promise.then(
+      (s) => { if (!cancelled) setStripe(s); },
+      () => { if (!cancelled) setStripe("failed"); },
+    );
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (stripe === "loading" || stripe === "failed" || stripe === null) return;
+    if (!clientEmail) return;
     let cancelled = false;
     (async () => {
       try {
@@ -115,13 +125,26 @@ export default function SaveCardForm({
       }
     })();
     return () => { cancelled = true; };
-  }, [clientEmail, clientName, clientPhone, description, stripePromise]);
+  }, [clientEmail, clientName, clientPhone, description, stripe]);
 
-  if (!stripePromise) {
+  if (stripe === null) {
     return (
       <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 font-body text-sm">
         Card payments aren&apos;t configured on this site. Call (818) 662-5665
         to secure your appointment.
+      </div>
+    );
+  }
+
+  if (stripe === "failed") {
+    return (
+      <div className="p-4 bg-amber-50 border border-amber-300 text-amber-900 font-body text-sm space-y-2">
+        <p className="font-bold">We&apos;re having trouble loading our payment system.</p>
+        <p>
+          Please try again in a moment, or call{" "}
+          <a href="tel:18186625665" className="underline">(818)&nbsp;662-5665</a>{" "}
+          to book by phone.
+        </p>
       </div>
     );
   }
@@ -134,7 +157,7 @@ export default function SaveCardForm({
     );
   }
 
-  if (!clientSecret || !setupIntentId) {
+  if (stripe === "loading" || !clientSecret || !setupIntentId) {
     return (
       <div className="p-4 text-navy/50 font-body text-sm text-center">
         Loading secure card form…
@@ -143,7 +166,7 @@ export default function SaveCardForm({
   }
 
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "stripe" } }}>
+    <Elements stripe={stripe} options={{ clientSecret, appearance: { theme: "stripe" } }}>
       <CardForm setupIntentId={setupIntentId} onSuccess={onSuccess} />
     </Elements>
   );
