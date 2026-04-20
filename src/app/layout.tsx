@@ -64,7 +64,7 @@ const jsonLd = {
     "Family owned & operated since 2011. Over 25 years in the beauty industry — highest quality hair salon services in Glendale at unbeatable prices.",
   url: "https://www.thelookhairsalonla.com",
   telephone: "+18186625665",
-  email: "look_hairsalon@yahoo.com",
+  email: "thelook_hairsalon@yahoo.com",
   address: {
     "@type": "PostalAddress",
     streetAddress: "919 South Central Ave Suite #E",

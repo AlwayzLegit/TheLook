@@ -100,79 +100,53 @@ export default function ClientInfoForm({
           />
         </div>
 
-        {/* Policy disclaimers — depending on whether the booking triggers the
-            deposit, show either the deposit + cancellation pair OR a card-on-
-            file-only card. The consent line below mirrors. */}
+        {/* Policy disclaimer — only shown when the booking triggers the
+            deposit. Short bookings (<= $100) skip card collection and
+            therefore don't need the forfeit language. */}
         <div className="space-y-3">
           {requiresDeposit ? (
             <>
               <div className="bg-cream/50 border border-navy/10 p-4 text-sm font-body text-navy/70">
                 <p className="font-bold text-navy mb-2">Deposit Policy</p>
                 <p className="text-xs leading-relaxed">
-                  You will be charged a <strong>${depositDollars} deposit</strong> upon booking
-                  your appointment. The deposit is <strong>non-refundable</strong>. The amount of
-                  your deposit will be applied to the cost of your service at the time of your
-                  appointment. If you need to cancel, you will lose your deposit.
+                  A <strong>${depositDollars} deposit</strong> is charged upon booking to
+                  secure your appointment. The deposit is{" "}
+                  <strong>applied to your service total</strong> at the appointment. If you
+                  no-show or cancel within 24&nbsp;hours of your appointment, the deposit is
+                  <strong> forfeited</strong>.
                 </p>
               </div>
 
-              <div className="bg-rose/5 border border-rose/30 p-4 text-sm font-body text-navy/70">
-                <p className="font-bold text-navy mb-2">Cancellation Policy</p>
-                <p className="text-xs leading-relaxed">
-                  A <strong>25% cancellation fee</strong> (calculated on the total appointment
-                  value) will be charged on no-shows or cancellations within 24&nbsp;hours of the
-                  scheduled appointment. The fee is charged automatically to the card on file.
-                </p>
-              </div>
+              <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={policyAccepted}
+                  onChange={(e) => onPolicyChange(e.target.checked)}
+                  className="w-4 h-4 mt-0.5"
+                  required
+                />
+                <span className="text-xs text-navy/70">
+                  I agree to the <strong>deposit policy</strong> above and authorize The Look
+                  Hair Salon to charge the ${depositDollars} deposit now. I understand the
+                  deposit is forfeited if I no-show or cancel within 24&nbsp;hours. *
+                </span>
+              </label>
             </>
           ) : (
-            <>
-              <div className="bg-cream/50 border border-navy/10 p-4 text-sm font-body text-navy/70">
-                <p className="font-bold text-navy mb-2">Card on file</p>
-                <p className="text-xs leading-relaxed">
-                  No deposit is charged for this booking. We&apos;ll save your card on file
-                  securely with Stripe so the salon can charge the 25% cancellation fee if
-                  you no-show or cancel within 24&nbsp;hours of your appointment.
-                </p>
-              </div>
-
-              <div className="bg-rose/5 border border-rose/30 p-4 text-sm font-body text-navy/70">
-                <p className="font-bold text-navy mb-2">Cancellation Policy</p>
-                <p className="text-xs leading-relaxed">
-                  A <strong>25% cancellation fee</strong> (calculated on the total appointment
-                  value) will be charged on no-shows or cancellations within 24&nbsp;hours of the
-                  scheduled appointment. The fee is charged automatically to the card on file.
-                </p>
-              </div>
-            </>
+            <label className="flex items-start gap-2 pt-1 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={policyAccepted}
+                onChange={(e) => onPolicyChange(e.target.checked)}
+                className="w-4 h-4 mt-0.5"
+                required
+              />
+              <span className="text-xs text-navy/70">
+                I confirm the information above is accurate and understand that my appointment
+                is only held once confirmed by the salon. *
+              </span>
+            </label>
           )}
-
-          <label className="flex items-start gap-2 pt-1 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={policyAccepted}
-              onChange={(e) => onPolicyChange(e.target.checked)}
-              className="w-4 h-4 mt-0.5"
-              required
-            />
-            <span className="text-xs text-navy/70">
-              {requiresDeposit ? (
-                <>
-                  I have read and agree to the <strong>deposit policy</strong> and the{" "}
-                  <strong>cancellation policy</strong> above. I authorize The Look Hair Salon to
-                  save my card on file and charge the 25% cancellation fee if I no-show or
-                  cancel within 24&nbsp;hours of my appointment. *
-                </>
-              ) : (
-                <>
-                  I have read and agree to the <strong>cancellation policy</strong> above. I
-                  authorize The Look Hair Salon to save my card on file and charge the 25%
-                  cancellation fee if I no-show or cancel within 24&nbsp;hours of my
-                  appointment. *
-                </>
-              )}
-            </span>
-          </label>
         </div>
 
         {turnstileSiteKey && onTurnstileChange ? (

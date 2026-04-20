@@ -101,7 +101,6 @@ export async function POST(request: NextRequest) {
     clientPhone,
     notes,
     depositPaymentIntentId,
-    setupIntentId,
     turnstileToken,
   } = parsed.data;
 
@@ -207,7 +206,7 @@ export async function POST(request: NextRequest) {
     return apiError("This time slot is no longer available. Please choose another.", 409);
   }
 
-  const requiresDeposit = totalDuration >= BOOKING.DEPOSIT_TRIGGER_MINUTES;
+  const requiresDeposit = totalPriceMin > BOOKING.DEPOSIT_TRIGGER_PRICE_CENTS;
   const depositRequired = requiresDeposit ? BOOKING.DEPOSIT_AMOUNT_CENTS : 0;
   const depositPaid = !!depositPaymentIntentId;
 
@@ -332,24 +331,6 @@ export async function POST(request: NextRequest) {
           phone: clientPhone || null,
           stripe_customer_id: stripeCustomerId,
         }, { onConflict: "email" });
-    }
-  } else if (setupIntentId) {
-    // No deposit was charged, but the customer saved a card via SetupIntent.
-    // Pull the payment method + Stripe customer id and stamp both on the
-    // appointment so the cancellation-fee flow can charge off-session later.
-    const { lookupPaymentMethodFromSetupIntent } = await import("@/lib/stripe");
-    const info = await lookupPaymentMethodFromSetupIntent(setupIntentId);
-
-    if (info.paymentMethodId && info.customerId) {
-      await supabase
-        .from("appointments")
-        .update({
-          stripe_customer_id: info.customerId,
-          stripe_payment_method_id: info.paymentMethodId,
-          card_brand: info.cardBrand,
-          card_last4: info.cardLast4,
-        })
-        .eq("id", appointmentId);
     }
   }
 

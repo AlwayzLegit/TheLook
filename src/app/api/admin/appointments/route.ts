@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
   if (pickedVariantIds.length > 0) {
     const { data: vrows } = await supabase
       .from("service_variants")
-      .select("id, service_id, name, duration, price_min")
+      .select("id, service_id, name, duration, price_min, price_text")
       .in("id", pickedVariantIds);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const v of (vrows || []) as any[]) variantsById.set(v.id, v);
@@ -183,9 +183,11 @@ export async function POST(request: NextRequest) {
       variantId: v?.id ?? null,
       displayName: v ? `${svc.name} — ${v.name}` : svc.name,
       duration: v?.duration ?? svc.duration,
+      priceMin: v?.price_min ?? svc.price_min ?? 0,
     };
   });
   const totalDuration = effective.reduce((sum, e) => sum + (e.duration || 0), 0);
+  const totalPriceMin = effective.reduce((sum, e) => sum + (e.priceMin || 0), 0);
   const endTime = minutesToTime(timeToMinutes(p.startTime) + totalDuration);
 
   if (!p.overrideConflicts) {
@@ -217,7 +219,7 @@ export async function POST(request: NextRequest) {
     cancel_token: cancelToken,
     requested_stylist: true,
     policy_accepted_at: new Date().toISOString(),
-    deposit_required_cents: totalDuration >= BOOKING.DEPOSIT_TRIGGER_MINUTES ? BOOKING.DEPOSIT_AMOUNT_CENTS : 0,
+    deposit_required_cents: totalPriceMin > BOOKING.DEPOSIT_TRIGGER_PRICE_CENTS ? BOOKING.DEPOSIT_AMOUNT_CENTS : 0,
     approved_at: p.status === "confirmed" ? new Date().toISOString() : null,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     approved_by: p.status === "confirmed" ? ((session.user as any)?.email || "admin") : null,

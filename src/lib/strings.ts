@@ -12,7 +12,7 @@ export const strings = {
   salonTagline: "Family owned with over 25 years of experience. The highest quality hair services in Glendale at unbeatable prices.",
   salonAddress: "919 South Central Ave Suite #E, Glendale, CA 91204",
   salonPhone: "(818) 662-5665",
-  salonEmail: "look_hairsalon@yahoo.com",
+  salonEmail: "thelook_hairsalon@yahoo.com",
 
   // Navigation
   navHome: "Home",

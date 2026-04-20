@@ -123,8 +123,8 @@ export default function Footer() {
                 </a>
               </p>
               <p>
-                <a href="mailto:look_hairsalon@yahoo.com" className="hover:text-gold transition-colors duration-300">
-                  look_hairsalon@yahoo.com
+                <a href="mailto:thelook_hairsalon@yahoo.com" className="hover:text-gold transition-colors duration-300">
+                  thelook_hairsalon@yahoo.com
                 </a>
               </p>
             </div>

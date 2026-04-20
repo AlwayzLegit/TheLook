@@ -187,7 +187,7 @@ export default function TermsPage() {
                 <p>The Look Hair Salon</p>
                 <p>919 South Central Ave Suite #E, Glendale, CA 91204</p>
                 <p>(818) 662-5665</p>
-                <p>look_hairsalon@yahoo.com</p>
+                <p>thelook_hairsalon@yahoo.com</p>
               </div>
             </section>
           </div>

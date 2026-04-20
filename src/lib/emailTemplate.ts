@@ -46,7 +46,7 @@ const BRAND = {
   address: "919 South Central Ave Suite #E, Glendale, CA 91204",
   phone: "(818) 662-5665",
   phoneHref: "+18186625665",
-  email: "look_hairsalon@yahoo.com",
+  email: "thelook_hairsalon@yahoo.com",
   website: "https://www.thelookhairsalonla.com",
   bookUrl: "https://www.thelookhairsalonla.com/book",
   hoursSummary: "Mon, Wed–Fri 10am–6pm · Sat 10am–6pm · Sun 10am–5pm · Tue closed",

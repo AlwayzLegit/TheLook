@@ -1,17 +1,18 @@
 /**
- * Stripe integration — deposit collection + card-on-file.
+ * Stripe integration — deposit collection.
  *
  * Flow:
- *   1. Booking creates a Stripe Customer (per client email) and a
- *      PaymentIntent with `setup_future_usage: "off_session"`. The first
- *      charge (the $50 deposit) both collects the deposit AND saves the card
- *      on the Customer for later.
- *   2. After the intent succeeds, the webhook (or the success handler on
- *      the client) records the resulting payment_method on our row so admins
- *      can see last4/brand at a glance.
- *   3. When an admin marks an appointment as no-show or late-cancel, the
- *      admin endpoint creates an off-session PaymentIntent against the saved
- *      customer + payment_method to collect the cancellation fee.
+ *   1. Bookings whose total price exceeds DEPOSIT_TRIGGER_PRICE_CENTS
+ *      require a $50 deposit up-front. We create a Stripe Customer (per
+ *      client email) and a PaymentIntent with
+ *      `setup_future_usage: "off_session"`. The charge collects the deposit
+ *      AND saves the card on the Customer as a side-effect.
+ *   2. After the intent succeeds, the webhook + the booking POST record
+ *      the card's brand/last4 on the appointment so admins can see it.
+ *   3. chargeOffSession() + the admin /charge-fee route remain available
+ *      as a manual escape hatch in case the salon ever needs to collect
+ *      additional off-session charges on a saved card. The standard
+ *      no-show / late-cancel flow forfeits the deposit instead.
  *
  * Stripe itself stores the card; we never touch raw PAN data.
  */
@@ -218,73 +219,6 @@ export async function chargeOffSession(args: {
       };
     }
     return { error: err?.message || "Off-session charge failed." };
-  }
-}
-
-interface SetupIntentResult {
-  clientSecret?: string;
-  id?: string;
-  customerId?: string;
-  error?: string;
-}
-
-// Save a card on file WITHOUT charging anything. Used for bookings that
-// don't trigger the $50 deposit but we still want a card on the Stripe
-// customer so the 25% cancellation fee can be collected off-session if
-// needed.
-export async function createSetupIntent(
-  clientEmail: string,
-  clientName?: string,
-  clientPhone?: string,
-  metadata: Record<string, string> = {},
-): Promise<SetupIntentResult> {
-  const stripe = await getStripe();
-  if (!stripe) return { error: "Stripe not configured" };
-
-  const customer = await upsertStripeCustomer(clientEmail, clientName, clientPhone);
-  if ("error" in customer) return { error: customer.error };
-
-  try {
-    const intent = await stripe.setupIntents.create({
-      customer: customer.id,
-      usage: "off_session",
-      payment_method_types: ["card"],
-      metadata: { ...metadata, clientEmail, reason: "card_on_file" },
-    });
-    return {
-      clientSecret: intent.client_secret ?? undefined,
-      id: intent.id,
-      customerId: customer.id,
-    };
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Stripe setup intent error" };
-  }
-}
-
-// Pull the saved payment method + card brand/last4 off a completed
-// SetupIntent so the booking POST can stamp card-on-file columns on the
-// appointment the same way the deposit flow does.
-export async function lookupPaymentMethodFromSetupIntent(setupIntentId: string): Promise<{
-  paymentMethodId: string | null;
-  customerId: string | null;
-  cardBrand: string | null;
-  cardLast4: string | null;
-}> {
-  const stripe = await getStripe();
-  if (!stripe) return { paymentMethodId: null, customerId: null, cardBrand: null, cardLast4: null };
-  try {
-    const si = await stripe.setupIntents.retrieve(setupIntentId, {
-      expand: ["payment_method"],
-    });
-    const customerId = typeof si.customer === "string" ? si.customer : si.customer?.id ?? null;
-    const pm = typeof si.payment_method === "string" ? null : si.payment_method;
-    if (pm && pm.card) {
-      return { paymentMethodId: pm.id, customerId, cardBrand: pm.card.brand, cardLast4: pm.card.last4 };
-    }
-    const pmId = typeof si.payment_method === "string" ? si.payment_method : null;
-    return { paymentMethodId: pmId, customerId, cardBrand: null, cardLast4: null };
-  } catch {
-    return { paymentMethodId: null, customerId: null, cardBrand: null, cardLast4: null };
   }
 }
 

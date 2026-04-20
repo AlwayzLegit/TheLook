@@ -118,7 +118,7 @@ export default function PrivacyPage() {
                 <li>Opt out of non-transactional marketing emails at any time via the unsubscribe link.</li>
               </ul>
               <p className="mt-3">
-                To exercise any of these, email us at <a href="mailto:look_hairsalon@yahoo.com" className="text-rose hover:underline">look_hairsalon@yahoo.com</a> or call (818) 662-5665.
+                To exercise any of these, email us at <a href="mailto:thelook_hairsalon@yahoo.com" className="text-rose hover:underline">thelook_hairsalon@yahoo.com</a> or call (818) 662-5665.
               </p>
             </section>
 
@@ -162,7 +162,7 @@ export default function PrivacyPage() {
                 <p>The Look Hair Salon</p>
                 <p>919 South Central Ave Suite #E, Glendale, CA 91204</p>
                 <p>(818) 662-5665</p>
-                <p>look_hairsalon@yahoo.com</p>
+                <p>thelook_hairsalon@yahoo.com</p>
               </div>
             </section>
           </div>

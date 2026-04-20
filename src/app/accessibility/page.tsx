@@ -59,7 +59,7 @@ export default function AccessibilityPage() {
               <h2 className="font-heading text-2xl text-navy mb-3">Report an Issue</h2>
               <p>
                 If you encounter an accessibility barrier on our website, please let us know so we can fix it.
-                Email <a href="mailto:look_hairsalon@yahoo.com" className="text-rose hover:underline">look_hairsalon@yahoo.com</a> or
+                Email <a href="mailto:thelook_hairsalon@yahoo.com" className="text-rose hover:underline">thelook_hairsalon@yahoo.com</a> or
                 call (818) 662-5665 and we&#39;ll respond as soon as possible.
               </p>
             </section>

@@ -33,9 +33,6 @@ export const appointmentCreateSchema = z.object({
   }),
   // Optional Stripe PaymentIntent id when a deposit was collected up-front.
   depositPaymentIntentId: z.string().trim().max(255).optional(),
-  // Optional Stripe SetupIntent id when a card was saved without a charge
-  // (short appointments below the deposit threshold).
-  setupIntentId: z.string().trim().max(255).optional(),
   turnstileToken: z.string().trim().optional(),
 }).refine((d) => !!d.serviceId || (d.serviceIds && d.serviceIds.length > 0), {
   message: "serviceId or serviceIds is required",

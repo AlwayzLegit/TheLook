@@ -28,7 +28,6 @@ interface Props {
   onDelete: (id: string) => void | Promise<void>;
   onArchive: (id: string) => void | Promise<void>;
   onUnarchive: (id: string) => void | Promise<void>;
-  onChargeFee: (id: string, name: string) => void | Promise<void>;
   onSaveEdit: (id: string, fields: { date: string; start_time: string; end_time: string; staff_notes: string }) => void | Promise<void>;
   pending: boolean;
 }
@@ -51,7 +50,6 @@ export default function AppointmentActionsModal({
   onDelete,
   onArchive,
   onUnarchive,
-  onChargeFee,
   onSaveEdit,
   pending,
 }: Props) {
@@ -74,10 +72,6 @@ export default function AppointmentActionsModal({
 
   const isArchived = Boolean(appointment.archived_at);
   const canArchive = ["cancelled", "no_show", "completed"].includes(appointment.status) && !isArchived;
-  const canChargeFee =
-    (appointment.status === "cancelled" || appointment.status === "no_show") &&
-    appointment.stripe_customer_id &&
-    (appointment.cancellation_fee_charged_cents ?? 0) === 0;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
@@ -192,16 +186,6 @@ export default function AppointmentActionsModal({
                 </>
               )}
 
-              {canChargeFee && (
-                <button
-                  onClick={() => onChargeFee(appointment.id, appointment.client_name)}
-                  disabled={pending}
-                  className="text-xs font-body text-amber-900 bg-amber-100 border border-amber-300 px-3 py-1.5 hover:bg-amber-200 disabled:opacity-60"
-                >
-                  Charge 25% cancellation fee
-                </button>
-              )}
-
               {canArchive && (
                 <button
                   onClick={() => onArchive(appointment.id)}
@@ -232,12 +216,6 @@ export default function AppointmentActionsModal({
                 Delete
               </button>
             </div>
-          )}
-
-          {(appointment.cancellation_fee_charged_cents ?? 0) > 0 && (
-            <p className="text-[11px] font-body text-emerald-700">
-              ✓ Cancellation fee charged: ${((appointment.cancellation_fee_charged_cents ?? 0) / 100).toFixed(2)}
-            </p>
           )}
 
           {appointment.card_brand && (

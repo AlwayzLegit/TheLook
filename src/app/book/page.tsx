@@ -11,7 +11,6 @@ import DateTimePicker from "@/components/booking/DateTimePicker";
 import ClientInfoForm from "@/components/booking/ClientInfoForm";
 import BookingConfirmation from "@/components/booking/BookingConfirmation";
 import DepositForm from "@/components/booking/DepositForm";
-import SaveCardForm from "@/components/booking/SaveCardForm";
 import { BOOKING } from "@/lib/constants";
 
 // Step layout (matches BookingProgress):
@@ -98,16 +97,17 @@ export default function BookPage() {
   const [discountResult, setDiscountResult] = useState<{ code: string; description: string; discountAmount: number; finalPrice: number } | null>(null);
   const [discountError, setDiscountError] = useState("");
   const [checkingDiscount, setCheckingDiscount] = useState(false);
-  // Stripe deposit (PaymentIntent id captured here once paid)
+  // Stripe deposit (PaymentIntent id captured here once paid). Only used
+  // when requiresDeposit is true — sub-threshold bookings skip card
+  // collection entirely.
   const [depositPaymentIntent, setDepositPaymentIntent] = useState<string | null>(null);
-  // Stripe SetupIntent id for bookings that don't require a deposit — we
-  // still save a card on file so the 25% cancellation fee is chargeable.
-  const [savedCardSetupIntent, setSavedCardSetupIntent] = useState<string | null>(null);
 
   const totalPriceMin = selectedServices.reduce((sum, s) => sum + (s.priceMin || 0), 0);
   const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration || 0), 0);
   const anyPricePlus = selectedServices.some((s) => s.priceText.includes("+"));
-  const requiresDeposit = totalDuration >= BOOKING.DEPOSIT_TRIGGER_MINUTES;
+  // Deposit is now triggered by total price, not duration. Bookings <= $100
+  // skip card collection entirely.
+  const requiresDeposit = totalPriceMin > BOOKING.DEPOSIT_TRIGGER_PRICE_CENTS;
 
   const serviceKey = (s: Service) => (s.variantId ? `${s.id}:${s.variantId}` : s.id);
 
@@ -125,7 +125,6 @@ export default function BookPage() {
     setDiscountResult(null);
     setDiscountError("");
     setDepositPaymentIntent(null);
-    setSavedCardSetupIntent(null);
   };
 
   const applyDiscount = async () => {
@@ -284,10 +283,7 @@ export default function BookPage() {
           !!clientInfo.phone &&
           clientInfo.phone.replace(/\D/g, "").length >= 7 &&
           policyAccepted &&
-          (!turnstileSiteKey || !!turnstileToken) &&
-          // Confirm step handles the card step now — Info only blocks the
-          // basic fields + policy checkbox.
-          true
+          (!turnstileSiteKey || !!turnstileToken)
         );
       default: return false;
     }
@@ -314,10 +310,6 @@ export default function BookPage() {
       setError("Deposit required to confirm this booking.");
       return;
     }
-    if (!requiresDeposit && !savedCardSetupIntent) {
-      setError("Please save a card on file to confirm your booking.");
-      return;
-    }
     setSubmitting(true);
     setError(null);
 
@@ -338,7 +330,6 @@ export default function BookPage() {
           notes: clientInfo.notes || undefined,
           policyAccepted,
           depositPaymentIntentId: depositPaymentIntent || undefined,
-          setupIntentId: savedCardSetupIntent || undefined,
           turnstileToken: turnstileToken || undefined,
         }),
       });
@@ -488,20 +479,20 @@ export default function BookPage() {
                   <p className="text-navy/50 text-sm font-body">{clientInfo.email}</p>
                   {clientInfo.phone && <p className="text-navy/50 text-sm font-body">{clientInfo.phone}</p>}
                 </div>
-                {requiresDeposit ? (
+                {requiresDeposit && (
                   <div className="border-t border-navy/10 pt-4">
                     <p className="text-navy/60 text-sm font-body mb-1">
                       Required deposit — ${BOOKING.DEPOSIT_AMOUNT_CENTS / 100}
                     </p>
                     <p className="text-navy/50 text-xs font-body mb-3 leading-relaxed">
-                      This deposit is <strong>non-refundable</strong>. It&apos;s applied to your
-                      service total at the appointment. If you cancel or no-show, the deposit is
-                      forfeited. Your card is also saved on file so the 25% cancellation fee can
-                      be charged if you no-show or cancel same-day.
+                      A <strong>${BOOKING.DEPOSIT_AMOUNT_CENTS / 100}</strong> deposit is required
+                      for this booking. It&apos;s <strong>applied to your service total</strong>
+                      at the appointment. If you no-show or cancel within 24&nbsp;hours, the
+                      deposit is forfeited.
                     </p>
                     {depositPaymentIntent ? (
                       <p className="text-green-700 text-sm font-body">
-                        ✓ ${BOOKING.DEPOSIT_AMOUNT_CENTS / 100} deposit collected &amp; card saved.
+                        ✓ ${BOOKING.DEPOSIT_AMOUNT_CENTS / 100} deposit collected.
                       </p>
                     ) : clientInfo.email ? (
                       <DepositForm
@@ -514,34 +505,6 @@ export default function BookPage() {
                     ) : (
                       <p className="text-navy/50 text-xs font-body">
                         Fill in your info to pay the deposit.
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="border-t border-navy/10 pt-4">
-                    <p className="text-navy/60 text-sm font-body mb-1">
-                      Save a card on file
-                    </p>
-                    <p className="text-navy/50 text-xs font-body mb-3 leading-relaxed">
-                      Your card <strong>won&apos;t be charged now</strong>. It&apos;s saved
-                      securely with Stripe so the salon can charge the 25% cancellation fee if
-                      you no-show or cancel within 24 hours of your appointment.
-                    </p>
-                    {savedCardSetupIntent ? (
-                      <p className="text-green-700 text-sm font-body">
-                        ✓ Card saved on file.
-                      </p>
-                    ) : clientInfo.email ? (
-                      <SaveCardForm
-                        clientEmail={clientInfo.email}
-                        clientName={clientInfo.name}
-                        clientPhone={clientInfo.phone}
-                        description={selectedServices.map((s) => s.name).join(", ")}
-                        onSuccess={(sid) => setSavedCardSetupIntent(sid)}
-                      />
-                    ) : (
-                      <p className="text-navy/50 text-xs font-body">
-                        Fill in your info to save a card.
                       </p>
                     )}
                   </div>
@@ -578,17 +541,19 @@ export default function BookPage() {
 
               {error && <p className="text-red-600 text-sm font-body mt-4 text-center">{error}</p>}
 
-              {/* One-last-reminder disclaimer before Confirm. Matches the
-                  short-form card the admin booking modal shows — keeps the
-                  customer honest about same-day cancels eating the fee. */}
-              <div className="mt-5 bg-rose/5 border border-rose/30 p-3 text-xs font-body text-navy/70 leading-relaxed">
-                <p className="font-bold text-navy mb-1">Cancellation Policy</p>
-                <p>
-                  A <strong>25% cancellation fee</strong> will be charged on no-shows or
-                  cancellations within 24&nbsp;hours of the scheduled appointment. Any deposit
-                  paid at booking is <strong>non-refundable</strong>.
-                </p>
-              </div>
+              {/* Last-look disclaimer before Confirm. Only relevant to
+                  bookings that triggered the deposit — short bookings have
+                  no card on file and nothing to forfeit. */}
+              {requiresDeposit && (
+                <div className="mt-5 bg-rose/5 border border-rose/30 p-3 text-xs font-body text-navy/70 leading-relaxed">
+                  <p className="font-bold text-navy mb-1">Cancellation Policy</p>
+                  <p>
+                    Your <strong>${BOOKING.DEPOSIT_AMOUNT_CENTS / 100} deposit is
+                    non-refundable</strong>. If you no-show or cancel within 24&nbsp;hours of
+                    your appointment, the deposit is forfeited.
+                  </p>
+                </div>
+              )}
 
               <p className="text-navy/40 text-xs font-body mt-4 text-center">
                 After you submit, your booking will be reviewed by the salon. You&apos;ll get an email
@@ -619,11 +584,7 @@ export default function BookPage() {
               ) : (
                 <button
                   onClick={handleSubmit}
-                  disabled={
-                    submitting ||
-                    (requiresDeposit && !depositPaymentIntent) ||
-                    (!requiresDeposit && !savedCardSetupIntent)
-                  }
+                  disabled={submitting || (requiresDeposit && !depositPaymentIntent)}
                   className="bg-rose hover:bg-rose-light disabled:opacity-60 text-white tracking-widest uppercase text-sm px-8 py-3 transition-colors font-body"
                 >
                   {submitting ? "Booking..." : "Confirm Booking"}

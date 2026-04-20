@@ -262,10 +262,10 @@ export default function Contact() {
                   </p>
                   <p>
                     <a
-                      href="mailto:look_hairsalon@yahoo.com"
+                      href="mailto:thelook_hairsalon@yahoo.com"
                       className="hover:text-rose transition-colors"
                     >
-                      look_hairsalon@yahoo.com
+                      thelook_hairsalon@yahoo.com
                     </a>
                   </p>
                 </div>

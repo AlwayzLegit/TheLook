@@ -12,8 +12,12 @@ export const BOOKING = {
   // detects this and assigns an available real stylist before creating the
   // appointment row, so all FK constraints stay valid.
   ANY_STYLIST_ID: "00000000-0000-0000-0000-000000000001",
-  // Appointments at or above this duration require a deposit to confirm.
-  DEPOSIT_TRIGGER_MINUTES: 100,
+  // Bookings whose total service price exceeds this threshold require a
+  // $50 deposit up-front. The deposit saves the card on the Stripe
+  // customer AND is applied to the final service total; on no-show or
+  // late-cancel the deposit is forfeited (no separate 25% fee).
+  // Bookings at or below the threshold skip card collection entirely.
+  DEPOSIT_TRIGGER_PRICE_CENTS: 10000, // $100
   DEPOSIT_AMOUNT_CENTS: 5000, // $50
 } as const;
 
