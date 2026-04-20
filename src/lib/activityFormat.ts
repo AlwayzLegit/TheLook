@@ -2,7 +2,7 @@
 // feed. Each action type gets a short verb phrase + optional icon category
 // so entries are scannable at a glance.
 
-export type ActivityCategory = "booking" | "service" | "stylist" | "schedule" | "user" | "settings" | "client" | "other";
+export type ActivityCategory = "booking" | "service" | "stylist" | "schedule" | "user" | "settings" | "client" | "auth" | "other";
 
 export interface ActivityView {
   title: string;
@@ -74,6 +74,16 @@ export function formatActivity(action: string, details: string | null): Activity
   if (action === "user.create") return { title: `Invited admin${d?.email ? ` ${d.email}` : ""}`, category: "user" };
   if (action.startsWith("user.")) return { title: action, category: "user" };
 
+  // Auth events
+  if (action === "auth.login.success") return { title: "Admin signed in", category: "auth" };
+  if (action === "auth.login.failed") {
+    const why = d?.reason === "rate_limited" ? "rate-limited" : d?.reason === "bad_credentials_locked_account" ? "bad password · account locked" : "bad password";
+    return { title: `Failed login (${why})`, category: "auth" };
+  }
+  if (action === "auth.login.locked") return { title: "Blocked login attempt (account locked)", category: "auth" };
+  if (action === "auth.logout") return { title: "Admin signed out", category: "auth" };
+  if (action === "auth.signout_idle") return { title: "Signed out after idle timeout", category: "auth" };
+
   // Settings
   if (action === "settings.update") {
     const keys = Array.isArray(d) ? d : [];
@@ -107,5 +117,6 @@ export const CATEGORY_COLORS: Record<ActivityCategory, string> = {
   user: "bg-rose-100 text-rose-800",
   settings: "bg-navy/10 text-navy",
   client: "bg-teal-100 text-teal-800",
+  auth: "bg-slate-200 text-slate-800",
   other: "bg-navy/5 text-navy/70",
 };

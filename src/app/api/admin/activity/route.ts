@@ -20,6 +20,7 @@ const CATEGORY_PREFIX: Record<string, string[]> = {
   settings: ["settings."],
   user: ["user."],
   client: ["client.", "clients."],
+  auth: ["auth."],
 };
 
 export async function GET(request: NextRequest) {
@@ -86,18 +87,36 @@ export async function GET(request: NextRequest) {
   return apiSuccess({ total: count ?? 0, page, pageSize, entries: data || [] });
 }
 
-// Distinct actors for the filter dropdown. Cheap — there are usually < 10.
+// Metadata for the filters + summary header:
+//   - distinct actor_email values for the dropdown (usually < 10)
+//   - today / 7d / 30d counts for the summary strip
 export async function OPTIONS() {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
-  if (!hasSupabaseConfig) return apiSuccess({ actors: [] });
+  if (!hasSupabaseConfig) return apiSuccess({ actors: [], counts: { today: 0, week: 0, month: 0 } });
 
-  const { data, error } = await supabase
-    .from("admin_log")
-    .select("actor_email")
-    .not("actor_email", "is", null)
-    .limit(500);
-  if (error) return apiSuccess({ actors: [] });
-  const actors = Array.from(new Set((data || []).map((r: { actor_email: string | null }) => r.actor_email).filter(Boolean))) as string[];
-  return apiSuccess({ actors });
+  const now = new Date();
+  const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [actorsRes, todayRes, weekRes, monthRes] = await Promise.all([
+    supabase.from("admin_log").select("actor_email").not("actor_email", "is", null).limit(500),
+    supabase.from("admin_log").select("id", { count: "exact", head: true }).gte("created_at", startOfDay),
+    supabase.from("admin_log").select("id", { count: "exact", head: true }).gte("created_at", weekAgo),
+    supabase.from("admin_log").select("id", { count: "exact", head: true }).gte("created_at", monthAgo),
+  ]);
+
+  const actors = Array.from(
+    new Set(((actorsRes.data || []) as Array<{ actor_email: string | null }>).map((r) => r.actor_email).filter(Boolean)),
+  ) as string[];
+
+  return apiSuccess({
+    actors,
+    counts: {
+      today: todayRes.count ?? 0,
+      week: weekRes.count ?? 0,
+      month: monthRes.count ?? 0,
+    },
+  });
 }

@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { checkRateLimit } from "./rateLimit";
+import { logAuthEvent } from "./auditLog";
 
 const failedAttempts = new Map<string, { count: number; lockedUntil: number }>();
 const MAX_FAILED = 5;
@@ -73,10 +74,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           limit: 10,
           windowMs: 15 * 60 * 1000,
         });
-        if (!rl.ok) return null;
+        if (!rl.ok) {
+          logAuthEvent("auth.login.failed", inputEmail, { reason: "rate_limited" });
+          return null;
+        }
 
         const attempts = failedAttempts.get(inputEmail);
-        if (attempts && attempts.lockedUntil > Date.now()) return null;
+        if (attempts && attempts.lockedUntil > Date.now()) {
+          logAuthEvent("auth.login.locked", inputEmail, { reason: "lockout_active" });
+          return null;
+        }
 
         // Try database users first
         const dbUser = await findUserInDb(inputEmail);
@@ -85,6 +92,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const valid = await compare(password, dbUser.passwordHash);
           if (valid) {
             failedAttempts.delete(inputEmail);
+            logAuthEvent("auth.login.success", dbUser.email, { userId: dbUser.id });
             return {
               id: dbUser.id,
               name: dbUser.name,
@@ -113,6 +121,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           if (inputEmail && adminPassword && password === adminPassword && allowedEmails.has(inputEmail)) {
             failedAttempts.delete(inputEmail);
+            logAuthEvent("auth.login.success", inputEmail, { userId: "env-admin", reason: "env_fallback" });
             return { id: "env-admin", name: "Admin", email: inputEmail, role: "admin", stylistId: null };
           }
         }
@@ -120,11 +129,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Track failed attempt
         const current = failedAttempts.get(inputEmail) || { count: 0, lockedUntil: 0 };
         current.count += 1;
-        if (current.count >= MAX_FAILED) {
+        const justLocked = current.count >= MAX_FAILED;
+        if (justLocked) {
           current.lockedUntil = Date.now() + LOCKOUT_MS;
           current.count = 0;
         }
         failedAttempts.set(inputEmail, current);
+        logAuthEvent("auth.login.failed", inputEmail, {
+          reason: justLocked ? "bad_credentials_locked_account" : "bad_credentials",
+        });
 
         return null;
       },

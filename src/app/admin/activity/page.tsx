@@ -27,6 +27,7 @@ const CATEGORIES = [
   { id: "client", label: "Clients" },
   { id: "settings", label: "Settings" },
   { id: "user", label: "Users" },
+  { id: "auth", label: "Auth / sign-in" },
   { id: "other", label: "Other" },
 ];
 
@@ -70,6 +71,7 @@ export default function ActivityPage() {
   const [category, setCategory] = useState("");
   const [actor, setActor] = useState("");
   const [actors, setActors] = useState<string[]>([]);
+  const [counts, setCounts] = useState<{ today: number; week: number; month: number }>({ today: 0, week: 0, month: 0 });
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
@@ -81,7 +83,10 @@ export default function ActivityPage() {
     if (status !== "authenticated") return;
     fetch("/api/admin/activity", { method: "OPTIONS" })
       .then((r) => r.json())
-      .then((d) => setActors(Array.isArray(d?.actors) ? d.actors : []))
+      .then((d) => {
+        setActors(Array.isArray(d?.actors) ? d.actors : []);
+        if (d?.counts) setCounts(d.counts);
+      })
       .catch(() => setActors([]));
   }, [status]);
 
@@ -135,9 +140,11 @@ export default function ActivityPage() {
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="font-heading text-2xl sm:text-3xl">Activity Log</h1>
-          <p className="text-navy/40 text-sm font-body mt-1">{total.toLocaleString()} entries</p>
+          <p className="text-navy/40 text-sm font-body mt-1">
+            {counts.today.toLocaleString()} today · {counts.week.toLocaleString()} past 7d · {counts.month.toLocaleString()} past 30d · {total.toLocaleString()} match{total === 1 ? "" : "es"}
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {Object.entries(summary)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 4)
@@ -146,6 +153,21 @@ export default function ActivityPage() {
                 {count} {cat}
               </span>
             ))}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- server route */}
+          <a
+            href={(() => {
+              const p = new URLSearchParams();
+              if (debouncedQ) p.set("q", debouncedQ);
+              if (category) p.set("category", category);
+              if (actor) p.set("actor", actor);
+              if (from) p.set("from", from);
+              if (to) p.set("to", to);
+              return `/api/admin/activity/export/?${p.toString()}`;
+            })()}
+            className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5 uppercase tracking-widest"
+          >
+            Export CSV
+          </a>
         </div>
       </div>
 

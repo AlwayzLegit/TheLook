@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/purge-archived",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/purge-activity-log",
+      "schedule": "15 9 * * *"
     }
   ]
 }
