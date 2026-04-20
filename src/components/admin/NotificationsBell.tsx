@@ -113,12 +113,12 @@ export default function NotificationsBell({ enabled = true }: { enabled?: boolea
           />
           <div
             className="
-              fixed sm:absolute
-              top-14 sm:top-auto
-              sm:mt-2
-              right-2 sm:right-0
-              left-2 sm:left-auto
-              sm:w-[360px]
+              fixed lg:absolute
+              top-14 lg:top-auto
+              lg:mt-2
+              right-2 lg:right-auto
+              left-2 lg:left-0
+              lg:w-[360px]
               max-w-[calc(100vw-1rem)]
               bg-white shadow-2xl border border-navy/10 z-50
             "

@@ -173,7 +173,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <SessionProvider>
       <div className="flex min-h-screen bg-cream">
         <AdminSidebar />
-        <div className="flex-1 pt-14 lg:pt-0">{children}</div>
+        <div className="flex-1 min-w-0 pt-14 lg:pt-0">{children}</div>
         <KeyboardShortcuts />
       </div>
     </SessionProvider>

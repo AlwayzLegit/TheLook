@@ -4,6 +4,7 @@ import { getSessionUser, isAdmin } from "@/lib/roles";
 import { adminStylistSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
+import { ensurePhotosBucketPublic } from "@/lib/storage";
 import { revalidatePath } from "next/cache";
 import { BOOKING } from "@/lib/constants";
 import { normalizeSpecialties } from "@/lib/stylistSpecialties";
@@ -16,6 +17,10 @@ export async function GET(request: NextRequest) {
   if (!hasSupabaseConfig) {
     return apiSuccess([]);
   }
+
+  // Auto-heal previously-uploaded stylist photos stuck in a private bucket.
+  // No-op after the first successful call.
+  ensurePhotosBucketPublic().catch(() => {});
 
   const { searchParams } = request.nextUrl;
   // /admin/stylists (the management page) wants to see everyone so inactive

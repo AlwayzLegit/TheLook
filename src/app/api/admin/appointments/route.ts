@@ -31,19 +31,45 @@ export async function GET(request: NextRequest) {
   const dateTo = searchParams.get("to");
   const status = searchParams.get("status");
   const stylistId = searchParams.get("stylistId");
+  // "true" -> archived tab (show only archived), anything else -> active list.
+  const archived = searchParams.get("archived") === "true";
 
-  let query = supabase
-    .from("appointments")
-    .select("*")
-    .order("date", { ascending: false })
-    .order("start_time", { ascending: false });
+  // Lazy purge: any archived appointment older than 30 days gets deleted
+  // on the next admin list load. Cheap with the partial index on
+  // archived_at. Fire-and-forget so a purge failure doesn't block the UI.
+  supabase.rpc("fn_purge_archived_appointments").then(
+    () => {},
+    (err: unknown) => logError("admin/appointments purge-archived", err),
+  );
 
-  if (dateFrom) query = query.gte("date", dateFrom);
-  if (dateTo) query = query.lte("date", dateTo);
-  if (status) query = query.eq("status", status);
-  if (stylistId) query = query.eq("stylist_id", stylistId);
+  const buildQuery = (withArchiveFilter: boolean) => {
+    let q = supabase
+      .from("appointments")
+      .select("*")
+      .order("date", { ascending: false })
+      .order("start_time", { ascending: false });
+    if (withArchiveFilter) {
+      q = archived ? q.not("archived_at", "is", null) : q.is("archived_at", null);
+    }
+    if (dateFrom) q = q.gte("date", dateFrom);
+    if (dateTo) q = q.lte("date", dateTo);
+    if (status) q = q.eq("status", status);
+    if (stylistId) q = q.eq("stylist_id", stylistId);
+    return q;
+  };
 
-  const { data: rows, error } = await query;
+  // Retry without the archive filter if the migration hasn't been applied
+  // yet. Follows the same defensive pattern as approved_at in the PATCH
+  // route — a schema-behind admin shouldn't get a 500.
+  let { data: rows, error } = await buildQuery(true);
+  if (error && /archived_at/i.test(error.message || "")) {
+    logError("admin/appointments GET (archived_at col missing, retrying)", error);
+    if (archived) {
+      // Nothing to show yet if the column doesn't exist.
+      return apiSuccess([]);
+    }
+    ({ data: rows, error } = await buildQuery(false));
+  }
 
   if (error) {
     logError("admin/appointments GET", error);

@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
     clientPhone,
     notes,
     depositPaymentIntentId,
+    setupIntentId,
     turnstileToken,
   } = parsed.data;
 
@@ -330,6 +331,35 @@ export async function POST(request: NextRequest) {
           name: clientName,
           phone: clientPhone || null,
           stripe_customer_id: stripeCustomerId,
+        }, { onConflict: "email" });
+    }
+  } else if (setupIntentId) {
+    // No deposit was charged, but the customer saved a card via SetupIntent.
+    // Pull the payment method + Stripe customer id and stamp both on the
+    // appointment so the cancellation-fee flow can charge off-session later.
+    const { lookupPaymentMethodFromSetupIntent } = await import("@/lib/stripe");
+    const info = await lookupPaymentMethodFromSetupIntent(setupIntentId);
+
+    if (info.paymentMethodId && info.customerId) {
+      await supabase
+        .from("appointments")
+        .update({
+          stripe_customer_id: info.customerId,
+          stripe_payment_method_id: info.paymentMethodId,
+          card_brand: info.cardBrand,
+          card_last4: info.cardLast4,
+        })
+        .eq("id", appointmentId);
+
+      // Cache the customer id on the client profile so returning customers
+      // don't have to re-enter a card next time.
+      await supabase
+        .from("client_profiles")
+        .upsert({
+          email: clientEmail.toLowerCase(),
+          name: clientName,
+          phone: clientPhone || null,
+          stripe_customer_id: info.customerId,
         }, { onConflict: "email" });
     }
   }

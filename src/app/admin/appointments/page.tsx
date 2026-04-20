@@ -10,6 +10,7 @@ import { downloadIcs } from "@/lib/icsExport";
 import { todayISOInLA, addDaysISOInLA } from "@/lib/datetime";
 import AppointmentCalendar from "@/components/admin/AppointmentCalendar";
 import NewAppointmentModal from "@/components/admin/NewAppointmentModal";
+import AppointmentActionsModal from "@/components/admin/AppointmentActionsModal";
 
 interface Service {
   id: string;
@@ -37,6 +38,7 @@ interface EnrichedAppointment {
   reminder_sent?: boolean;
   serviceName: string;
   stylistName: string;
+  archived_at?: string | null;
   // Card-on-file metadata — populated by the deposit flow.
   stripe_customer_id?: string | null;
   card_brand?: string | null;
@@ -58,9 +60,12 @@ function formatDate(date: string) {
 export default function AppointmentsPage() {
   const { status } = useSession();
   const router = useRouter();
+  const [listTab, setListTab] = useState<"active" | "archived">("active");
   const { appointments: realtimeAppts, loading, error, lastUpdate, refresh } = usePolledAppointments({
     enabled: status === "authenticated",
+    archived: listTab === "archived",
   });
+  const [selectedAppt, setSelectedAppt] = useState<EnrichedAppointment | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [stylists, setStylists] = useState<Stylist[]>([]);
   const [dateFrom, setDateFrom] = useState("");
@@ -272,6 +277,76 @@ export default function AppointmentsPage() {
     }
   };
 
+  const archiveAppointment = async (id: string) => {
+    try {
+      setPendingStatusId(id);
+      const res = await fetch(`/api/admin/appointments/${id}/archive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setToast({ type: "error", message: data.error || "Failed to archive appointment." });
+        return;
+      }
+      setToast({
+        type: "success",
+        message: "Archived. Auto-deletes after 30 days (or delete permanently any time).",
+      });
+      setSelectedAppt(null);
+      refresh();
+    } finally {
+      setPendingStatusId(null);
+    }
+  };
+
+  const unarchiveAppointment = async (id: string) => {
+    try {
+      setPendingStatusId(id);
+      const res = await fetch(`/api/admin/appointments/${id}/archive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ restore: true }),
+      });
+      if (!res.ok) {
+        setToast({ type: "error", message: "Failed to restore appointment." });
+        return;
+      }
+      setToast({ type: "success", message: "Appointment restored." });
+      setSelectedAppt(null);
+      refresh();
+    } finally {
+      setPendingStatusId(null);
+    }
+  };
+
+  const saveEditFromModal = async (
+    id: string,
+    fields: { date: string; start_time: string; end_time: string; staff_notes: string },
+  ) => {
+    try {
+      setPendingStatusId(id);
+      const res = await fetch(`/api/admin/appointments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+      });
+      if (!res.ok) {
+        setToast({ type: "error", message: "Failed to update appointment." });
+        return;
+      }
+      setToast({ type: "success", message: "Appointment updated." });
+      refresh();
+    } finally {
+      setPendingStatusId(null);
+    }
+  };
+
+  const modalStatusChange = async (id: string, newStatus: string) => {
+    await updateStatus(id, newStatus);
+  };
+
   const chargeCancellationFee = async (id: string, clientName: string) => {
     if (!confirm(`Charge the 25% cancellation fee to ${clientName}'s card on file?`)) return;
     try {
@@ -359,23 +434,50 @@ export default function AppointmentsPage() {
         <p className="mb-4 text-sm font-body text-red-600">{error}</p>
       ) : null}
 
-      <div className="inline-flex border border-navy/20 mb-4">
-        <button
-          onClick={() => setView("calendar")}
-          className={`px-4 py-1.5 text-xs font-body uppercase tracking-widest transition-colors ${
-            view === "calendar" ? "bg-navy text-white" : "text-navy hover:bg-navy/5"
-          }`}
-        >
-          Calendar
-        </button>
-        <button
-          onClick={() => setView("list")}
-          className={`px-4 py-1.5 text-xs font-body uppercase tracking-widest border-l border-navy/20 transition-colors ${
-            view === "list" ? "bg-navy text-white" : "text-navy hover:bg-navy/5"
-          }`}
-        >
-          List
-        </button>
+      <div className="flex flex-wrap gap-3 mb-4 items-center">
+        <div className="inline-flex border border-navy/20">
+          <button
+            onClick={() => setView("calendar")}
+            className={`px-4 py-1.5 text-xs font-body uppercase tracking-widest transition-colors ${
+              view === "calendar" ? "bg-navy text-white" : "text-navy hover:bg-navy/5"
+            }`}
+          >
+            Calendar
+          </button>
+          <button
+            onClick={() => setView("list")}
+            className={`px-4 py-1.5 text-xs font-body uppercase tracking-widest border-l border-navy/20 transition-colors ${
+              view === "list" ? "bg-navy text-white" : "text-navy hover:bg-navy/5"
+            }`}
+          >
+            List
+          </button>
+        </div>
+
+        <div className="inline-flex border border-navy/20">
+          <button
+            onClick={() => setListTab("active")}
+            className={`px-4 py-1.5 text-xs font-body uppercase tracking-widest transition-colors ${
+              listTab === "active" ? "bg-navy text-white" : "text-navy hover:bg-navy/5"
+            }`}
+          >
+            Active
+          </button>
+          <button
+            onClick={() => setListTab("archived")}
+            className={`px-4 py-1.5 text-xs font-body uppercase tracking-widest border-l border-navy/20 transition-colors ${
+              listTab === "archived" ? "bg-navy text-white" : "text-navy hover:bg-navy/5"
+            }`}
+          >
+            Archived
+          </button>
+        </div>
+
+        {listTab === "archived" && (
+          <span className="text-xs font-body text-navy/50">
+            Archived bookings auto-delete 30 days after they were archived.
+          </span>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">
@@ -493,7 +595,10 @@ export default function AppointmentsPage() {
               serviceName: a.serviceName,
               stylistName: a.stylistName,
             }))}
-            onSelectAppointment={(id) => setEditingId(id)}
+            onSelectAppointment={(id) => {
+              const appt = filteredAppts.find((a) => a.id === id);
+              if (appt) setSelectedAppt(appt);
+            }}
           />
         </div>
       )}
@@ -595,7 +700,7 @@ export default function AppointmentsPage() {
                 </p>
               )}
 
-              {appt.status !== "cancelled" && appt.status !== "completed" && (
+              {appt.status !== "cancelled" && appt.status !== "completed" && appt.status !== "no_show" && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   <button
                     onClick={() => editingId === appt.id ? setEditingId(null) : openEdit(appt)}
@@ -604,16 +709,16 @@ export default function AppointmentsPage() {
                     {editingId === appt.id ? "Close Edit" : "Edit"}
                   </button>
                   {appt.status === "pending" && (
-                    <button 
-                      onClick={() => updateStatus(appt.id, "confirmed")} 
+                    <button
+                      onClick={() => updateStatus(appt.id, "confirmed")}
                       disabled={pendingStatusId === appt.id}
                       className="text-xs font-body text-green-600 border border-green-200 px-3 py-1 hover:bg-green-50"
                     >
                       {pendingStatusId === appt.id ? "Updating..." : "Confirm"}
                     </button>
                   )}
-                  <button 
-                    onClick={() => updateStatus(appt.id, "completed")} 
+                  <button
+                    onClick={() => updateStatus(appt.id, "completed")}
                     disabled={pendingStatusId === appt.id}
                     className="text-xs font-body text-blue-600 border border-blue-200 px-3 py-1 hover:bg-blue-50"
                   >
@@ -637,6 +742,40 @@ export default function AppointmentsPage() {
                     onClick={() => deleteAppointment(appt.id)}
                     disabled={pendingStatusId === appt.id}
                     className="text-xs font-body text-red-700 border border-red-300 px-3 py-1 hover:bg-red-100"
+                    title="Delete permanently"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+
+              {/* Cancelled / no-show / completed appointments get an Archive
+                  button (auto-purged after 30 days) instead of the full
+                  action set — they're finished, they just need filing. */}
+              {(appt.status === "cancelled" || appt.status === "no_show" || appt.status === "completed") && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {appt.archived_at ? (
+                    <button
+                      onClick={() => unarchiveAppointment(appt.id)}
+                      disabled={pendingStatusId === appt.id}
+                      className="text-xs font-body text-blue-600 border border-blue-200 px-3 py-1 hover:bg-blue-50 disabled:opacity-60"
+                    >
+                      Restore
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => archiveAppointment(appt.id)}
+                      disabled={pendingStatusId === appt.id}
+                      className="text-xs font-body text-navy/70 border border-navy/20 px-3 py-1 hover:bg-navy/5 disabled:opacity-60"
+                      title="Archive — auto-deletes after 30 days"
+                    >
+                      Archive
+                    </button>
+                  )}
+                  <button
+                    onClick={() => deleteAppointment(appt.id)}
+                    disabled={pendingStatusId === appt.id}
+                    className="text-xs font-body text-red-700 border border-red-300 px-3 py-1 hover:bg-red-100 disabled:opacity-60"
                     title="Delete permanently"
                   >
                     Delete
@@ -727,6 +866,29 @@ export default function AppointmentsPage() {
         onCreated={() => {
           setToast({ type: "success", message: "Appointment created." });
           refresh();
+        }}
+      />
+
+      <AppointmentActionsModal
+        appointment={selectedAppt}
+        pending={pendingStatusId !== null}
+        onClose={() => setSelectedAppt(null)}
+        onStatusChange={async (id, s) => {
+          await modalStatusChange(id, s);
+          setSelectedAppt(null);
+        }}
+        onDelete={async (id) => {
+          await deleteAppointment(id);
+          setSelectedAppt(null);
+        }}
+        onArchive={archiveAppointment}
+        onUnarchive={unarchiveAppointment}
+        onChargeFee={async (id, name) => {
+          await chargeCancellationFee(id, name);
+        }}
+        onSaveEdit={async (id, fields) => {
+          await saveEditFromModal(id, fields);
+          setSelectedAppt(null);
         }}
       />
     </div>

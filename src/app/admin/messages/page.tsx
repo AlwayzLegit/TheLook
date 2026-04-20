@@ -115,8 +115,8 @@ export default function MessagesPage() {
               </button>
 
               {expandedId === msg.id && msg.message && (
-                <div className="mt-3 p-3 sm:p-4 bg-cream/50 border border-navy/5 rounded">
-                  <p className="text-sm font-body text-navy/70 whitespace-pre-wrap break-words">
+                <div className="mt-3 p-3 sm:p-4 bg-cream/50 border border-navy/5 rounded overflow-hidden">
+                  <p className="text-sm font-body text-navy/70 whitespace-pre-wrap [overflow-wrap:anywhere]">
                     {msg.message}
                   </p>
                   <div className="flex flex-wrap gap-2 sm:gap-3 mt-4">

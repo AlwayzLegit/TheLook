@@ -29,10 +29,14 @@ interface Appointment {
 interface UsePolledAppointmentsOptions {
   enabled?: boolean;
   pollMs?: number;
+  // When true, fetch archived appointments instead of the active list. The
+  // archive view wants to see *all* past archived bookings so we also skip
+  // the default `from=today` filter.
+  archived?: boolean;
 }
 
 export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}) {
-  const { enabled = true, pollMs = POLLING.APPOINTMENTS_MS } = options;
+  const { enabled = true, pollMs = POLLING.APPOINTMENTS_MS, archived = false } = options;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,8 +50,10 @@ export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}
     }
 
     setLoading(true);
-    const today = todayISOInLA();
-    const res = await fetch(`/api/admin/appointments?from=${today}`);
+    const url = archived
+      ? `/api/admin/appointments?archived=true`
+      : `/api/admin/appointments?from=${todayISOInLA()}`;
+    const res = await fetch(url);
     if (!res.ok) {
       setError("Failed to fetch appointments.");
       setLoading(false);
@@ -63,7 +69,7 @@ export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}
     } finally {
       setLoading(false);
     }
-  }, [enabled]);
+  }, [enabled, archived]);
 
   useEffect(() => {
     if (!enabled) {

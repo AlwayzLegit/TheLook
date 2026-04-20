@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { ensurePhotosBucketPublic } from "@/lib/storage";
 import { NextRequest } from "next/server";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -35,6 +36,8 @@ export async function POST(request: NextRequest) {
     .replace(/^-|-$/g, "")
     .slice(0, 30);
   const path = `stylists/${slug}-${Date.now()}.${ext}`;
+
+  await ensurePhotosBucketPublic();
 
   const bytes = await file.arrayBuffer();
   const { error: uploadError } = await supabase.storage

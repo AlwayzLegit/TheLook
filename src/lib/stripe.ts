@@ -208,6 +208,73 @@ export async function chargeOffSession(args: {
   }
 }
 
+interface SetupIntentResult {
+  clientSecret?: string;
+  id?: string;
+  customerId?: string;
+  error?: string;
+}
+
+// Save a card on file WITHOUT charging anything. Used for bookings that
+// don't trigger the $50 deposit but we still want a card on the Stripe
+// customer so the 25% cancellation fee can be collected off-session if
+// needed.
+export async function createSetupIntent(
+  clientEmail: string,
+  clientName?: string,
+  clientPhone?: string,
+  metadata: Record<string, string> = {},
+): Promise<SetupIntentResult> {
+  const stripe = await getStripe();
+  if (!stripe) return { error: "Stripe not configured" };
+
+  const customer = await upsertStripeCustomer(clientEmail, clientName, clientPhone);
+  if ("error" in customer) return { error: customer.error };
+
+  try {
+    const intent = await stripe.setupIntents.create({
+      customer: customer.id,
+      usage: "off_session",
+      payment_method_types: ["card"],
+      metadata: { ...metadata, clientEmail, reason: "card_on_file" },
+    });
+    return {
+      clientSecret: intent.client_secret ?? undefined,
+      id: intent.id,
+      customerId: customer.id,
+    };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Stripe setup intent error" };
+  }
+}
+
+// Pull the saved payment method + card brand/last4 off a completed
+// SetupIntent so the booking POST can stamp card-on-file columns on the
+// appointment the same way the deposit flow does.
+export async function lookupPaymentMethodFromSetupIntent(setupIntentId: string): Promise<{
+  paymentMethodId: string | null;
+  customerId: string | null;
+  cardBrand: string | null;
+  cardLast4: string | null;
+}> {
+  const stripe = await getStripe();
+  if (!stripe) return { paymentMethodId: null, customerId: null, cardBrand: null, cardLast4: null };
+  try {
+    const si = await stripe.setupIntents.retrieve(setupIntentId, {
+      expand: ["payment_method"],
+    });
+    const customerId = typeof si.customer === "string" ? si.customer : si.customer?.id ?? null;
+    const pm = typeof si.payment_method === "string" ? null : si.payment_method;
+    if (pm && pm.card) {
+      return { paymentMethodId: pm.id, customerId, cardBrand: pm.card.brand, cardLast4: pm.card.last4 };
+    }
+    const pmId = typeof si.payment_method === "string" ? si.payment_method : null;
+    return { paymentMethodId: pmId, customerId, cardBrand: null, cardLast4: null };
+  } catch {
+    return { paymentMethodId: null, customerId: null, cardBrand: null, cardLast4: null };
+  }
+}
+
 // Fetch the card brand + last4 for a given payment_intent so we can record
 // a human-friendly line on the charges row.
 export async function lookupPaymentMethodFromIntent(intentId: string): Promise<{
