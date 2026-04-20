@@ -1,7 +1,6 @@
 "use client";
 
 import TurnstileField from "@/components/TurnstileField";
-import { strings } from "@/lib/strings";
 
 interface ClientInfo {
   name: string;
@@ -93,15 +92,28 @@ export default function ClientInfoForm({
           />
         </div>
 
-        <div className="bg-cream/50 border border-navy/10 p-4 text-sm font-body text-navy/70">
-          <p className="font-bold text-navy mb-2">{strings.depositHeadline}</p>
-          <ul className="list-disc list-inside space-y-1 text-xs leading-relaxed">
-            {strings.depositPolicyBullets.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-            <li>{strings.noShowBullet}</li>
-          </ul>
-          <label className="flex items-start gap-2 mt-3 cursor-pointer">
+        {/* Two separate policy cards so customers clearly see the deposit
+            rule AND the 25% cancellation fee before agreeing. */}
+        <div className="space-y-3">
+          <div className="bg-cream/50 border border-navy/10 p-4 text-sm font-body text-navy/70">
+            <p className="font-bold text-navy mb-2">Deposit Policy</p>
+            <p className="text-xs leading-relaxed">
+              You will be charged a <strong>$50 deposit</strong> upon booking your appointment.
+              The deposit is <strong>non-refundable</strong>. The amount of your deposit will be
+              applied to the cost of your service at the time of your appointment. If you need
+              to cancel, you will lose your deposit.
+            </p>
+          </div>
+
+          <div className="bg-rose/5 border border-rose/30 p-4 text-sm font-body text-navy/70">
+            <p className="font-bold text-navy mb-2">Cancellation Policy</p>
+            <p className="text-xs leading-relaxed">
+              A <strong>25% cancellation fee</strong> will be charged on no-shows or
+              cancellations within 24&nbsp;hours of the scheduled appointment.
+            </p>
+          </div>
+
+          <label className="flex items-start gap-2 pt-1 cursor-pointer">
             <input
               type="checkbox"
               checked={policyAccepted}
@@ -109,8 +121,9 @@ export default function ClientInfoForm({
               className="w-4 h-4 mt-0.5"
               required
             />
-            <span className="text-xs">
-              I&apos;ve read and agree to the deposit, cancellation, and no-show policy. *
+            <span className="text-xs text-navy/70">
+              I have read and agree to the <strong>deposit policy</strong> and the{" "}
+              <strong>cancellation policy</strong> above. *
             </span>
           </label>
         </div>

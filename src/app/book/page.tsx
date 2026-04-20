@@ -553,6 +553,19 @@ export default function BookPage() {
               </div>
 
               {error && <p className="text-red-600 text-sm font-body mt-4 text-center">{error}</p>}
+
+              {/* One-last-reminder disclaimer before Confirm. Matches the
+                  short-form card the admin booking modal shows — keeps the
+                  customer honest about same-day cancels eating the fee. */}
+              <div className="mt-5 bg-rose/5 border border-rose/30 p-3 text-xs font-body text-navy/70 leading-relaxed">
+                <p className="font-bold text-navy mb-1">Cancellation Policy</p>
+                <p>
+                  A <strong>25% cancellation fee</strong> will be charged on no-shows or
+                  cancellations within 24&nbsp;hours of the scheduled appointment. Any deposit
+                  paid at booking is <strong>non-refundable</strong>.
+                </p>
+              </div>
+
               <p className="text-navy/40 text-xs font-body mt-4 text-center">
                 After you submit, your booking will be reviewed by the salon. You&apos;ll get an email
                 once it&apos;s approved.
