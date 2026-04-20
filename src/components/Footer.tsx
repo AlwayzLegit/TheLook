@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import SalonHours from "./SalonHours";
 
 export default function Footer() {
   return (
@@ -99,29 +100,13 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Hours */}
+          {/* Hours — pulled live from /api/schedule/public so admin edits
+              in /admin/schedule show up here automatically. */}
           <div>
             <h4 className="text-gold text-[11px] tracking-[0.2em] uppercase font-body mb-6">
               Salon Hours
             </h4>
-            <div className="text-sm font-body font-light space-y-2.5">
-              <div className="flex justify-between text-white/75">
-                <span>Monday</span>
-                <span>10 &ndash; 6</span>
-              </div>
-              <div className="flex justify-between text-white/40">
-                <span>Tuesday</span>
-                <span>Closed</span>
-              </div>
-              <div className="flex justify-between text-white/75">
-                <span>Wed &ndash; Sat</span>
-                <span>10 &ndash; 6</span>
-              </div>
-              <div className="flex justify-between text-white/75">
-                <span>Sunday</span>
-                <span>10 &ndash; 5</span>
-              </div>
-            </div>
+            <SalonHours variant="dark" />
           </div>
 
           {/* Contact */}

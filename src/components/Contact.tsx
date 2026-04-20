@@ -3,6 +3,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import AnimatedSection from "./AnimatedSection";
 import TurnstileField from "./TurnstileField";
+import SalonHours from "./SalonHours";
 
 export default function Contact() {
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -272,36 +273,9 @@ export default function Contact() {
 
               <div>
                 <h3 className="font-heading text-2xl mb-4">Salon Hours</h3>
-                <div className="text-navy/60 font-body font-light space-y-2">
-                  <div className="flex justify-between">
-                    <span>Monday</span>
-                    <span>10 AM &ndash; 6 PM</span>
-                  </div>
-                  <div className="flex justify-between text-navy/45">
-                    <span>Tuesday</span>
-                    <span>CLOSED</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Wednesday</span>
-                    <span>10 AM &ndash; 6 PM</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Thursday</span>
-                    <span>10 AM &ndash; 6 PM</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Friday</span>
-                    <span>10 AM &ndash; 6 PM</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Saturday</span>
-                    <span>10 AM &ndash; 6 PM</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Sunday</span>
-                    <span>10 AM &ndash; 5 PM</span>
-                  </div>
-                </div>
+                {/* Pulled from /api/schedule/public so admin edits in
+                    /admin/schedule flow straight into this block. */}
+                <SalonHours variant="light" />
               </div>
 
               {/* Google Maps Embed */}
