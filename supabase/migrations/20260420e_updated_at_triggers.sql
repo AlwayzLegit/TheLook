@@ -22,9 +22,9 @@ REVOKE ALL ON FUNCTION public.set_updated_at() FROM authenticated;
 
 DO $$
 DECLARE
-  t record;
+  r record;
 BEGIN
-  FOR t IN
+  FOR r IN
     SELECT c.table_schema, c.table_name
       FROM information_schema.columns c
       JOIN information_schema.tables t
@@ -35,12 +35,12 @@ BEGIN
   LOOP
     EXECUTE format(
       'DROP TRIGGER IF EXISTS trg_set_updated_at ON %I.%I;',
-      t.table_schema, t.table_name
+      r.table_schema, r.table_name
     );
     EXECUTE format(
       'CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON %I.%I '
       || 'FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();',
-      t.table_schema, t.table_name
+      r.table_schema, r.table_name
     );
   END LOOP;
 END;
