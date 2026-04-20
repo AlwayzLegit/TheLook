@@ -19,22 +19,20 @@ DROP POLICY IF EXISTS "Admin log can be inserted" ON public.admin_log;
 
 -- ---------------------------------------------------------------------------
 -- DEF-006: Pin search_path on the helper function so a future schema
--- redirect attack can't shadow pg_catalog.
+-- redirect attack can't shadow pg_catalog. The function in the tree uses
+-- (uuid, text); earlier iterations had different signatures, so both are
+-- covered here — the IF EXISTS-equivalent error-swallowing via DO is what
+-- tripped up Supabase's SQL editor, so we just try each and ignore
+-- "function does not exist" errors manually if one variant isn't present.
+-- Run each statement individually if yours throws — it's safe to skip.
 -- ---------------------------------------------------------------------------
-DO $$
-DECLARE
-  fn_signature text;
-BEGIN
-  SELECT format('%s.%s(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid))
-    INTO fn_signature
-    FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-   WHERE n.nspname = 'public' AND p.proname = 'get_booked_slots'
-   LIMIT 1;
-  IF fn_signature IS NOT NULL THEN
-    EXECUTE format('ALTER FUNCTION %s SET search_path = public, pg_catalog', fn_signature);
-  END IF;
-END $$;
+ALTER FUNCTION public.get_booked_slots(uuid, text)
+  SET search_path = public, pg_catalog;
+
+-- If the above errored because of a different signature, try one of these
+-- instead (uncomment the matching one):
+-- ALTER FUNCTION public.get_booked_slots(uuid, date) SET search_path = public, pg_catalog;
+-- ALTER FUNCTION public.get_booked_slots(uuid, date, integer, uuid, integer) SET search_path = public, pg_catalog;
 
 -- ---------------------------------------------------------------------------
 -- DEF-010: Delete the active "Any Stylist" duplicate row. The booking flow
