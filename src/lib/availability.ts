@@ -90,14 +90,22 @@ export async function getAvailableSlots(
   const stylistHasAnySchedule = (anyStylistRules || []).length > 0;
 
   let activeRule: { start_time: string | null; end_time: string | null; is_closed: boolean } | undefined;
-  if (stylistOverride) activeRule = stylistOverride;
-  else if (stylistWeekly) activeRule = stylistWeekly;
-  else if (stylistHasAnySchedule) {
+  if (stylistOverride) {
+    // Stylist-specific date override wins (vacation, extra shift, etc.).
+    activeRule = stylistOverride;
+  } else if (salonOverride) {
+    // Salon-wide date override (holiday closure, early-close day) applies
+    // to everyone — a stylist's weekly rule can't override the salon being
+    // closed for the day.
+    activeRule = salonOverride;
+  } else if (stylistWeekly) {
+    activeRule = stylistWeekly;
+  } else if (stylistHasAnySchedule) {
     // Stylist has a schedule, but no rule for this day — they're off.
     return [];
-  } else if (salonOverride) activeRule = salonOverride;
-  else if (salonWeekly) activeRule = salonWeekly;
-  else {
+  } else if (salonWeekly) {
+    activeRule = salonWeekly;
+  } else {
     // No rules at all anywhere — fall back to constants so dev/local works.
     const fallbackWeekly: Record<number, { start_time: string; end_time: string; is_closed: boolean }> = {
       0: { start_time: "10:00", end_time: "17:00", is_closed: false },
