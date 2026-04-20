@@ -323,17 +323,19 @@ export default function ClientsPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !importing && setImportOpen(false)}>
           <div className="bg-white w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-heading text-xl">Import clients from CSV</h2>
+              <h2 className="font-heading text-xl">Import clients</h2>
               {!importing && <button onClick={() => setImportOpen(false)} className="text-navy/40 hover:text-navy text-2xl">&times;</button>}
             </div>
             <p className="text-xs font-body text-navy/60 mb-3">
-              CSV columns (any order, case-insensitive): <strong>Name, Email, Phone, Date of Birth, Banned</strong>.
-              Rows are upserted by email — re-importing the same file updates existing profiles.
+              Upload a <strong>CSV or Excel (.xls / .xlsx)</strong> file with any of:
+              <strong> Name, Email, Phone, Date of Birth, Banned</strong> (column order + case don&apos;t matter).
+              Rows are upserted — re-running is safe. Clients without an email still import as long as
+              they have a phone number.
             </p>
             {!importResult ? (
               <input
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 disabled={importing}
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) runImport(f); }}
                 className="w-full border border-navy/20 px-3 py-2 text-sm font-body"

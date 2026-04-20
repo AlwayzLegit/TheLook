@@ -4,7 +4,8 @@ import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { NextRequest } from "next/server";
 
-// Bulk import from CSV. Accepts multipart/form-data with a `file` field.
+// Bulk import from CSV or Excel (.xls / .xlsx). Accepts multipart/form-data
+// with a `file` field.
 //
 // Expected columns (case-insensitive, any order):
 //   Name, Email, Phone, Date of Birth, Banned
@@ -102,9 +103,45 @@ export async function POST(request: NextRequest) {
   if (!file) return apiError("No file provided.", 400);
   if (file.size > 5 * 1024 * 1024) return apiError("File too large (max 5MB).", 400);
 
-  const text = await file.text();
-  const { headers, rows } = parseCsv(text);
-  if (headers.length === 0) return apiError("Empty or unreadable CSV.", 400);
+  // Detect Excel by extension OR content-type; fall back to CSV for
+  // everything else (text/csv, text/plain, etc.).
+  const name = (file.name || "").toLowerCase();
+  const looksExcel =
+    name.endsWith(".xlsx") ||
+    name.endsWith(".xls") ||
+    file.type.includes("spreadsheet") ||
+    file.type.includes("excel");
+
+  let headers: string[];
+  let rows: string[][];
+  if (looksExcel) {
+    try {
+      const buf = await file.arrayBuffer();
+      const { default: XLSX } = await import("xlsx");
+      const wb = XLSX.read(buf, { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      if (!sheet) return apiError("The spreadsheet has no sheets.", 400);
+      // Raw-string rows so the downstream parser treats dates / phones /
+      // banned flags identically to the CSV path.
+      const matrix = XLSX.utils.sheet_to_json<(string | number | boolean | null)[]>(sheet, {
+        header: 1,
+        raw: false,
+        defval: "",
+        blankrows: false,
+      });
+      const asStrings = matrix.map((r) => (r as unknown[]).map((c) => (c == null ? "" : String(c))));
+      headers = (asStrings.shift() || []).map((h) => h.trim());
+      rows = asStrings.filter((r) => r.some((c) => c && c.trim().length > 0));
+    } catch (err) {
+      logError("admin/clients/import (xlsx parse)", err);
+      return apiError("Couldn't read that Excel file. Try saving it as CSV and re-uploading.", 400);
+    }
+  } else {
+    const text = await file.text();
+    ({ headers, rows } = parseCsv(text));
+  }
+
+  if (headers.length === 0) return apiError("Empty or unreadable file.", 400);
 
   const cName = findCol(headers, "name", "full name", "client name");
   const cEmail = findCol(headers, "email", "email address");
@@ -112,51 +149,103 @@ export async function POST(request: NextRequest) {
   const cDob = findCol(headers, "date of birth", "dob", "birthday", "birth date");
   const cBanned = findCol(headers, "banned", "blocked", "blacklist");
 
-  if (cEmail < 0) return apiError("CSV must include an 'Email' column.", 400);
+  // Either email or phone is enough to create a profile. Salon-provided
+  // sheets typically carry a lot of phone-only rows; we generate a stable
+  // synthetic email from the phone so the UNIQUE-email primary key is
+  // still satisfied. When the client later gives a real email, the admin
+  // UI can edit the profile to update it.
+  if (cEmail < 0 && cPhone < 0) {
+    return apiError("CSV must include an 'Email' or 'Phone' column.", 400);
+  }
 
   const importedAt = new Date().toISOString();
   const clean: Row[] = [];
   const skipped: Array<{ line: number; reason: string }> = [];
 
+  const digitsOnly = (s: string) => (s || "").replace(/\D/g, "");
+
   rows.forEach((r, idx) => {
     const line = idx + 2; // header is line 1
-    const email = (r[cEmail] || "").trim().toLowerCase();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      skipped.push({ line, reason: "invalid email" });
+    const rawEmail = (cEmail >= 0 ? r[cEmail] : "") || "";
+    const emailCandidate = rawEmail.trim().toLowerCase();
+    const rawPhone = cPhone >= 0 ? (r[cPhone] || "").trim() : "";
+
+    const emailValid = emailCandidate.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailCandidate);
+
+    let email: string;
+    if (emailValid) {
+      email = emailCandidate;
+    } else if (rawPhone && digitsOnly(rawPhone).length >= 7) {
+      // Phone-only client — synthesize a deterministic key. Use the digits
+      // only so different formatting of the same number collapses to one
+      // profile. The @noemail.thelookhairsalonla.com suffix is opaque but
+      // passes RFC 5322 and the admin UI treats it like any other row.
+      email = `phone-${digitsOnly(rawPhone)}@noemail.thelookhairsalonla.com`;
+    } else {
+      skipped.push({ line, reason: "no email or phone" });
       return;
     }
+
     const name = cName >= 0 ? (r[cName] || "").trim() : "";
-    // Name is required by the client_profiles schema; fall back to the
-    // email's local part so imports don't bounce on minor data quality.
-    const finalName = name || email.split("@")[0];
-    const phone = cPhone >= 0 ? (r[cPhone] || "").trim() || null : null;
+    // Name is required by the client_profiles schema; fall back to a safe
+    // default so minor data quality doesn't bounce the whole row.
+    const finalName = name || (emailValid ? email.split("@")[0] : rawPhone || "Client");
+    const phone = rawPhone || null;
     const birthday = cDob >= 0 ? normalizeBirthday(r[cDob]) : null;
     const banned = cBanned >= 0 ? truthy(r[cBanned]) : false;
     clean.push({ email, name: finalName, phone, birthday, banned });
   });
 
   if (clean.length === 0) {
-    return apiError("No valid rows in the CSV.", 400);
+    return apiError("No valid rows in the CSV (every row lacked both email and phone).", 400);
   }
 
   let inserted = 0;
   let updated = 0;
   const errors: string[] = [];
+  // Track whether the schema is missing banned/imported_at so we can warn
+  // the admin once instead of spamming per-batch errors.
+  let missingBanned = false;
+  let missingImportedAt = false;
 
-  for (let i = 0; i < clean.length; i += BATCH) {
-    const chunk = clean.slice(i, i + BATCH);
-    const payload = chunk.map((r) => ({
-      email: r.email,
-      name: r.name,
-      phone: r.phone,
-      birthday: r.birthday,
-      banned: r.banned,
-      imported_at: importedAt,
-    }));
-    const { data, error } = await supabase
+  const upsertBatch = async (payload: Record<string, unknown>[]) => {
+    return await supabase
       .from("client_profiles")
       .upsert(payload, { onConflict: "email", ignoreDuplicates: false })
       .select("id, created_at, imported_at");
+  };
+
+  for (let i = 0; i < clean.length; i += BATCH) {
+    const chunk = clean.slice(i, i + BATCH);
+    // Build payload in full form; strip missing columns on schema errors.
+    const base = chunk.map((r) => {
+      const row: Record<string, unknown> = {
+        email: r.email,
+        name: r.name,
+        phone: r.phone,
+        birthday: r.birthday,
+      };
+      if (!missingBanned) row.banned = r.banned;
+      if (!missingImportedAt) row.imported_at = importedAt;
+      return row;
+    });
+
+    let { data, error } = await upsertBatch(base);
+
+    // Auto-retry on the two columns added by the 20260421c migration that
+    // might not yet exist on this env. Strip the offending column + retry
+    // the same chunk. Latches so we don't keep trying on every batch.
+    if (error && /'banned'.*column|column.*banned/i.test(error.message || "")) {
+      missingBanned = true;
+      const retry = base.map(({ banned: _drop, ...rest }) => rest);
+      ({ data, error } = await upsertBatch(retry));
+    }
+    if (error && /'imported_at'.*column|column.*imported_at/i.test(error.message || "")) {
+      missingImportedAt = true;
+      const retry = base.map(({ imported_at: _drop, ...rest }) => rest);
+      ({ data, error } = await upsertBatch(retry));
+    }
+
     if (error) {
       logError("admin/clients/import (batch)", error);
       errors.push(`rows ${i + 1}-${i + chunk.length}: ${error.message}`);
@@ -168,6 +257,17 @@ export async function POST(request: NextRequest) {
       if (row.imported_at === row.created_at) inserted++;
       else updated++;
     }
+  }
+
+  if (missingBanned) {
+    errors.unshift(
+      "WARNING: client_profiles.banned column is missing — the import ignored the Banned column. Run migration 20260421c_client_profiles_banned.sql in Supabase SQL Editor, then re-import to record banned flags.",
+    );
+  }
+  if (missingImportedAt) {
+    errors.unshift(
+      "WARNING: client_profiles.imported_at column is missing. Run migration 20260421c_client_profiles_banned.sql.",
+    );
   }
 
   await logAdminAction(
