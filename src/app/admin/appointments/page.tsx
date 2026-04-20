@@ -231,11 +231,20 @@ export default function AppointmentsPage() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (!res.ok) {
-        setToast({ type: "error", message: "Failed to update appointment status." });
+        const data = await res.json().catch(() => ({}));
+        setToast({
+          type: "error",
+          message: data.error || `Couldn't mark this appointment as ${newStatus}.`,
+        });
         return;
       }
       setToast({ type: "success", message: `Appointment marked as ${newStatus}.` });
       refresh();
+    } catch (err) {
+      setToast({
+        type: "error",
+        message: err instanceof Error ? err.message : "Network error.",
+      });
     } finally {
       setPendingStatusId(null);
     }

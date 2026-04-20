@@ -33,24 +33,42 @@ export async function PATCH(
   if (payload.end_time) updateData.end_time = payload.end_time;
 
   // Stamp approver info whenever a pending booking becomes confirmed.
+  // Kept in its own object so we can cleanly retry without it if the DB
+  // schema pre-dates the 20260419 salon_fixes migration (which added the
+  // approved_at / approved_by columns).
+  const approvalStamp: Record<string, unknown> = {};
   if (payload.status === "confirmed") {
-    updateData.approved_at = new Date().toISOString();
+    approvalStamp.approved_at = new Date().toISOString();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    updateData.approved_by = (session.user as any)?.email || (session.user as any)?.name || "admin";
+    approvalStamp.approved_by = (session.user as any)?.email || (session.user as any)?.name || "admin";
   }
 
   updateData.updated_at = new Date().toISOString();
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("appointments")
-    .update(updateData)
+    .update({ ...updateData, ...approvalStamp })
     .eq("id", id)
     .select()
     .single();
 
+  // If the approved_at/approved_by columns don't exist yet (migration not
+  // applied), Supabase returns PGRST204 "Could not find the column ..." or
+  // an error message containing the column name. Retry without the stamp
+  // so Confirm still works on older schemas.
+  if (error && /approved_(at|by)/i.test(error.message || "")) {
+    logError("admin/appointments PATCH (approval-stamp cols missing, retrying)", error);
+    ({ data, error } = await supabase
+      .from("appointments")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single());
+  }
+
   if (error) {
     logError("admin/appointments PATCH", error);
-    return apiError("Failed to update appointment.", 500);
+    return apiError(`Failed to update appointment: ${error.message || "unknown error"}`, 500);
   }
 
   logAdminAction("appointment.update", JSON.stringify(payload), id);
