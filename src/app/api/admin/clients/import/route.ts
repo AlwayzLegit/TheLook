@@ -200,6 +200,19 @@ export async function POST(request: NextRequest) {
     return apiError("No valid rows in the CSV (every row lacked both email and phone).", 400);
   }
 
+  // Dedupe by email within the same import. Same email appearing twice in
+  // one batch makes Postgres refuse the upsert ("ON CONFLICT DO UPDATE
+  // command cannot affect row a second time"). Last row wins — later
+  // entries usually have corrections. Track how many dupes we collapsed
+  // so admins can see it in the result.
+  const byEmail = new Map<string, Row>();
+  let collapsed = 0;
+  for (const r of clean) {
+    if (byEmail.has(r.email)) collapsed++;
+    byEmail.set(r.email, r);
+  }
+  const deduped = [...byEmail.values()];
+
   let inserted = 0;
   let updated = 0;
   const errors: string[] = [];
@@ -215,8 +228,8 @@ export async function POST(request: NextRequest) {
       .select("id, created_at, imported_at");
   };
 
-  for (let i = 0; i < clean.length; i += BATCH) {
-    const chunk = clean.slice(i, i + BATCH);
+  for (let i = 0; i < deduped.length; i += BATCH) {
+    const chunk = deduped.slice(i, i + BATCH);
     // Build payload in full form; strip missing columns on schema errors.
     const base = chunk.map((r) => {
       const row: Record<string, unknown> = {
@@ -274,6 +287,8 @@ export async function POST(request: NextRequest) {
     "clients.import",
     JSON.stringify({
       total: clean.length,
+      deduped: deduped.length,
+      collapsed,
       inserted,
       updated,
       skipped: skipped.length,
@@ -281,8 +296,16 @@ export async function POST(request: NextRequest) {
     }),
   );
 
+  if (collapsed > 0) {
+    errors.unshift(
+      `NOTE: ${collapsed} duplicate email${collapsed === 1 ? "" : "s"} in the source file — the last occurrence of each won. This is also how different formats of the same phone number get collapsed into one profile.`,
+    );
+  }
+
   return apiSuccess({
     total: clean.length,
+    deduped: deduped.length,
+    collapsed,
     inserted,
     updated,
     skipped,
