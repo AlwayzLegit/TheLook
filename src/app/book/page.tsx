@@ -494,8 +494,12 @@ export default function BookPage() {
                 </div>
                 {requiresDeposit && (
                   <div className="border-t border-navy/10 pt-4">
-                    <p className="text-navy/50 text-sm font-body mb-3">
+                    <p className="text-navy/60 text-sm font-body mb-1">
                       Required deposit — ${BOOKING.DEPOSIT_AMOUNT_CENTS / 100}
+                    </p>
+                    <p className="text-navy/50 text-xs font-body mb-3 leading-relaxed">
+                      Credited toward your service total at the appointment. Fully refundable if you
+                      cancel 24+ hours ahead; forfeited for cancellations within 24 hours or no-shows.
                     </p>
                     {depositPaymentIntent ? (
                       <p className="text-green-700 text-sm font-body">

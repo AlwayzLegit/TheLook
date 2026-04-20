@@ -51,11 +51,22 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="font-heading text-2xl text-navy mb-3">3. Cancellation and No-Show Policy</h2>
+              <h2 className="font-heading text-2xl text-navy mb-3">3. Deposit, Cancellation, and No-Show Policy</h2>
+              <p className="mb-3">
+                Certain services (color, bleach, chemical treatments, extensions, and appointments
+                longer than 100 minutes) require a <strong>$50 deposit</strong> to confirm the
+                booking. Your deposit is applied toward the total cost of your service at the time
+                of your appointment.
+              </p>
+              <p className="mb-3">
+                To receive a refund of your deposit, cancellations must be made at least 24 hours
+                in advance. Cancellations made within 24 hours of the scheduled appointment will
+                result in the loss of the deposit. Additional cancellation or no-show fees may
+                apply where applicable.
+              </p>
               <p>
-                We understand plans change. Cancellations with at least 24 hours&#39; notice are free of charge.
-                Repeated late cancellations or no-shows may result in a requirement to pre-pay a deposit
-                for future bookings or, in extreme cases, declining further bookings.
+                Repeated late cancellations or no-shows may result in a requirement to pre-pay a
+                deposit for future bookings or, in extreme cases, declining further bookings.
               </p>
             </section>
 
@@ -75,9 +86,10 @@ export default function TermsPage() {
               <h2 className="font-heading text-2xl text-navy mb-3">5. Payment</h2>
               <p>
                 Payment is due at the time of service. We accept cash and all major credit and debit cards.
-                Gratuity is appreciated and can be added to your tab. If a deposit is required (for large
-                color services, extensions, or in cases of prior late cancellations), you will be informed
-                before the appointment is confirmed.
+                Gratuity is appreciated and can be added to your tab. When a deposit is required (large
+                color services, extensions, long appointments, or prior late cancellations), it is collected
+                at booking, applied toward your service total at the appointment, and governed by the
+                deposit rules in section&nbsp;3.
               </p>
             </section>
 

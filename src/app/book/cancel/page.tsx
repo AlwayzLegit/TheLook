@@ -48,8 +48,13 @@ function CancelContent() {
           </svg>
         </div>
         <h2 className="font-heading text-3xl mb-4">Appointment Cancelled</h2>
-        <p className="text-navy/60 font-body">
+        <p className="text-navy/70 font-body">
           {message} We&apos;d love to see you again — call us at (818) 662-5665 or visit our website to rebook.
+        </p>
+        <p className="text-navy/50 text-xs font-body mt-5 leading-relaxed">
+          <strong className="text-navy/70">About your deposit:</strong> if you paid one for this
+          appointment and cancelled at least 24 hours in advance, it&apos;ll be refunded to your
+          original payment method. Cancellations within 24 hours forfeit the deposit.
         </p>
       </>
     );

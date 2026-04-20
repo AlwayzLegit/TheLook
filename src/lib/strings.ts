@@ -57,8 +57,26 @@ export const strings = {
   viewOurServices: "View Our Services",
   callUs: "Call (818) 662-5665",
 
-  // Policies
-  depositNote: "A $50 deposit may be required for select color/styling services. 25% cancellation fee applies for no-shows or cancellations within 24 hours.",
+  // Policies — single source of truth. Import these everywhere the deposit /
+  // cancellation rules are displayed (booking, emails, FAQ, terms, service
+  // pages). Change here and every surface updates.
+  depositHeadline: "About your deposit",
+  depositPolicyLong:
+    "Your deposit is applied toward the total cost of your service at the time of your appointment. " +
+    "To receive a refund, cancellations must be made at least 24 hours in advance. " +
+    "Cancellations made within 24 hours of your scheduled appointment will result in the loss of the deposit. " +
+    "Additional cancellation or no-show fees may apply where applicable.",
+  depositPolicyBullets: [
+    "Your deposit counts toward your service total — it's not an extra fee.",
+    "Cancel 24+ hours ahead: deposit is fully refunded.",
+    "Cancel within 24 hours: deposit is forfeited.",
+    "Additional cancellation or no-show fees may apply.",
+  ] as readonly string[],
+  noShowBullet: "No-shows are charged the full service price.",
+  depositNote:
+    "A $50 deposit is required for appointments 100+ minutes long. The deposit credits to your final bill, is refundable up to 24 hours before your appointment, and is forfeited for cancellations within 24 hours or no-shows.",
+  cancellationPolicyShort:
+    "Cancellations need 24+ hours' notice for a full deposit refund. Same-day cancellations or no-shows forfeit the deposit and may incur additional fees.",
 } as const;
 
 export type StringKey = keyof typeof strings;

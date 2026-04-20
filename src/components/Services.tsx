@@ -201,10 +201,11 @@ export default function Services() {
         )}
 
         <AnimatedSection className="text-center mt-14">
-          <p className="text-navy/45 text-xs font-body font-light max-w-xl mx-auto leading-relaxed">
+          <p className="text-navy/55 text-xs font-body max-w-xl mx-auto leading-relaxed">
             All prices are based upon consultation &amp; subject to change.
-            Pricing depends on hair length, thickness &amp; texture. $50 deposit
-            required for select services.
+            Pricing depends on hair length, thickness &amp; texture. A $50 deposit is
+            required for select services; it&apos;s applied toward your total and
+            refundable with 24+ hours&apos; notice.
           </p>
         </AnimatedSection>
       </div>

@@ -11,9 +11,14 @@ const faqs = [
       "Walk-ins are always welcome! However, we recommend booking an appointment to ensure your preferred stylist and time slot. You can book online through our website or call us directly at (818) 662-5665.",
   },
   {
+    question: "Will I get my deposit back?",
+    answer:
+      "Your deposit will be applied toward the total cost of your service at the time of your appointment. To receive a refund of your deposit, cancellations must be made at least 24 hours in advance. Cancellations made within 24 hours of the scheduled appointment will result in the loss of the deposit. Please note that additional cancellation or no-show fees may apply where applicable.",
+  },
+  {
     question: "What is your cancellation policy?",
     answer:
-      "We require at least 24 hours notice for cancellations or rescheduling. No-shows or cancellations within 24 hours are subject to a 25% cancellation fee. A $50 deposit is required for select color and styling services.",
+      "We ask for at least 24 hours' notice to cancel or reschedule. Cancellations made on time keep your deposit fully refundable. Same-day cancellations or no-shows forfeit the deposit, and additional fees may apply depending on the service.",
   },
   {
     question: "How should I prepare for a color appointment?",
