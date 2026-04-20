@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SessionProvider, useSession } from "next-auth/react";
+import { SessionProvider, useSession, signOut } from "next-auth/react";
 import KeyboardShortcuts from "@/components/admin/KeyboardShortcuts";
 import NotificationsBell from "@/components/admin/NotificationsBell";
 import IdleTimeout from "@/components/admin/IdleTimeout";
@@ -64,8 +64,11 @@ function useBadgeCounts() {
 
 function AdminSidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const badges = useBadgeCounts();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userEmail = (session?.user as any)?.email as string | undefined;
 
   if (pathname === "/admin/login") return null;
 
@@ -117,9 +120,24 @@ function AdminSidebar() {
         })}
       </nav>
 
-      <div className="mt-auto pt-8">
+      <div className="mt-auto pt-8 space-y-1">
+        {userEmail && (
+          <p className="px-4 pb-2 text-[10px] uppercase tracking-widest text-white/30 font-body break-all">
+            {userEmail}
+          </p>
+        )}
+        <button
+          onClick={() => signOut({ callbackUrl: "/admin/login" })}
+          className="w-full text-left px-4 py-2 text-white/50 hover:text-white hover:bg-white/5 text-sm font-body rounded transition-colors flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Sign out
+        </button>
         <Link
           href="/"
+          onClick={() => setMobileOpen(false)}
           className="block px-4 py-2 text-white/30 hover:text-white/60 text-xs font-body transition-colors"
         >
           &larr; Back to website
