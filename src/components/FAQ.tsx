@@ -21,6 +21,11 @@ const faqs = [
       "We ask for at least 24 hours' notice to cancel or reschedule. A 25% cancellation fee will be charged on no-shows or cancellations within 24 hours of the scheduled appointment. Any deposit paid at booking is non-refundable and will be forfeited on cancellation.",
   },
   {
+    question: "What happens if I'm a no-show or cancel?",
+    answer:
+      "You will lose your $50.00 deposit and may also be charged a cancellation fee. The Look Hair Salon has a 25% cancellation policy that may be applied. The cancellation fee is calculated on the total appointment value. Please provide as much notice as possible if you are unable to make it.",
+  },
+  {
     question: "How should I prepare for a color appointment?",
     answer:
       "For best results, come with unwashed hair (1-2 days without washing is ideal). Avoid using heavy styling products. If it's your first color appointment with us, we'll do a quick consultation to discuss your goals.",
