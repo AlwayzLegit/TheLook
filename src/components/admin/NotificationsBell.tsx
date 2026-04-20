@@ -101,16 +101,37 @@ export default function NotificationsBell({ enabled = true }: { enabled?: boolea
         )}
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-[360px] bg-white shadow-2xl border border-navy/10 z-50">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-navy/10">
-            <p className="font-heading text-sm">Notifications</p>
-            {unread > 0 && (
-              <button onClick={markAll} className="text-xs text-rose font-body hover:underline">
-                Mark all read
-              </button>
-            )}
-          </div>
-          <div className="max-h-[400px] overflow-y-auto">
+        <>
+          {/* Invisible click-catcher behind the panel on mobile so taps
+              outside still close it (the useRef mousedown handler above
+              handles desktop clicks but a fixed-positioned panel can
+              escape its parent's click-outside detection). */}
+          <div
+            className="fixed inset-0 z-40 sm:hidden"
+            aria-hidden
+            onClick={() => setOpen(false)}
+          />
+          <div
+            className="
+              fixed sm:absolute
+              top-14 sm:top-auto
+              sm:mt-2
+              right-2 sm:right-0
+              left-2 sm:left-auto
+              sm:w-[360px]
+              max-w-[calc(100vw-1rem)]
+              bg-white shadow-2xl border border-navy/10 z-50
+            "
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-navy/10">
+              <p className="font-heading text-sm">Notifications</p>
+              {unread > 0 && (
+                <button onClick={markAll} className="text-xs text-rose font-body hover:underline">
+                  Mark all read
+                </button>
+              )}
+            </div>
+            <div className="max-h-[70vh] sm:max-h-[400px] overflow-y-auto">
             {items.length === 0 ? (
               <p className="text-navy/40 text-sm font-body p-6 text-center">No notifications.</p>
             ) : (
@@ -142,8 +163,9 @@ export default function NotificationsBell({ enabled = true }: { enabled?: boolea
                 );
               })
             )}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
