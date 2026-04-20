@@ -61,8 +61,9 @@ export default function TermsPage() {
               <p className="mb-3">
                 To receive a refund of your deposit, cancellations must be made at least 24 hours
                 in advance. Cancellations made within 24 hours of the scheduled appointment will
-                result in the loss of the deposit. Additional cancellation or no-show fees may
-                apply where applicable.
+                result in the loss of the deposit. <strong>A 25% cancellation fee will be charged
+                on no-shows or cancellations within 24 hours of the scheduled appointment</strong>,
+                in addition to any forfeited deposit.
               </p>
               <p>
                 Repeated late cancellations or no-shows may result in a requirement to pre-pay a

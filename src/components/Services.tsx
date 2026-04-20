@@ -205,7 +205,8 @@ export default function Services() {
             All prices are based upon consultation &amp; subject to change.
             Pricing depends on hair length, thickness &amp; texture. A $50 deposit is
             required for select services; it&apos;s applied toward your total and
-            refundable with 24+ hours&apos; notice.
+            refundable with 24+ hours&apos; notice. A 25% cancellation fee applies to
+            no-shows or cancellations within 24 hours.
           </p>
         </AnimatedSection>
       </div>

@@ -52,9 +52,10 @@ function CancelContent() {
           {message} We&apos;d love to see you again — call us at (818) 662-5665 or visit our website to rebook.
         </p>
         <p className="text-navy/50 text-xs font-body mt-5 leading-relaxed">
-          <strong className="text-navy/70">About your deposit:</strong> if you paid one for this
-          appointment and cancelled at least 24 hours in advance, it&apos;ll be refunded to your
-          original payment method. Cancellations within 24 hours forfeit the deposit.
+          <strong className="text-navy/70">Deposit &amp; cancellation fee:</strong> if you paid a
+          deposit and cancelled 24+ hours in advance, it&apos;ll be refunded to your original
+          payment method. Cancellations within 24 hours forfeit the deposit and are subject to a
+          25% cancellation fee.
         </p>
       </>
     );

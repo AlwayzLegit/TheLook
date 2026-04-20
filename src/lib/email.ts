@@ -62,11 +62,12 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
         ${cancelUrl ? `<div style="margin-top: 20px; text-align: center;"><a href="${cancelUrl}" style="color: #c2274b; font-size: 13px;">Cancel</a> &nbsp;·&nbsp; <a href="${cancelUrl.replace("/book/cancel", "/book/reschedule")}" style="color: #c2274b; font-size: 13px;">Reschedule</a></div>` : ""}
       </div>
       <p style="text-align: center; color: #666; font-size: 12px; line-height: 1.55; margin-top: 20px; max-width: 520px; margin-left: auto; margin-right: auto;">
-        <strong style="color: #282936;">About your deposit:</strong>
+        <strong style="color: #282936;">Deposit &amp; cancellation policy:</strong>
         your deposit is applied toward the total cost of your service at the appointment.
         Cancellations made at least 24 hours in advance keep your deposit refundable;
         cancellations within 24 hours of the scheduled appointment forfeit the deposit.
-        Additional cancellation or no-show fees may apply where applicable.
+        <strong style="color: #282936;">A 25% cancellation fee is charged on no-shows or
+        cancellations within 24 hours of the scheduled appointment.</strong>
       </p>
     </div>
   `;
@@ -109,7 +110,7 @@ export async function sendCancellationEmail(details: Omit<AppointmentDetails, "c
             <p style="color: #666;">Your appointment for <strong>${serviceName}</strong> on <strong>${formatDate(date)}</strong> at <strong>${formatTime(startTime)}</strong> has been cancelled.</p>
             <p style="color: #666;">We'd love to see you again! Call us at (818) 662-5665 or visit our website to rebook.</p>
             <p style="color: #888; font-size: 12px; margin-top: 18px; padding-top: 16px; border-top: 1px solid #eee;">
-              <strong style="color: #282936;">Deposit?</strong> If a deposit was collected for this appointment and you cancelled at least 24 hours in advance, it will be refunded to your original payment method. Same-day cancellations forfeit the deposit. Questions? Reply to this email or call (818) 662-5665.
+              <strong style="color: #282936;">Deposit &amp; cancellation fee:</strong> if a deposit was collected for this appointment and you cancelled at least 24 hours in advance, it will be refunded to your original payment method. Same-day cancellations or no-shows forfeit the deposit and are subject to a 25% cancellation fee. Questions? Reply to this email or call (818) 662-5665.
             </p>
           </div>
         </div>

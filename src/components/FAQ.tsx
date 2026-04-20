@@ -13,12 +13,12 @@ const faqs = [
   {
     question: "Will I get my deposit back?",
     answer:
-      "Your deposit will be applied toward the total cost of your service at the time of your appointment. To receive a refund of your deposit, cancellations must be made at least 24 hours in advance. Cancellations made within 24 hours of the scheduled appointment will result in the loss of the deposit. Please note that additional cancellation or no-show fees may apply where applicable.",
+      "Your deposit will be applied toward the total cost of your service at the time of your appointment. To receive a refund of your deposit, cancellations must be made at least 24 hours in advance. Cancellations made within 24 hours of the scheduled appointment will result in the loss of the deposit. A 25% cancellation fee is also charged on no-shows or cancellations within 24 hours of the scheduled appointment.",
   },
   {
     question: "What is your cancellation policy?",
     answer:
-      "We ask for at least 24 hours' notice to cancel or reschedule. Cancellations made on time keep your deposit fully refundable. Same-day cancellations or no-shows forfeit the deposit, and additional fees may apply depending on the service.",
+      "We ask for at least 24 hours' notice to cancel or reschedule. Cancellations made on time keep any deposit fully refundable. A 25% cancellation fee will be charged on no-shows or cancellations within 24 hours of the scheduled appointment, and any deposit is forfeited.",
   },
   {
     question: "How should I prepare for a color appointment?",
