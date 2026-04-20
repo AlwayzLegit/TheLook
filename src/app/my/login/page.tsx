@@ -4,12 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import TurnstileField from "@/components/TurnstileField";
 
 export default function ClientLoginPage() {
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +22,7 @@ export default function ClientLoginPage() {
       const res = await fetch("/api/client-portal/magic-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, turnstileToken }),
       });
       if (res.ok) {
         setSent(true);
@@ -60,8 +63,17 @@ export default function ClientLoginPage() {
                 <label className="block text-sm text-navy/60 mb-2 font-body">Email</label>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full border-b border-navy/20 bg-transparent py-2 font-body focus:outline-none focus:border-rose" />
               </div>
+              {turnstileSiteKey ? (
+                <div className="pt-2">
+                  <TurnstileField siteKey={turnstileSiteKey} onTokenChange={setTurnstileToken} />
+                </div>
+              ) : null}
               {error && <p className="text-red-600 text-sm font-body">{error}</p>}
-              <button type="submit" disabled={submitting || !email} className="w-full bg-rose hover:bg-rose-light disabled:opacity-60 text-white tracking-widest uppercase text-sm px-6 py-3 font-body">
+              <button
+                type="submit"
+                disabled={submitting || !email || (!!turnstileSiteKey && !turnstileToken)}
+                className="w-full bg-rose hover:bg-rose-light disabled:opacity-60 text-white tracking-widest uppercase text-sm px-6 py-3 font-body"
+              >
                 {submitting ? "Sending..." : "Send Sign-In Link"}
               </button>
               <p className="text-xs text-navy/40 text-center font-body pt-2">

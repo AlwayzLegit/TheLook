@@ -1,6 +1,7 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 import { Resend } from "resend";
 import { NextRequest } from "next/server";
 import crypto from "crypto";
@@ -11,17 +12,40 @@ function getResend() {
   return new Resend(key || "re_placeholder");
 }
 
+// Constant-ish "ok" response so we never leak whether an email exists.
+const NOOP_RESPONSE = { success: true, message: "If you have an account, a login link has been sent." };
+
 // POST: request a magic link
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rl = await checkRateLimit({ key: `magic:${ip}`, limit: 5, windowMs: 15 * 60 * 1000 });
-  if (!rl.ok) return apiError("Too many requests.", 429);
+
+  // B-15/16 — defense in depth:
+  //   1. Per-IP rate limit (existing).
+  //   2. Per-email rate limit so one IP can't enumerate addresses by
+  //      hammering the form for many different emails.
+  //   3. Turnstile when configured. Skipped in dev / when no site key.
+  const ipRl = await checkRateLimit({ key: `magic:ip:${ip}`, limit: 8, windowMs: 15 * 60 * 1000 });
+  if (!ipRl.ok) return apiError("Too many requests.", 429);
 
   if (!hasSupabaseConfig) return apiError("Not available.", 503);
 
   const body = await request.json();
   const email = (body.email || "").toLowerCase().trim();
+  const turnstileToken = typeof body.turnstileToken === "string" ? body.turnstileToken : undefined;
+
   if (!email || !email.includes("@")) return apiError("Valid email required.", 400);
+
+  if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
+    const t = await verifyTurnstileToken(turnstileToken, ip);
+    if (!t.ok) return apiError(t.error || "Captcha verification failed.", 400);
+  }
+
+  const emailRl = await checkRateLimit({ key: `magic:email:${email}`, limit: 5, windowMs: 60 * 60 * 1000 });
+  if (!emailRl.ok) {
+    // Surface a constant-time-ish noop instead of revealing the rate limit
+    // — same response a non-existent email gets.
+    return apiSuccess(NOOP_RESPONSE);
+  }
 
   // Verify email has at least one appointment
   const { data: appts } = await supabase
@@ -31,8 +55,7 @@ export async function POST(request: NextRequest) {
     .limit(1);
 
   if (!appts || appts.length === 0) {
-    // Don't reveal whether the email exists — return success anyway
-    return apiSuccess({ success: true, message: "If you have an account, a login link has been sent." });
+    return apiSuccess(NOOP_RESPONSE);
   }
 
   // Generate token
@@ -71,5 +94,6 @@ export async function POST(request: NextRequest) {
     logError("magic-link email", err);
   }
 
-  return apiSuccess({ success: true, message: "Check your email for a login link." });
+  // Same noop-shape response so timing + body don't leak email existence.
+  return apiSuccess(NOOP_RESPONSE);
 }

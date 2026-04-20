@@ -350,19 +350,29 @@ export async function POST(request: NextRequest) {
           card_last4: info.cardLast4,
         })
         .eq("id", appointmentId);
-
-      // Cache the customer id on the client profile so returning customers
-      // don't have to re-enter a card next time.
-      await supabase
-        .from("client_profiles")
-        .upsert({
-          email: clientEmail.toLowerCase(),
-          name: clientName,
-          phone: clientPhone || null,
-          stripe_customer_id: info.customerId,
-        }, { onConflict: "email" });
     }
   }
+
+  // B-21: unconditional client_profiles upsert. Every confirmed booking
+  // should produce / refresh a profile row so admins have a single client
+  // directory keyed on email. The deposit + setup-intent branches above
+  // already populated stripe_customer_id where applicable; this just
+  // ensures name + phone are kept fresh and the row exists at all for
+  // bookings without a card capture.
+  await supabase
+    .from("client_profiles")
+    .upsert(
+      {
+        email: clientEmail.toLowerCase(),
+        name: clientName,
+        phone: clientPhone || null,
+      },
+      { onConflict: "email", ignoreDuplicates: false },
+    )
+    .then(
+      () => {},
+      (err: unknown) => logError("appointments POST (profile upsert)", err),
+    );
 
   // Stylist name for email/notification.
   const { data: stylist } = await supabase

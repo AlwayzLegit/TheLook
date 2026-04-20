@@ -99,8 +99,11 @@ const jsonLd = {
     },
   ],
   priceRange: "$",
-  image:
-    "https://static.wixstatic.com/media/a9fd8e_2ac664f289754ce8b9da8e22f42ba358~mv2.jpg",
+  // Self-hosted so the JSON-LD doesn't depend on a third-party CDN we
+  // don't control. Drop a representative storefront photo at this path
+  // (1200x630 minimum for rich-result eligibility) — falls back to the
+  // hero image used for OpenGraph if missing.
+  image: `${siteUrl}/images/hero/salon-main.jpg`,
   sameAs: [
     "https://www.instagram.com/thelookhairsalon/",
     "https://www.facebook.com/p/The-Look-Hair-Salon-100046925091028/",

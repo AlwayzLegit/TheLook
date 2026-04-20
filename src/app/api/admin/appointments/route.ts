@@ -36,13 +36,9 @@ export async function GET(request: NextRequest) {
   // B-27: hide is_test rows by default; admin can opt-in via ?includeTest=true.
   const includeTest = searchParams.get("includeTest") === "true";
 
-  // Lazy purge: any archived appointment older than 30 days gets deleted
-  // on the next admin list load. Cheap with the partial index on
-  // archived_at. Fire-and-forget so a purge failure doesn't block the UI.
-  supabase.rpc("fn_purge_archived_appointments").then(
-    () => {},
-    (err: unknown) => logError("admin/appointments purge-archived", err),
-  );
+  // Note: the daily Vercel cron at /api/cron/purge-archived owns the purge
+  // now (B-19/20). Read-path lazy purge was removed so the admin list GET
+  // doesn't pay that cost on every load.
 
   const buildQuery = (opts: { archive: boolean; testFilter: boolean }) => {
     let q = supabase

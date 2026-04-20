@@ -205,54 +205,36 @@ export default function BookPage() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch("/api/services");
+        // B-08: single batched call. The endpoint returns each service with
+        // its variants embedded — no fan-out per service id.
+        const r = await fetch("/api/services?include=variants");
         const data = await r.json();
         if (!data || Object.keys(data).length === 0) {
           setServices(FALLBACK_SERVICES);
           return;
         }
-        const normalized: Record<string, Service[]> = {};
+
+        const expandedByCat: Record<string, Service[]> = {};
         for (const cat of Object.keys(data)) {
+          const rows: Service[] = [];
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          normalized[cat] = (data[cat] as any[]).map((s) => ({
-            id: s.id,
-            category: s.category,
-            name: s.name,
-            priceText: s.priceText ?? s.price_text ?? "",
-            priceMin: s.priceMin ?? s.price_min,
-            duration: s.duration,
-          }));
-        }
-
-        // Expand any service that has variants into one picker row per
-        // variant. This keeps the ServicePicker UI variant-agnostic — each
-        // virtual row already carries its own price, duration, and
-        // variantId which flows back to the appointments POST.
-        const allIds = Object.values(normalized).flat().map((s) => s.id);
-        const variantByService = new Map<string, Array<{ id: string; name: string; price_text: string; price_min: number; duration: number }>>();
-        await Promise.all(
-          allIds.map(async (id) => {
-            try {
-              const vr = await fetch(`/api/services/${id}/variants`);
-              if (!vr.ok) return;
-              const vdata = await vr.json();
-              if (Array.isArray(vdata) && vdata.length > 0) variantByService.set(id, vdata);
-            } catch {
-              // best-effort
-            }
-          }),
-        );
-
-        for (const cat of Object.keys(normalized)) {
-          const expanded: Service[] = [];
-          for (const s of normalized[cat]) {
-            const variants = variantByService.get(s.id);
-            if (!variants || variants.length === 0) {
-              expanded.push(s);
+          for (const s of data[cat] as any[]) {
+            const base: Service = {
+              id: s.id,
+              category: s.category,
+              name: s.name,
+              priceText: s.priceText ?? s.price_text ?? "",
+              priceMin: s.priceMin ?? s.price_min,
+              duration: s.duration,
+            };
+            const variants = Array.isArray(s.variants) ? s.variants : [];
+            if (variants.length === 0) {
+              rows.push(base);
               continue;
             }
-            for (const v of variants) {
-              expanded.push({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            for (const v of variants as any[]) {
+              rows.push({
                 id: s.id,
                 category: s.category,
                 name: `${s.name} — ${v.name}`,
@@ -264,10 +246,10 @@ export default function BookPage() {
               });
             }
           }
-          normalized[cat] = expanded;
+          expandedByCat[cat] = rows;
         }
 
-        setServices(normalized);
+        setServices(expandedByCat);
       } catch {
         setServices(FALLBACK_SERVICES);
       }
