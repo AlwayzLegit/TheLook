@@ -1,49 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
+import StylistScheduleCard, {
+  type StylistInfo,
+  type ScheduleRule,
+} from "@/components/admin/StylistScheduleCard";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-interface Rule {
-  id: string;
-  stylistId: string | null;
-  ruleType: string;
-  dayOfWeek: number | null;
-  specificDate: string | null;
-  startTime: string | null;
-  endTime: string | null;
-  isClosed: boolean | number | null;
-  note: string | null;
-}
-
-interface Stylist {
-  id: string;
-  name: string;
-}
 
 export default function SchedulePage() {
   const { status } = useSession();
   const router = useRouter();
-  const [rules, setRules] = useState<Rule[]>([]);
-  const [stylists, setStylists] = useState<Stylist[]>([]);
+  const [rules, setRules] = useState<ScheduleRule[]>([]);
+  const [stylists, setStylists] = useState<StylistInfo[]>([]);
+  const [serviceCountByStylist, setServiceCountByStylist] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // Weekly rule editing
+  // Salon-level weekly-hours editing.
   const [editingDay, setEditingDay] = useState<number | null>(null);
   const [editDayStart, setEditDayStart] = useState("10:00");
   const [editDayEnd, setEditDayEnd] = useState("18:00");
   const [editDayClosed, setEditDayClosed] = useState(false);
-  const [editDayStylist, setEditDayStylist] = useState("");
 
-  // Override form
+  // Salon-level override form (stylist-specific overrides live on each card).
   const [overrideMode, setOverrideMode] = useState<"single" | "range">("single");
   const [overrideDate, setOverrideDate] = useState("");
   const [overrideDateEnd, setOverrideDateEnd] = useState("");
@@ -51,7 +38,6 @@ export default function SchedulePage() {
   const [overrideStart, setOverrideStart] = useState("09:00");
   const [overrideEnd, setOverrideEnd] = useState("17:00");
   const [overrideNote, setOverrideNote] = useState("");
-  const [overrideStylist, setOverrideStylist] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -69,17 +55,45 @@ export default function SchedulePage() {
     }
   };
 
-  const loadStylists = async () => {
-    const r = await fetch("/api/admin/stylists");
-    if (!r.ok) return;
-    const data = await r.json();
-    if (Array.isArray(data)) setStylists(data);
+  const loadStylistsAndServices = async () => {
+    // Pull stylists (with inactive) so admins can still see/schedule them,
+    // and service mappings so each card can show a "N services" badge.
+    const [sRes, mRes] = await Promise.all([
+      fetch("/api/admin/stylists?includeInactive=true"),
+      fetch("/api/admin/stylists").then(async (r) => {
+        // fall-through to mappings if we need them
+        if (!r.ok) return [];
+        return r.json();
+      }).catch(() => []),
+    ]);
+    if (sRes.ok) {
+      const list = await sRes.json();
+      if (Array.isArray(list)) setStylists(list as StylistInfo[]);
+    }
+    // Fetch service-mapping counts in one shot.
+    try {
+      const r = await fetch("/api/stylists");
+      if (r.ok) {
+        const pub = await r.json();
+        if (Array.isArray(pub)) {
+          const counts: Record<string, number> = {};
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for (const st of pub as any[]) {
+            counts[st.id] = Array.isArray(st.serviceIds) ? st.serviceIds.length : 0;
+          }
+          setServiceCountByStylist(counts);
+        }
+      }
+    } catch {
+      // non-critical
+    }
+    void mRes;
   };
 
   useEffect(() => {
     if (status === "authenticated") {
       loadRules();
-      loadStylists();
+      loadStylistsAndServices();
     }
   }, [status]);
 
@@ -108,31 +122,28 @@ export default function SchedulePage() {
       const res = await fetch(`/api/admin/schedule?id=${id}`, { method: "DELETE" });
       if (!res.ok) {
         setToast({ type: "error", message: "Failed to remove rule." });
-        return;
+        return false;
       }
       setToast({ type: "success", message: "Rule removed." });
       loadRules();
+      return true;
     } finally {
       setDeletingId(null);
     }
   };
 
-  // --- Weekly rule save ---
-  // The API now upserts (deletes any existing rule for this slot, then
-  // inserts), so we don't need to manually delete from the client.
-  const saveWeeklyRule = async () => {
+  // --- Salon weekly ---
+  const saveSalonWeekly = async () => {
     if (editingDay === null) return;
-
     const ok = await saveRule({
       ruleType: "weekly",
       dayOfWeek: editingDay,
-      stylistId: editDayStylist || null,
+      stylistId: null,
       isClosed: editDayClosed,
       startTime: editDayClosed ? null : editDayStart,
       endTime: editDayClosed ? null : editDayEnd,
       note: null,
     });
-
     if (ok) {
       setToast({ type: "success", message: `${DAYS[editingDay]} hours updated.` });
       setEditingDay(null);
@@ -140,7 +151,23 @@ export default function SchedulePage() {
     }
   };
 
-  // --- Override save (single or range) ---
+  const openEditDay = (day: number) => {
+    const existing = rules.find(
+      (r) => r.ruleType === "weekly" && r.dayOfWeek === day && !r.stylistId,
+    );
+    setEditingDay(day);
+    if (existing) {
+      setEditDayClosed(!!existing.isClosed);
+      setEditDayStart(existing.startTime || "10:00");
+      setEditDayEnd(existing.endTime || "18:00");
+    } else {
+      setEditDayClosed(false);
+      setEditDayStart("10:00");
+      setEditDayEnd("18:00");
+    }
+  };
+
+  // --- Salon override (single or range) ---
   const saveOverride = async () => {
     if (!overrideDate) return;
     if (!overrideClosed && (!overrideStart || !overrideEnd)) {
@@ -165,7 +192,7 @@ export default function SchedulePage() {
       const ok = await saveRule({
         ruleType: "override",
         specificDate: date,
-        stylistId: overrideStylist || null,
+        stylistId: null,
         isClosed: overrideClosed,
         startTime: overrideClosed ? null : overrideStart,
         endTime: overrideClosed ? null : overrideEnd,
@@ -187,40 +214,80 @@ export default function SchedulePage() {
     }
   };
 
-  const openEditDay = (day: number, stylistId?: string) => {
-    const existing = rules.find(
-      (r) =>
-        r.ruleType === "weekly" &&
-        r.dayOfWeek === day &&
-        (stylistId ? r.stylistId === stylistId : !r.stylistId)
-    );
-    setEditingDay(day);
-    setEditDayStylist(stylistId || "");
-    if (existing) {
-      setEditDayClosed(!!existing.isClosed);
-      setEditDayStart(existing.startTime || "10:00");
-      setEditDayEnd(existing.endTime || "18:00");
-    } else {
-      setEditDayClosed(false);
-      setEditDayStart("10:00");
-      setEditDayEnd("18:00");
-    }
-  };
+  // --- Per-stylist card callbacks ---
+  const saveStylistWeekly: React.ComponentProps<typeof StylistScheduleCard>["onSaveWeekly"] =
+    async ({ stylistId, dayOfWeek, isClosed, startTime, endTime }) => {
+      const ok = await saveRule({
+        ruleType: "weekly",
+        dayOfWeek,
+        stylistId,
+        isClosed,
+        startTime: isClosed ? null : startTime,
+        endTime: isClosed ? null : endTime,
+        note: null,
+      });
+      if (ok) {
+        setToast({ type: "success", message: `${DAYS[dayOfWeek]} hours updated.` });
+        loadRules();
+      }
+      return ok;
+    };
+
+  const saveStylistOverride: React.ComponentProps<typeof StylistScheduleCard>["onSaveOverride"] =
+    async ({ stylistId, specificDate, isClosed, startTime, endTime, note }) => {
+      const ok = await saveRule({
+        ruleType: "override",
+        specificDate,
+        stylistId,
+        isClosed,
+        startTime: isClosed ? null : startTime,
+        endTime: isClosed ? null : endTime,
+        note: note || (isClosed ? "Off" : "Special hours"),
+      });
+      if (ok) {
+        setToast({ type: "success", message: "Override saved." });
+        loadRules();
+      }
+      return ok;
+    };
+
+  const clearRule: React.ComponentProps<typeof StylistScheduleCard>["onClearWeekly"] =
+    async (ruleId) => {
+      return await deleteRule(ruleId);
+    };
+
+  const salonOverrides = useMemo(
+    () =>
+      rules
+        .filter((r) => r.ruleType === "override" && !r.stylistId)
+        .sort((a, b) => (a.specificDate || "").localeCompare(b.specificDate || "")),
+    [rules],
+  );
+
+  const salonWeekly = useMemo(
+    () =>
+      rules
+        .filter((r) => r.ruleType === "weekly" && !r.stylistId)
+        .sort((a, b) => (a.dayOfWeek ?? 0) - (b.dayOfWeek ?? 0)),
+    [rules],
+  );
+
+  const activeStylists = useMemo(
+    () =>
+      stylists
+        .filter((s) => s.active !== false)
+        .map((s) => ({ ...s, serviceCount: serviceCountByStylist[s.id] })),
+    [stylists, serviceCountByStylist],
+  );
+  const inactiveStylists = useMemo(
+    () =>
+      stylists
+        .filter((s) => s.active === false)
+        .map((s) => ({ ...s, serviceCount: serviceCountByStylist[s.id] })),
+    [stylists, serviceCountByStylist],
+  );
 
   if (status !== "authenticated") return null;
-
-  const salonWeekly = rules
-    .filter((r) => r.ruleType === "weekly" && !r.stylistId)
-    .sort((a, b) => (a.dayOfWeek ?? 0) - (b.dayOfWeek ?? 0));
-
-  const overrides = rules
-    .filter((r) => r.ruleType === "override")
-    .sort((a, b) => (a.specificDate || "").localeCompare(b.specificDate || ""));
-
-  const stylistWeekly = rules.filter((r) => r.ruleType === "weekly" && r.stylistId);
-
-  const getStylistName = (id: string | null) =>
-    stylists.find((s) => s.id === id)?.name || "Unknown";
 
   return (
     <div className="p-4 sm:p-8">
@@ -229,7 +296,7 @@ export default function SchedulePage() {
       {/* ───── SECTION 1: Salon Weekly Hours ───── */}
       <div className="mb-10">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-heading text-xl">Salon Hours</h2>
+          <h2 className="font-heading text-xl">Salon hours</h2>
           <p className="text-xs text-navy/40 font-body">Click a day to edit</p>
         </div>
         <div className="bg-white border border-navy/10 divide-y divide-navy/5">
@@ -255,8 +322,7 @@ export default function SchedulePage() {
                   </span>
                 </button>
 
-                {/* Inline edit form */}
-                {editingDay === dayIndex && !editDayStylist && (
+                {editingDay === dayIndex && (
                   <div className="px-6 py-4 bg-cream/50 border-t border-navy/5">
                     <div className="flex flex-wrap items-center gap-3">
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -275,7 +341,7 @@ export default function SchedulePage() {
                           <input type="time" value={editDayEnd} onChange={(e) => setEditDayEnd(e.target.value)} className="border border-navy/20 px-2 py-1.5 text-sm font-body" />
                         </>
                       )}
-                      <button onClick={saveWeeklyRule} disabled={saving} className="bg-navy text-white text-xs font-body px-4 py-2 hover:bg-navy/90 disabled:opacity-60">
+                      <button onClick={saveSalonWeekly} disabled={saving} className="bg-navy text-white text-xs font-body px-4 py-2 hover:bg-navy/90 disabled:opacity-60">
                         {saving ? "Saving..." : "Save"}
                       </button>
                       <button onClick={() => setEditingDay(null)} className="text-xs font-body text-navy/50 hover:text-navy px-3 py-2">
@@ -290,100 +356,64 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* ───── SECTION 2: Stylist-Specific Hours ───── */}
+      {/* ───── SECTION 2: Stylist cards ───── */}
       {stylists.length > 0 && (
         <div className="mb-10">
-          <h2 className="font-heading text-xl mb-2">Stylist-Specific Hours</h2>
-          <p className="text-navy/40 text-xs font-body mb-4">
-            Set different hours for individual stylists. Overrides salon hours for that stylist.
-          </p>
-
-          {stylistWeekly.length > 0 && (
-            <div className="bg-white border border-navy/10 divide-y divide-navy/5 mb-4">
-              {stylistWeekly.map((rule) => (
-                <div key={rule.id} className="px-6 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="font-body text-sm">
-                      <span className="font-bold">{getStylistName(rule.stylistId)}</span>
-                      {" — "}
-                      {DAYS[rule.dayOfWeek ?? 0]}
-                    </p>
-                    <p className="text-navy/40 text-xs font-body">
-                      {rule.isClosed ? "Closed" : `${rule.startTime} – ${rule.endTime}`}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setConfirmDeleteId(rule.id)}
-                    disabled={deletingId === rule.id}
-                    className="text-red-500 text-xs font-body hover:underline disabled:opacity-60"
-                  >
-                    {deletingId === rule.id ? "Removing..." : "Remove"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="bg-cream/50 border border-navy/10 p-4">
-            <p className="text-xs font-body text-navy/50 mb-3">Add stylist-specific hours:</p>
-            <div className="flex flex-wrap items-center gap-3">
-              <select value={editDayStylist} onChange={(e) => setEditDayStylist(e.target.value)} className="border border-navy/20 px-3 py-2 text-sm font-body">
-                <option value="">Select stylist</option>
-                {stylists.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-              <select
-                value={editingDay !== null && editDayStylist ? String(editingDay) : ""}
-                onChange={(e) => {
-                  const day = parseInt(e.target.value);
-                  if (!isNaN(day)) openEditDay(day, editDayStylist);
-                }}
-                className="border border-navy/20 px-3 py-2 text-sm font-body"
-              >
-                <option value="">Select day</option>
-                {DAYS.map((d, i) => (
-                  <option key={i} value={i}>{d}</option>
-                ))}
-              </select>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={editDayClosed} onChange={(e) => setEditDayClosed(e.target.checked)} className="w-4 h-4" />
-                <span className="text-sm font-body">Closed</span>
-              </label>
-              {!editDayClosed && (
-                <>
-                  <input type="time" value={editDayStart} onChange={(e) => setEditDayStart(e.target.value)} className="border border-navy/20 px-2 py-1.5 text-sm font-body" />
-                  <span className="text-navy/40 text-sm">to</span>
-                  <input type="time" value={editDayEnd} onChange={(e) => setEditDayEnd(e.target.value)} className="border border-navy/20 px-2 py-1.5 text-sm font-body" />
-                </>
-              )}
-              <button
-                onClick={() => {
-                  if (!editDayStylist || editingDay === null) {
-                    setToast({ type: "error", message: "Select a stylist and day." });
-                    return;
-                  }
-                  saveWeeklyRule();
-                }}
-                disabled={saving || !editDayStylist}
-                className="bg-navy text-white text-xs font-body px-4 py-2 hover:bg-navy/90 disabled:opacity-60"
-              >
-                {saving ? "Saving..." : "Save"}
-              </button>
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-heading text-xl">Stylists</h2>
+            <p className="text-xs text-navy/40 font-body">
+              Click a stylist to edit their hours and time off
+            </p>
           </div>
+
+          <div className="space-y-2">
+            {activeStylists.map((stylist) => (
+              <StylistScheduleCard
+                key={stylist.id}
+                stylist={stylist}
+                rules={rules}
+                onSaveWeekly={saveStylistWeekly}
+                onSaveOverride={saveStylistOverride}
+                onClearWeekly={clearRule}
+                onDeleteOverride={clearRule}
+                saving={saving}
+              />
+            ))}
+          </div>
+
+          {inactiveStylists.length > 0 && (
+            <details className="mt-4 bg-white border border-navy/10">
+              <summary className="cursor-pointer px-4 py-3 font-body text-sm text-navy/50 hover:text-navy hover:bg-cream/40">
+                Inactive stylists ({inactiveStylists.length})
+              </summary>
+              <div className="divide-y divide-navy/5">
+                {inactiveStylists.map((stylist) => (
+                  <StylistScheduleCard
+                    key={stylist.id}
+                    stylist={stylist}
+                    rules={rules}
+                    onSaveWeekly={saveStylistWeekly}
+                    onSaveOverride={saveStylistOverride}
+                    onClearWeekly={clearRule}
+                    onDeleteOverride={clearRule}
+                    saving={saving}
+                  />
+                ))}
+              </div>
+            </details>
+          )}
         </div>
       )}
 
-      {/* ───── SECTION 3: Closures & Overrides ───── */}
+      {/* ───── SECTION 3: Salon-wide closures & overrides ───── */}
       <div className="mb-10">
-        <h2 className="font-heading text-xl mb-2">Closures &amp; Overrides</h2>
+        <h2 className="font-heading text-xl mb-2">Salon-wide closures &amp; overrides</h2>
         <p className="text-navy/40 text-xs font-body mb-4">
-          Close for holidays, vacations, or set special hours for specific dates.
+          Close the whole salon for holidays, vacations, or set special hours for specific dates.
+          For a single stylist&apos;s time off, use their card above.
         </p>
 
         <div className="bg-cream/50 border border-navy/10 p-4 mb-6">
-          {/* Mode toggle */}
           <div className="flex gap-4 mb-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="radio" name="overrideMode" checked={overrideMode === "single"} onChange={() => setOverrideMode("single")} className="w-4 h-4" />
@@ -427,18 +457,9 @@ export default function SchedulePage() {
                 </div>
               </>
             )}
-            <div>
-              <label className="block text-xs font-body text-navy/40 mb-1">Applies to</label>
-              <select value={overrideStylist} onChange={(e) => setOverrideStylist(e.target.value)} className="border border-navy/20 px-3 py-2 text-sm font-body">
-                <option value="">Entire salon</option>
-                {stylists.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
+            <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-body text-navy/40 mb-1">Note</label>
-              <input type="text" value={overrideNote} onChange={(e) => setOverrideNote(e.target.value)} placeholder="e.g. Holiday, Vacation" className="border border-navy/20 px-3 py-2 text-sm font-body" />
+              <input type="text" value={overrideNote} onChange={(e) => setOverrideNote(e.target.value)} placeholder="e.g. Holiday, Vacation" className="w-full border border-navy/20 px-3 py-2 text-sm font-body" />
             </div>
           </div>
           <button
@@ -446,28 +467,20 @@ export default function SchedulePage() {
             disabled={saving || !overrideDate}
             className="mt-4 bg-rose text-white text-sm font-body px-6 py-2 hover:bg-rose-light transition-colors disabled:opacity-60"
           >
-            {saving ? "Saving..." : overrideMode === "range" ? "Save Date Range" : "Save Override"}
+            {saving ? "Saving..." : overrideMode === "range" ? "Save date range" : "Save override"}
           </button>
         </div>
 
-        {/* Existing overrides */}
         {loading ? (
           <p className="text-navy/40 font-body text-sm">Loading...</p>
-        ) : overrides.length === 0 ? (
-          <p className="text-navy/40 font-body text-sm">No overrides scheduled.</p>
+        ) : salonOverrides.length === 0 ? (
+          <p className="text-navy/40 font-body text-sm">No salon-wide overrides scheduled.</p>
         ) : (
           <div className="bg-white border border-navy/10 divide-y divide-navy/5">
-            {overrides.map((rule) => (
+            {salonOverrides.map((rule) => (
               <div key={rule.id} className="px-6 py-3 flex items-center justify-between">
                 <div>
-                  <p className="font-body text-sm">
-                    {rule.specificDate}
-                    {rule.stylistId && (
-                      <span className="ml-2 text-xs bg-navy/10 text-navy/60 px-2 py-0.5 rounded">
-                        {getStylistName(rule.stylistId)}
-                      </span>
-                    )}
-                  </p>
+                  <p className="font-body text-sm">{rule.specificDate}</p>
                   <p className="text-navy/40 text-xs font-body">
                     {rule.isClosed ? "Closed" : `${rule.startTime} – ${rule.endTime}`}
                     {rule.note ? ` — ${rule.note}` : ""}
@@ -488,7 +501,7 @@ export default function SchedulePage() {
 
       {confirmDeleteId && (
         <ConfirmModal
-          title="Remove Rule"
+          title="Remove override"
           message="Are you sure you want to remove this schedule rule?"
           confirmLabel="Remove"
           onConfirm={() => {
