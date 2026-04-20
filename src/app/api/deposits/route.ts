@@ -59,13 +59,24 @@ export async function POST(request: NextRequest) {
 
   if (!emailForStripe) return apiError("Missing client email.", 400);
 
-  const intent = await createDepositIntent(
-    amountCents,
-    emailForStripe,
-    nameForStripe,
-    phoneForStripe,
-    metadata,
-  );
+  let intent;
+  try {
+    intent = await createDepositIntent(
+      amountCents,
+      emailForStripe,
+      nameForStripe,
+      phoneForStripe,
+      metadata,
+    );
+  } catch (err) {
+    // Guard-thrown config errors (e.g. pk_ in STRIPE_SECRET_KEY) arrive
+    // here — surface the real message instead of a generic 500.
+    logError("api/deposits", err);
+    return apiError(
+      err instanceof Error ? err.message : "Deposit form failed to initialize.",
+      500,
+    );
+  }
   if (intent.error) return apiError(intent.error, 500);
 
   // Record the charge row eagerly so admins can see the attempt even if

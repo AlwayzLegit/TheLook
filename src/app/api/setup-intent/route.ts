@@ -1,4 +1,4 @@
-import { apiError, apiSuccess } from "@/lib/apiResponse";
+import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { createSetupIntent, isStripeEnabled } from "@/lib/stripe";
 import { NextRequest } from "next/server";
 
@@ -19,14 +19,24 @@ export async function POST(request: NextRequest) {
 
   if (!clientEmail) return apiError("clientEmail required.", 400);
 
-  const si = await createSetupIntent(clientEmail, clientName, clientPhone, {
-    description: description || "",
-  });
-  if (si.error) return apiError(si.error, 500);
+  try {
+    const si = await createSetupIntent(clientEmail, clientName, clientPhone, {
+      description: description || "",
+    });
+    if (si.error) return apiError(si.error, 500);
 
-  return apiSuccess({
-    clientSecret: si.clientSecret,
-    setupIntentId: si.id,
-    customerId: si.customerId,
-  });
+    return apiSuccess({
+      clientSecret: si.clientSecret,
+      setupIntentId: si.id,
+      customerId: si.customerId,
+    });
+  } catch (err) {
+    // Bubble the thrown config-guard message up to the client so the admin
+    // sees exactly which env var is wrong instead of a generic 500.
+    logError("api/setup-intent", err);
+    return apiError(
+      err instanceof Error ? err.message : "Card form failed to initialize.",
+      500,
+    );
+  }
 }
