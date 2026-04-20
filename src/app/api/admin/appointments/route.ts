@@ -57,15 +57,16 @@ export async function GET(request: NextRequest) {
     return q;
   };
 
-  // Retry strategy mirrors the approved_at pattern: drop whichever filter
-  // the schema doesn't know yet so a schema-behind admin still gets data.
+  // Self-healing retries when the schema is behind (migration not yet
+  // applied on this env). We used to logError on each retry even when the
+  // recovery succeeded — Vercel treated those as prod errors (V-1). Now
+  // we silently drop the offending filter and only surface a real error
+  // if every retry fails too.
   let { data: rows, error } = await buildQuery({ archive: true, testFilter: true });
   if (error && /is_test/i.test(error.message || "")) {
-    logError("admin/appointments GET (is_test col missing, retrying)", error);
     ({ data: rows, error } = await buildQuery({ archive: true, testFilter: false }));
   }
   if (error && /archived_at/i.test(error.message || "")) {
-    logError("admin/appointments GET (archived_at col missing, retrying)", error);
     if (archived) return apiSuccess([]);
     ({ data: rows, error } = await buildQuery({ archive: false, testFilter: false }));
   }

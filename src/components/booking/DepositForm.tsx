@@ -86,12 +86,12 @@ export default function DepositForm({
   const [loadError, setLoadError] = useState<string | null>(null);
   // null = config missing, "loading" = waiting on script, "failed" = retried
   // and gave up, Stripe instance = loaded.
-  const [stripe, setStripe] = useState<Stripe | null | "failed" | "loading">("loading");
+  const [stripe, setStripe] = useState<Stripe | null | "failed" | "loading" | "not_configured">("loading");
 
   useEffect(() => {
     const promise = getStripeBrowser();
     if (!promise) {
-      setStripe("failed");
+      setStripe("not_configured");
       return;
     }
     let cancelled = false;
@@ -103,7 +103,7 @@ export default function DepositForm({
   }, []);
 
   useEffect(() => {
-    if (stripe === "loading" || stripe === "failed" || stripe === null) return;
+    if (stripe === "loading" || stripe === "failed" || stripe === "not_configured" || stripe === null) return;
     if (!clientEmail) return;
     let cancelled = false;
     (async () => {
@@ -128,7 +128,7 @@ export default function DepositForm({
     return () => { cancelled = true; };
   }, [amountCents, clientEmail, clientName, description, stripe]);
 
-  if (stripe === null) {
+  if (stripe === null || stripe === "not_configured") {
     return (
       <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 font-body text-sm">
         Card payments aren&apos;t configured on this site. Please call

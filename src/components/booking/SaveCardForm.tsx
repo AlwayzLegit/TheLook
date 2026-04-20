@@ -85,12 +85,15 @@ export default function SaveCardForm({
   const [loadError, setLoadError] = useState<string | null>(null);
   // Track Stripe.js load explicitly so a hung script surfaces a "call us"
   // panel instead of an indefinite spinner. null = still loading.
-  const [stripe, setStripe] = useState<Stripe | null | "failed" | "loading">("loading");
+  const [stripe, setStripe] = useState<Stripe | null | "failed" | "loading" | "not_configured">("loading");
 
   useEffect(() => {
     const promise = getStripeBrowser();
     if (!promise) {
-      setStripe("failed");
+      // NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY wasn't inlined at build time.
+      // Distinct from "script-load failed" so the UI can give a clearer
+      // fallback instead of saying "having trouble loading".
+      setStripe("not_configured");
       return;
     }
     let cancelled = false;
@@ -102,7 +105,7 @@ export default function SaveCardForm({
   }, []);
 
   useEffect(() => {
-    if (stripe === "loading" || stripe === "failed" || stripe === null) return;
+    if (stripe === "loading" || stripe === "failed" || stripe === "not_configured" || stripe === null) return;
     if (!clientEmail) return;
     let cancelled = false;
     (async () => {
@@ -127,7 +130,7 @@ export default function SaveCardForm({
     return () => { cancelled = true; };
   }, [clientEmail, clientName, clientPhone, description, stripe]);
 
-  if (stripe === null) {
+  if (stripe === null || stripe === "not_configured") {
     return (
       <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 font-body text-sm">
         Card payments aren&apos;t configured on this site. Call (818) 662-5665
