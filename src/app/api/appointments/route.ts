@@ -259,16 +259,79 @@ export async function POST(request: NextRequest) {
     .insert(mappingRows);
   if (mappingError) logError("appointments POST (services)", mappingError);
 
-  // Record the deposit if one was paid.
-  if (depositPaid) {
-    const { error: depositError } = await supabase.from("deposits").insert({
+  // Record the deposit if one was paid. Two writes:
+  //   1. legacy `deposits` row (kept while older admin reads depend on it)
+  //   2. unified `charges` row (new canonical ledger — includes card brand
+  //      / last4 / customer id so the admin can audit at a glance).
+  // Also: look up the Stripe customer + payment method for this intent and
+  // cache it on the appointment so the cancellation-fee flow can charge
+  // off-session later without another Stripe round-trip.
+  if (depositPaid && depositPaymentIntentId) {
+    const { lookupPaymentMethodFromIntent } = await import("@/lib/stripe");
+    const pmInfo = await lookupPaymentMethodFromIntent(depositPaymentIntentId);
+
+    await supabase.from("deposits").insert({
       appointment_id: appointmentId,
       amount: depositRequired,
       currency: "USD",
       stripe_payment_intent_id: depositPaymentIntentId,
       status: "succeeded",
     });
-    if (depositError) logError("appointments POST (deposit)", depositError);
+
+    // Resolve Stripe customer for this email so we can stamp it on the
+    // appointment + client profile.
+    let stripeCustomerId: string | null = null;
+    try {
+      const { data: prof } = await supabase
+        .from("client_profiles")
+        .select("stripe_customer_id")
+        .eq("email", clientEmail.toLowerCase())
+        .maybeSingle();
+      stripeCustomerId = (prof?.stripe_customer_id as string) || null;
+    } catch {
+      // fall through
+    }
+
+    // Upsert appointment-level cache so we have everything we need to
+    // charge without extra Stripe calls later.
+    await supabase
+      .from("appointments")
+      .update({
+        stripe_customer_id: stripeCustomerId,
+        stripe_payment_method_id: pmInfo.paymentMethodId,
+        card_brand: pmInfo.cardBrand,
+        card_last4: pmInfo.cardLast4,
+      })
+      .eq("id", appointmentId);
+
+    // Unified charges row — upsert in case /api/deposits already wrote a
+    // pending row for the same intent id.
+    await supabase.from("charges").upsert({
+      appointment_id: appointmentId,
+      client_email: clientEmail,
+      stripe_customer_id: stripeCustomerId,
+      stripe_payment_intent_id: depositPaymentIntentId,
+      type: "deposit",
+      amount: depositRequired,
+      currency: "USD",
+      status: "succeeded",
+      card_brand: pmInfo.cardBrand,
+      card_last4: pmInfo.cardLast4,
+      reason: "Booking deposit",
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "stripe_payment_intent_id" });
+
+    // Ensure the client profile exists with the stripe_customer_id cached.
+    if (stripeCustomerId) {
+      await supabase
+        .from("client_profiles")
+        .upsert({
+          email: clientEmail.toLowerCase(),
+          name: clientName,
+          phone: clientPhone || null,
+          stripe_customer_id: stripeCustomerId,
+        }, { onConflict: "email" });
+    }
   }
 
   // Stylist name for email/notification.

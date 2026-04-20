@@ -37,6 +37,11 @@ interface EnrichedAppointment {
   reminder_sent?: boolean;
   serviceName: string;
   stylistName: string;
+  // Card-on-file metadata — populated by the deposit flow.
+  stripe_customer_id?: string | null;
+  card_brand?: string | null;
+  card_last4?: string | null;
+  cancellation_fee_charged_cents?: number | null;
 }
 
 function formatTime(time: string) {
@@ -262,6 +267,38 @@ export default function AppointmentsPage() {
       }
       setToast({ type: "success", message: "Appointment deleted." });
       refresh();
+    } finally {
+      setPendingStatusId(null);
+    }
+  };
+
+  const chargeCancellationFee = async (id: string, clientName: string) => {
+    if (!confirm(`Charge the 25% cancellation fee to ${clientName}'s card on file?`)) return;
+    try {
+      setPendingStatusId(id);
+      const res = await fetch(`/api/admin/appointments/${id}/charge-fee`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ percent: 25 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.status === "succeeded") {
+        setToast({
+          type: "success",
+          message: `Charged $${((data.amountCharged ?? 0) / 100).toFixed(2)} to ${data.cardBrand ?? "card"} •••${data.cardLast4 ?? ""}.`,
+        });
+        refresh();
+      } else if (res.ok && data.status === "requires_action") {
+        setToast({
+          type: "error",
+          message: "Card requires 3D Secure re-auth. Contact the client to complete the payment.",
+        });
+      } else {
+        setToast({
+          type: "error",
+          message: data.error || "Charge failed.",
+        });
+      }
     } finally {
       setPendingStatusId(null);
     }
@@ -605,6 +642,29 @@ export default function AppointmentsPage() {
                     Delete
                   </button>
                 </div>
+              )}
+              {/* Charge cancellation fee — only surfaced on cancelled/no-show
+                  rows with a saved card and no prior fee charge. */}
+              {(appt.status === "cancelled" || appt.status === "no_show") &&
+                appt.stripe_customer_id &&
+                (appt.cancellation_fee_charged_cents ?? 0) === 0 && (
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-body text-navy/50">
+                    Card on file: {appt.card_brand ? `${appt.card_brand.toUpperCase()} •••${appt.card_last4}` : "saved"}
+                  </span>
+                  <button
+                    onClick={() => chargeCancellationFee(appt.id, appt.client_name)}
+                    disabled={pendingStatusId === appt.id}
+                    className="text-xs font-body text-amber-900 bg-amber-100 border border-amber-300 px-3 py-1 hover:bg-amber-200 disabled:opacity-60"
+                  >
+                    Charge 25% cancellation fee
+                  </button>
+                </div>
+              )}
+              {(appt.cancellation_fee_charged_cents ?? 0) > 0 && (
+                <p className="mt-2 text-[11px] font-body text-emerald-700">
+                  ✓ Cancellation fee charged: ${((appt.cancellation_fee_charged_cents ?? 0) / 100).toFixed(2)}
+                </p>
               )}
             </div>
           ))}

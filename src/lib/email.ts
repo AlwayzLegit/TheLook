@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { brandedEmail, detailsTable, formatDate, formatTime } from "./emailTemplate";
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -10,6 +11,7 @@ function getResend() {
 
 const FROM = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
 const SALON_EMAIL = process.env.ADMIN_EMAIL || "look_hairsalon@yahoo.com";
+const SITE = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
 
 interface AppointmentDetails {
   clientName: string;
@@ -21,70 +23,77 @@ interface AppointmentDetails {
   cancelUrl?: string;
 }
 
-function formatDate(date: string): string {
-  return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-function formatTime(time: string): string {
-  const [h, m] = time.split(":").map(Number);
-  const ampm = h >= 12 ? "PM" : "AM";
-  const hour = h % 12 || 12;
-  return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
-}
+// ----------------------------------------------------------------------
+// Client-facing emails
+// ----------------------------------------------------------------------
 
 export async function sendBookingConfirmation(details: AppointmentDetails) {
   const { clientName, clientEmail, serviceName, stylistName, date, startTime, cancelUrl } = details;
+  const rescheduleUrl = cancelUrl ? cancelUrl.replace("/book/cancel", "/book/reschedule") : undefined;
 
-  const html = `
-    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
-        <p style="color: #c9a96e; font-size: 12px; letter-spacing: 3px; margin-top: 8px;">BOOKING CONFIRMATION</p>
-      </div>
-      <div style="background: white; padding: 30px; border: 1px solid #eee;">
-        <p style="color: #282936; margin: 0 0 20px;">Hi ${clientName},</p>
-        <p style="color: #666; margin: 0 0 20px;">Your appointment has been booked! Here are the details:</p>
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Service</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${serviceName}</td></tr>
-          <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Stylist</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${stylistName}</td></tr>
-          <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Date</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${formatDate(date)}</td></tr>
-          <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Time</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${formatTime(startTime)}</td></tr>
-        </table>
-        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
-          <p style="color: #666; font-size: 13px; margin: 0;">919 South Central Ave Suite #E, Glendale, CA 91204</p>
-          <p style="color: #666; font-size: 13px; margin: 4px 0;">(818) 662-5665</p>
-        </div>
-        ${cancelUrl ? `<div style="margin-top: 20px; text-align: center;"><a href="${cancelUrl}" style="color: #c2274b; font-size: 13px;">Cancel</a> &nbsp;·&nbsp; <a href="${cancelUrl.replace("/book/cancel", "/book/reschedule")}" style="color: #c2274b; font-size: 13px;">Reschedule</a></div>` : ""}
-      </div>
-      <p style="text-align: center; color: #666; font-size: 12px; line-height: 1.55; margin-top: 20px; max-width: 520px; margin-left: auto; margin-right: auto;">
-        <strong style="color: #282936;">Deposit &amp; cancellation policy:</strong>
-        a $50 non-refundable deposit is charged at booking and applied to your service total at the
-        appointment. If you cancel or don&#39;t show, the deposit is forfeited.
-        <strong style="color: #282936;">A 25% cancellation fee is also charged on no-shows or
-        cancellations within 24 hours of the scheduled appointment.</strong>
+  const html = brandedEmail({
+    preheader: `Your ${serviceName} appointment is confirmed for ${formatDate(date)}.`,
+    kicker: "Appointment pending approval",
+    headline: `Thanks, ${clientName.split(" ")[0]} — we got your request.`,
+    bodyHtml: `
+      <p style="margin: 0 0 14px;">
+        Your booking is in. A stylist will review and confirm shortly, and you&#39;ll get a
+        second email once we do. Here are the details so far:
       </p>
-    </div>
-  `;
+      ${detailsTable([
+        ["Service", serviceName],
+        ["Stylist", stylistName],
+        ["Date", formatDate(date)],
+        ["Time", formatTime(startTime)],
+      ])}
+      <p style="margin: 18px 0 8px;">
+        <strong>Prep tips:</strong> arrive with your natural hair texture (unwashed 1–2 days
+        before color is ideal), and bring reference photos if you have a look in mind.
+      </p>
+      <p style="margin: 0 0 14px;">
+        Need to change something? Use the Reschedule link below, or call us — we&#39;re friendly
+        on the phone.
+      </p>
+    `,
+    ctaLabel: cancelUrl ? "Manage booking" : undefined,
+    ctaUrl: rescheduleUrl,
+    secondaryLabel: cancelUrl ? "Cancel this appointment" : undefined,
+    secondaryUrl: cancelUrl,
+    signoff: "See you soon — The Look Hair Salon",
+  });
 
   try {
     await getResend().emails.send({
       from: FROM,
       to: clientEmail,
-      subject: `Booking Confirmed — ${formatDate(date)} at ${formatTime(startTime)}`,
+      subject: `We got your booking request — ${formatDate(date)} at ${formatTime(startTime)}`,
       html,
     });
 
-    // Notify salon
+    // Simultaneously notify the salon.
     await getResend().emails.send({
       from: FROM,
       to: SALON_EMAIL,
-      subject: `New Booking: ${clientName} — ${serviceName} with ${stylistName}`,
-      html: html.replace("BOOKING CONFIRMATION", "NEW BOOKING ALERT"),
+      subject: `New booking: ${clientName} — ${serviceName} with ${stylistName}`,
+      html: brandedEmail({
+        preheader: `New booking for ${clientName} on ${formatDate(date)}.`,
+        kicker: "New booking alert",
+        headline: `${clientName} just booked`,
+        bodyHtml: `
+          ${detailsTable([
+            ["Client", `${clientName}<br/><span style="color:#999; font-size:12px;">${clientEmail}</span>`],
+            ["Service", serviceName],
+            ["Stylist", stylistName],
+            ["Date", formatDate(date)],
+            ["Time", formatTime(startTime)],
+          ])}
+          <p style="margin: 18px 0 0;">Head into admin to approve or reschedule.</p>
+        `,
+        ctaLabel: "Review in admin",
+        ctaUrl: `${SITE}/admin/appointments`,
+        signoff: "Auto-sent by The Look booking system",
+        includePolicyFooter: false,
+      }),
     });
   } catch (error) {
     console.error("Failed to send email:", error);
@@ -98,22 +107,25 @@ export async function sendCancellationEmail(details: Omit<AppointmentDetails, "c
     await getResend().emails.send({
       from: FROM,
       to: clientEmail,
-      subject: `Appointment Cancelled — ${formatDate(date)}`,
-      html: `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
-          </div>
-          <div style="background: white; padding: 30px; border: 1px solid #eee;">
-            <p style="color: #282936;">Hi ${clientName},</p>
-            <p style="color: #666;">Your appointment for <strong>${serviceName}</strong> on <strong>${formatDate(date)}</strong> at <strong>${formatTime(startTime)}</strong> has been cancelled.</p>
-            <p style="color: #666;">We'd love to see you again! Call us at (818) 662-5665 or visit our website to rebook.</p>
-            <p style="color: #888; font-size: 12px; margin-top: 18px; padding-top: 16px; border-top: 1px solid #eee;">
-              <strong style="color: #282936;">Deposit &amp; cancellation fee:</strong> any deposit collected at booking is non-refundable and forfeited upon cancellation. A 25% cancellation fee is also charged on no-shows or cancellations within 24 hours of the scheduled appointment. Questions? Reply to this email or call (818) 662-5665.
-            </p>
-          </div>
-        </div>
-      `,
+      subject: `Appointment cancelled — ${formatDate(date)}`,
+      html: brandedEmail({
+        preheader: `Your ${serviceName} appointment on ${formatDate(date)} has been cancelled.`,
+        kicker: "Appointment cancelled",
+        headline: "Your appointment was cancelled.",
+        bodyHtml: `
+          <p style="margin: 0 0 14px;">Hi ${clientName},</p>
+          <p style="margin: 0 0 14px;">
+            Your appointment for <strong>${serviceName}</strong> on <strong>${formatDate(date)}</strong>
+            at <strong>${formatTime(startTime)}</strong> has been cancelled.
+          </p>
+          <p style="margin: 0 0 6px;">
+            We&#39;d love to see you back in the chair. Book again anytime:
+          </p>
+        `,
+        ctaLabel: "Book a new appointment",
+        ctaUrl: `${SITE}/book`,
+        signoff: "— The Look Hair Salon",
+      }),
     });
   } catch (error) {
     console.error("Failed to send cancellation email:", error);
@@ -122,27 +134,40 @@ export async function sendCancellationEmail(details: Omit<AppointmentDetails, "c
 
 export async function sendReminderEmail(details: AppointmentDetails) {
   const { clientName, clientEmail, serviceName, stylistName, date, startTime, cancelUrl } = details;
+  const rescheduleUrl = cancelUrl ? cancelUrl.replace("/book/cancel", "/book/reschedule") : undefined;
 
   try {
     await getResend().emails.send({
       from: FROM,
       to: clientEmail,
-      subject: `Reminder: Your appointment tomorrow at ${formatTime(startTime)}`,
-      html: `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
-            <p style="color: #c9a96e; font-size: 12px; letter-spacing: 3px; margin-top: 8px;">APPOINTMENT REMINDER</p>
-          </div>
-          <div style="background: white; padding: 30px; border: 1px solid #eee;">
-            <p style="color: #282936;">Hi ${clientName},</p>
-            <p style="color: #666;">Just a friendly reminder about your appointment tomorrow:</p>
-            <p style="color: #282936; font-weight: bold; font-size: 16px; margin: 15px 0;">${serviceName} with ${stylistName}<br/>${formatDate(date)} at ${formatTime(startTime)}</p>
-            <p style="color: #666; font-size: 13px;">919 South Central Ave Suite #E, Glendale, CA 91204</p>
-            ${cancelUrl ? `<p style="margin-top: 15px;"><a href="${cancelUrl}" style="color: #c2274b; font-size: 13px;">Need to cancel or reschedule?</a></p>` : ""}
-          </div>
-        </div>
-      `,
+      subject: `Reminder: your appointment tomorrow at ${formatTime(startTime)}`,
+      html: brandedEmail({
+        preheader: `See you tomorrow at ${formatTime(startTime)} for ${serviceName}.`,
+        kicker: "Appointment reminder",
+        headline: `See you tomorrow, ${clientName.split(" ")[0]}.`,
+        bodyHtml: `
+          <p style="margin: 0 0 14px;">
+            Quick reminder — here&#39;s what we have on the books:
+          </p>
+          ${detailsTable([
+            ["Service", serviceName],
+            ["Stylist", stylistName],
+            ["Date", formatDate(date)],
+            ["Time", formatTime(startTime)],
+          ])}
+          <p style="margin: 18px 0 6px;">
+            Parking is free in our lot on South Central Ave. Please arrive a few minutes early so
+            we can start on time.
+          </p>
+          <p style="margin: 0 0 0;">
+            Need to move things around? Use the link below — keep in mind cancellations within
+            24 hours incur the 25% fee and forfeit your deposit.
+          </p>
+        `,
+        ctaLabel: cancelUrl ? "Reschedule or cancel" : undefined,
+        ctaUrl: rescheduleUrl || cancelUrl,
+        signoff: "See you soon — The Look Hair Salon",
+      }),
     });
   } catch (error) {
     console.error("Failed to send reminder email:", error);
@@ -161,138 +186,121 @@ interface StatusChangeDetails {
 }
 
 export async function sendStatusChangeEmail(details: StatusChangeDetails) {
-  const { clientName, clientEmail, serviceName, date, startTime, newStatus, cancelToken } = details;
+  const { clientName, clientEmail, serviceName, stylistName, date, startTime, newStatus, cancelToken } = details;
 
-  const statusMessages: Record<string, { subject: string; heading: string; body: string }> = {
+  const detailRows = detailsTable([
+    ["Service", serviceName],
+    ["Stylist", stylistName],
+    ["Date", formatDate(date)],
+    ["Time", formatTime(startTime)],
+  ]);
+
+  const cancelUrl = cancelToken ? `${SITE}/book/cancel?token=${cancelToken}` : undefined;
+  const rescheduleUrl = cancelToken ? `${SITE}/book/reschedule?token=${cancelToken}` : undefined;
+
+  const templates: Record<string, { subject: string; kicker: string; headline: string; body: string; ctaLabel?: string; ctaUrl?: string; secondaryLabel?: string; secondaryUrl?: string }> = {
     confirmed: {
-      subject: `Appointment Confirmed — ${formatDate(date)} at ${formatTime(startTime)}`,
-      heading: "APPOINTMENT CONFIRMED",
-      body: "Great news! Your appointment has been confirmed. We look forward to seeing you!",
+      subject: `You're confirmed — ${formatDate(date)} at ${formatTime(startTime)}`,
+      kicker: "Appointment confirmed",
+      headline: "You're confirmed.",
+      body: `
+        <p style="margin: 0 0 14px;">Hi ${clientName}, your appointment is officially on the books:</p>
+        ${detailRows}
+        <p style="margin: 18px 0 0;">
+          Come in with unwashed hair (1–2 days is ideal) for color work, and bring photos if
+          you have a specific look in mind. See you soon!
+        </p>
+      `,
+      ctaLabel: cancelUrl ? "Reschedule" : undefined,
+      ctaUrl: rescheduleUrl,
+      secondaryLabel: cancelUrl ? "Cancel this appointment" : undefined,
+      secondaryUrl: cancelUrl,
     },
     cancelled: {
-      subject: `Appointment Cancelled — ${formatDate(date)}`,
-      heading: "APPOINTMENT CANCELLED",
-      body: "Your appointment has been cancelled. If this was a mistake, please call us to rebook.",
+      subject: `Appointment cancelled — ${formatDate(date)}`,
+      kicker: "Appointment cancelled",
+      headline: "Your appointment was cancelled.",
+      body: `
+        <p style="margin: 0 0 14px;">Hi ${clientName}, the following appointment has been cancelled:</p>
+        ${detailRows}
+        <p style="margin: 18px 0 0;">
+          If this was a mistake, please call us at (818) 662-5665. Otherwise we&#39;d love to
+          see you again whenever works for you.
+        </p>
+      `,
+      ctaLabel: "Book again",
+      ctaUrl: `${SITE}/book`,
     },
     completed: {
-      subject: "Thanks for Visiting The Look Hair Salon!",
-      heading: "THANK YOU",
-      body: "We hope you loved your new look! If you have a moment, we'd appreciate a review on Yelp or Google. See you next time!",
+      subject: "Thanks for visiting The Look Hair Salon!",
+      kicker: "Thanks for visiting",
+      headline: "Thanks for coming in.",
+      body: `
+        <p style="margin: 0 0 14px;">Hi ${clientName}, we hope you loved your new look.</p>
+        <p style="margin: 0 0 14px;">
+          If you have a minute, a Google or Yelp review helps other Glendale locals find us and
+          tells our team they&#39;re doing it right. Took you less than a minute to find us —
+          takes even less to leave a line.
+        </p>
+        <p style="margin: 0 0 0;">See you next time!</p>
+      `,
+      ctaLabel: "Leave a review",
+      ctaUrl: `${SITE}/review`,
     },
     no_show: {
-      subject: `Missed Appointment — ${formatDate(date)}`,
-      heading: "MISSED APPOINTMENT",
-      body: "We missed you today! Please call us at (818) 662-5665 to reschedule.",
+      subject: `Missed appointment — ${formatDate(date)}`,
+      kicker: "Missed appointment",
+      headline: "We missed you today.",
+      body: `
+        <p style="margin: 0 0 14px;">Hi ${clientName},</p>
+        <p style="margin: 0 0 14px;">
+          We held your slot for <strong>${serviceName}</strong> on <strong>${formatDate(date)}</strong>
+          at <strong>${formatTime(startTime)}</strong>, but you didn&#39;t make it. Per the
+          cancellation policy you agreed to at booking, your $50 deposit is forfeited and a 25%
+          cancellation fee may be applied to the card on file.
+        </p>
+        <p style="margin: 0 0 0;">
+          If something came up we&#39;d love to rebook you. Call us at (818) 662-5665 and we&#39;ll
+          find another time.
+        </p>
+      `,
+      ctaLabel: "Book a new appointment",
+      ctaUrl: `${SITE}/book`,
     },
   };
 
-  const msg = statusMessages[newStatus];
-  if (!msg) return;
-
-  const baseUrl = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
-  const cancelLink = cancelToken && newStatus === "confirmed"
-    ? `<div style="margin-top: 20px; text-align: center;"><a href="${baseUrl}/book/cancel?token=${cancelToken}" style="color: #c2274b; font-size: 13px;">Need to cancel? Click here</a></div>`
-    : "";
-
-  const reviewLinks = newStatus === "completed"
-    ? `<div style="margin-top: 20px; text-align: center;">
-        <a href="https://www.yelp.com/biz/the-look-hair-salon-glendale" style="color: #c2274b; font-size: 13px; margin-right: 16px;">Review on Yelp</a>
-        <a href="https://www.google.com/maps/place/The+Look+Hair+Salon" style="color: #c2274b; font-size: 13px;">Review on Google</a>
-      </div>`
-    : "";
+  const t = templates[newStatus];
+  if (!t) return;
 
   try {
     await getResend().emails.send({
       from: FROM,
       to: clientEmail,
-      subject: msg.subject,
-      html: `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
-            <p style="color: #c9a96e; font-size: 12px; letter-spacing: 3px; margin-top: 8px;">${msg.heading}</p>
-          </div>
-          <div style="background: white; padding: 30px; border: 1px solid #eee;">
-            <p style="color: #282936; margin: 0 0 20px;">Hi ${clientName},</p>
-            <p style="color: #666; margin: 0 0 20px;">${msg.body}</p>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Service</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${serviceName}</td></tr>
-              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Date</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${formatDate(date)}</td></tr>
-              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Time</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${formatTime(startTime)}</td></tr>
-            </table>
-            ${cancelLink}
-            ${reviewLinks}
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
-              <p style="color: #666; font-size: 13px; margin: 0;">919 South Central Ave Suite #E, Glendale, CA 91204</p>
-              <p style="color: #666; font-size: 13px; margin: 4px 0;">(818) 662-5665</p>
-            </div>
-          </div>
-        </div>
-      `,
+      subject: t.subject,
+      html: brandedEmail({
+        preheader: t.headline,
+        kicker: t.kicker,
+        headline: t.headline,
+        bodyHtml: t.body,
+        ctaLabel: t.ctaLabel,
+        ctaUrl: t.ctaUrl,
+        secondaryLabel: t.secondaryLabel,
+        secondaryUrl: t.secondaryUrl,
+        signoff: "— The Look Hair Salon",
+        // Policy footer only shows on no-show / cancellation where it's
+        // the most relevant. Confirmed + completed skip it to keep the
+        // cadence warm.
+        includePolicyFooter: newStatus === "cancelled" || newStatus === "no_show",
+      }),
     });
   } catch (error) {
     console.error("Failed to send status change email:", error);
   }
 }
 
-interface ReviewRequestDetails {
-  clientName: string;
-  clientEmail: string;
-  stylistName: string;
-  serviceName: string;
-  date: string;
-  reviewUrl: string;
-  googleUrl: string;
-  yelpUrl: string;
-}
-
-interface ReviewDigestItem {
-  source: "Google" | "Yelp";
-  author: string;
-  rating: number;
-  text: string;
-  relative: string;
-  url?: string;
-}
-
-export async function sendReviewDigestEmail(items: ReviewDigestItem[], ratingSnapshot: { google: string; yelp: string }) {
-  if (items.length === 0) return;
-
-  const row = (r: ReviewDigestItem) => `
-    <tr>
-      <td style="padding: 12px 0; border-bottom: 1px solid #eee;">
-        <div style="font-size: 12px; color: #c9a96e; letter-spacing: 2px; text-transform: uppercase;">${r.source} · ${r.rating}★ · ${r.relative}</div>
-        <div style="font-weight: bold; color: #282936; margin-top: 4px;">${r.author}</div>
-        <div style="color: #666; margin-top: 6px; font-size: 14px; line-height: 1.5;">${r.text.replace(/</g, "&lt;")}</div>
-        ${r.url ? `<a href="${r.url}" style="color: #c2274b; font-size: 12px; margin-top: 8px; display: inline-block;">Respond on ${r.source} &rarr;</a>` : ""}
-      </td>
-    </tr>`;
-
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: SALON_EMAIL,
-      subject: `${items.length} new review${items.length === 1 ? "" : "s"} this week`,
-      html: `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
-            <p style="color: #c9a96e; font-size: 12px; letter-spacing: 3px; margin-top: 8px;">WEEKLY REVIEW DIGEST</p>
-          </div>
-          <div style="background: white; padding: 30px; border: 1px solid #eee;">
-            <p style="color: #666; margin: 0 0 15px;">Current ratings: ${ratingSnapshot.google ? `Google ${ratingSnapshot.google}★` : ""}${ratingSnapshot.google && ratingSnapshot.yelp ? " · " : ""}${ratingSnapshot.yelp ? `Yelp ${ratingSnapshot.yelp}★` : ""}</p>
-            <h2 style="color: #282936; font-family: Georgia, serif; font-size: 20px; margin: 20px 0 15px;">${items.length} new review${items.length === 1 ? "" : "s"}</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              ${items.map(row).join("")}
-            </table>
-          </div>
-        </div>
-      `,
-    });
-  } catch (error) {
-    console.error("Failed to send review digest email:", error);
-  }
-}
+// ----------------------------------------------------------------------
+// Staff-facing emails
+// ----------------------------------------------------------------------
 
 interface StaffNewBookingDetails {
   recipients: string[];
@@ -312,8 +320,6 @@ interface StaffNewBookingDetails {
   approveUrl: string;
 }
 
-// Sent to the salon when a NEW booking arrives that needs approval. Distinct
-// from the existing client confirmation email — this one tells staff to act.
 export async function sendStaffNewBookingEmail(details: StaffNewBookingDetails) {
   const {
     recipients, clientName, clientEmail, clientPhone, serviceName, stylistName,
@@ -322,46 +328,61 @@ export async function sendStaffNewBookingEmail(details: StaffNewBookingDetails) 
   } = details;
   if (recipients.length === 0) return;
 
-  const depositLine = depositRequiredCents > 0
-    ? `<tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Deposit</td><td style="padding: 10px 0; color: ${depositPaid ? "#1b8a3a" : "#c2274b"}; font-weight: bold;">$${(depositRequiredCents / 100).toFixed(0)} ${depositPaid ? "PAID" : "REQUIRED"}</td></tr>`
-    : "";
+  const stylistBadge = requestedStylist
+    ? `<span style="background:#c2274b; color:#fff; padding:2px 8px; font-size:10px; letter-spacing:1px;">REQUESTED</span>`
+    : `<span style="background:#999; color:#fff; padding:2px 8px; font-size:10px; letter-spacing:1px;">ANY STYLIST</span>`;
 
-  const stylistTag = requestedStylist
-    ? `<span style="background:#c2274b;color:white;padding:2px 8px;font-size:11px;letter-spacing:1px;">REQUESTED</span>`
-    : `<span style="background:#999;color:white;padding:2px 8px;font-size:11px;letter-spacing:1px;">ANY STYLIST</span>`;
+  const depositBadge = depositRequiredCents > 0
+    ? `$${(depositRequiredCents / 100).toFixed(0)} ${depositPaid
+        ? `<span style="color:#1b8a3a; font-weight:bold;">PAID</span>`
+        : `<span style="color:#c2274b; font-weight:bold;">REQUIRED</span>`}`
+    : "Not required";
 
   try {
     await getResend().emails.send({
       from: FROM,
       to: recipients,
       subject: `[ACTION REQUIRED] New booking: ${clientName} — ${serviceName}`,
-      html: `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
-            <p style="color: #c2274b; font-size: 12px; letter-spacing: 3px; margin-top: 8px;">NEW BOOKING — PENDING APPROVAL</p>
-          </div>
-          <div style="background: white; padding: 30px; border: 1px solid #eee;">
-            <p style="color: #282936; margin: 0 0 15px;">A new appointment is waiting for you to approve:</p>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Client</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${clientName}<br/><span style="font-weight:normal;color:#666;font-size:12px;">${clientEmail}${clientPhone ? " · " + clientPhone : ""}</span></td></tr>
-              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Service</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${serviceName}${totalPriceText ? ` <span style="color:#c9a96e;">(${totalPriceText})</span>` : ""}</td></tr>
-              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Stylist</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${stylistName} ${stylistTag}</td></tr>
-              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Date</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${formatDate(date)}</td></tr>
-              <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Time</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${formatTime(startTime)} – ${formatTime(endTime)}</td></tr>
-              ${depositLine}
-              ${notes ? `<tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Client notes</td><td style="padding: 10px 0; color: #282936;">${notes.replace(/</g, "&lt;")}</td></tr>` : ""}
-            </table>
-            <div style="margin-top: 30px; text-align: center;">
-              <a href="${approveUrl}" style="display: inline-block; background: #c2274b; color: white; padding: 12px 24px; text-decoration: none; font-size: 13px; letter-spacing: 2px; text-transform: uppercase;">Review &amp; Approve</a>
-            </div>
-          </div>
-        </div>
-      `,
+      html: brandedEmail({
+        preheader: `${clientName} booked ${serviceName} for ${formatDate(date)}.`,
+        kicker: "New booking — needs approval",
+        headline: `${clientName} just booked online`,
+        bodyHtml: `
+          ${detailsTable([
+            ["Client", `${clientName}<br/><span style="color:#999; font-size:12px;">${clientEmail}${clientPhone ? " · " + clientPhone : ""}</span>`],
+            ["Service", `${serviceName}${totalPriceText ? ` <span style="color:#c9a96e;">(${totalPriceText})</span>` : ""}`],
+            ["Stylist", `${stylistName} ${stylistBadge}`],
+            ["Date", formatDate(date)],
+            ["Time", `${formatTime(startTime)} – ${formatTime(endTime)}`],
+            ["Deposit", depositBadge],
+            ...(notes ? [["Notes", notes.replace(/</g, "&lt;")] as [string, string]] : []),
+          ])}
+        `,
+        ctaLabel: "Review & approve",
+        ctaUrl: approveUrl,
+        signoff: "Auto-sent by The Look booking system",
+        includeSupportFooter: false,
+        includePolicyFooter: false,
+      }),
     });
   } catch (error) {
     console.error("Failed to send staff new-booking email:", error);
   }
+}
+
+// ----------------------------------------------------------------------
+// Reviews
+// ----------------------------------------------------------------------
+
+interface ReviewRequestDetails {
+  clientName: string;
+  clientEmail: string;
+  stylistName: string;
+  serviceName: string;
+  date: string;
+  reviewUrl: string;
+  googleUrl: string;
+  yelpUrl: string;
 }
 
 export async function sendReviewRequestEmail(details: ReviewRequestDetails) {
@@ -371,39 +392,144 @@ export async function sendReviewRequestEmail(details: ReviewRequestDetails) {
     await getResend().emails.send({
       from: FROM,
       to: clientEmail,
-      subject: "How was your visit to The Look?",
-      html: `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
-            <p style="color: #c9a96e; font-size: 12px; letter-spacing: 3px; margin-top: 8px;">THANK YOU</p>
-          </div>
-          <div style="background: white; padding: 30px; border: 1px solid #eee;">
-            <p style="color: #282936; margin: 0 0 15px;">Hi ${clientName},</p>
-            <p style="color: #666; line-height: 1.6;">
-              Thank you for coming in for your ${serviceName} with ${stylistName} on ${formatDate(date)}.
-              If you loved your visit, a quick review on Google or Yelp would mean the world to us —
-              it helps other Glendale locals find us and tells our stylists they&#39;re doing it right.
-            </p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${googleUrl}" style="display: inline-block; background: #282936; color: white; padding: 12px 24px; text-decoration: none; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin: 6px;">Review on Google</a>
-              <a href="${yelpUrl}" style="display: inline-block; background: #c2274b; color: white; padding: 12px 24px; text-decoration: none; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin: 6px;">Review on Yelp</a>
-            </div>
-            <p style="color: #999; font-size: 12px; text-align: center; margin-top: 20px;">
-              Or visit <a href="${reviewUrl}" style="color: #c2274b;">${reviewUrl}</a> to pick either one.
-            </p>
-            <p style="color: #666; font-size: 13px; margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee;">
-              Had an issue instead? Reply to this email or call us at (818) 662-5665 — we&#39;d rather hear
-              about it first so we can make it right.
-            </p>
-          </div>
-          <p style="color: #999; font-size: 11px; text-align: center; margin-top: 20px;">
-            919 South Central Ave Suite #E, Glendale, CA 91204
+      subject: "How was your visit?",
+      html: brandedEmail({
+        preheader: `Thanks for coming in for your ${serviceName}.`,
+        kicker: "Thank you",
+        headline: "How was your visit?",
+        bodyHtml: `
+          <p style="margin: 0 0 14px;">Hi ${clientName},</p>
+          <p style="margin: 0 0 14px;">
+            Thanks for coming in for your <strong>${serviceName}</strong> with <strong>${stylistName}</strong>
+            on ${formatDate(date)}. If you loved it, a quick review on Google or Yelp would
+            genuinely help us.
           </p>
-        </div>
-      `,
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin: 12px 0;">
+            <tr>
+              <td align="center">
+                <a href="${googleUrl}" style="display:inline-block; background:#282936; color:#fff; text-decoration:none; font-size:12px; letter-spacing:2px; text-transform:uppercase; padding:12px 22px; margin:4px;">Review on Google</a>
+                <a href="${yelpUrl}" style="display:inline-block; background:#c2274b; color:#fff; text-decoration:none; font-size:12px; letter-spacing:2px; text-transform:uppercase; padding:12px 22px; margin:4px;">Review on Yelp</a>
+              </td>
+            </tr>
+          </table>
+          <p style="margin: 0 0 8px; color: #767182; font-size: 13px;">
+            Or use <a href="${reviewUrl}" style="color:#c2274b;">this page</a> to pick either one.
+          </p>
+          <p style="margin: 12px 0 0; font-size: 13px; color: #767182;">
+            Had an issue? Reply to this email or call (818) 662-5665 — we&#39;d rather hear about
+            it first so we can make it right.
+          </p>
+        `,
+        signoff: "— The Look Hair Salon",
+        includePolicyFooter: false,
+      }),
     });
   } catch (error) {
     console.error("Failed to send review request email:", error);
+  }
+}
+
+interface ReviewDigestItem {
+  source: "Google" | "Yelp";
+  author: string;
+  rating: number;
+  text: string;
+  relative: string;
+  url?: string;
+}
+
+export async function sendReviewDigestEmail(items: ReviewDigestItem[], ratingSnapshot: { google: string; yelp: string }) {
+  if (items.length === 0) return;
+
+  const row = (r: ReviewDigestItem) => `
+    <tr>
+      <td style="padding: 14px 0; border-bottom: 1px solid #ebe6dd;">
+        <div style="font-size: 11px; color: #c9a96e; letter-spacing: 2px; text-transform: uppercase;">${r.source} · ${r.rating}★ · ${r.relative}</div>
+        <div style="font-weight: bold; color: #282936; margin-top: 4px;">${r.author}</div>
+        <div style="color: #555; margin-top: 6px; font-size: 14px; line-height: 1.55;">${r.text.replace(/</g, "&lt;")}</div>
+        ${r.url ? `<a href="${r.url}" style="color: #c2274b; font-size: 12px; margin-top: 8px; display: inline-block;">Respond on ${r.source} →</a>` : ""}
+      </td>
+    </tr>`;
+
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to: SALON_EMAIL,
+      subject: `${items.length} new review${items.length === 1 ? "" : "s"} this week`,
+      html: brandedEmail({
+        preheader: `${items.length} new review${items.length === 1 ? "" : "s"} this week.`,
+        kicker: "Weekly review digest",
+        headline: `${items.length} new review${items.length === 1 ? "" : "s"}`,
+        bodyHtml: `
+          <p style="margin: 0 0 12px; color: #767182;">
+            Current ratings: ${ratingSnapshot.google ? `Google ${ratingSnapshot.google}★` : ""}${ratingSnapshot.google && ratingSnapshot.yelp ? " · " : ""}${ratingSnapshot.yelp ? `Yelp ${ratingSnapshot.yelp}★` : ""}
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0">${items.map(row).join("")}</table>
+        `,
+        signoff: "Auto-sent by The Look review digest",
+        includeSupportFooter: false,
+        includePolicyFooter: false,
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to send review digest email:", error);
+  }
+}
+
+// ----------------------------------------------------------------------
+// Cancellation fee receipt (Phase 2 hookup)
+// ----------------------------------------------------------------------
+
+interface CancellationFeeReceipt {
+  clientName: string;
+  clientEmail: string;
+  amountCents: number;
+  cardBrand: string | null;
+  cardLast4: string | null;
+  serviceName: string;
+  date: string;
+  startTime: string;
+  reason: string;
+}
+
+export async function sendCancellationFeeReceipt(r: CancellationFeeReceipt) {
+  const amount = `$${(r.amountCents / 100).toFixed(2)}`;
+  const cardLine = r.cardBrand && r.cardLast4
+    ? `${r.cardBrand.toUpperCase()} ending in ${r.cardLast4}`
+    : "card on file";
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to: r.clientEmail,
+      subject: `Cancellation fee charged — ${amount}`,
+      html: brandedEmail({
+        preheader: `${amount} was charged to your ${cardLine}.`,
+        kicker: "Cancellation fee receipt",
+        headline: `${amount} charged to your ${cardLine}.`,
+        bodyHtml: `
+          <p style="margin: 0 0 14px;">Hi ${r.clientName},</p>
+          <p style="margin: 0 0 14px;">
+            Per the cancellation policy you agreed to at booking, we charged a cancellation fee
+            for the following missed appointment:
+          </p>
+          ${detailsTable([
+            ["Service", r.serviceName],
+            ["Date", formatDate(r.date)],
+            ["Time", formatTime(r.startTime)],
+            ["Reason", r.reason],
+            ["Amount", `<strong style="color:#282936;">${amount}</strong>`],
+            ["Card", cardLine],
+          ])}
+          <p style="margin: 18px 0 0; font-size: 13px; color: #767182;">
+            Questions about this charge? Reply to this email or call (818) 662-5665 and
+            we&#39;ll review it with you. We&#39;d rather have you back in the chair than charge
+            a fee — hope to see you again soon.
+          </p>
+        `,
+        signoff: "— The Look Hair Salon",
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to send cancellation fee receipt:", error);
   }
 }

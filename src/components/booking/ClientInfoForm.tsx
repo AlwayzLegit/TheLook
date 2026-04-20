@@ -108,8 +108,9 @@ export default function ClientInfoForm({
           <div className="bg-rose/5 border border-rose/30 p-4 text-sm font-body text-navy/70">
             <p className="font-bold text-navy mb-2">Cancellation Policy</p>
             <p className="text-xs leading-relaxed">
-              A <strong>25% cancellation fee</strong> will be charged on no-shows or
-              cancellations within 24&nbsp;hours of the scheduled appointment.
+              A <strong>25% cancellation fee</strong> (calculated on the total appointment value)
+              will be charged on no-shows or cancellations within 24&nbsp;hours of the scheduled
+              appointment. The fee is charged automatically to the card on file.
             </p>
           </div>
 
@@ -123,7 +124,9 @@ export default function ClientInfoForm({
             />
             <span className="text-xs text-navy/70">
               I have read and agree to the <strong>deposit policy</strong> and the{" "}
-              <strong>cancellation policy</strong> above. *
+              <strong>cancellation policy</strong> above. I authorize The Look Hair Salon to save
+              my card on file and charge the 25% cancellation fee if I no-show or cancel within
+              24&nbsp;hours of my appointment. *
             </span>
           </label>
         </div>

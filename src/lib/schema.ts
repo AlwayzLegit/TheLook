@@ -91,6 +91,16 @@ export const appointments = pgTable("appointments", {
   depositRequiredCents: integer("deposit_required_cents").default(0),
   approvedAt: timestamp("approved_at"),
   approvedBy: varchar("approved_by", { length: 200 }),
+  // Stripe card-on-file (20260420 migration). Set once the deposit
+  // PaymentIntent succeeds; used later for off-session cancellation-fee
+  // charges without asking the client for the card again.
+  stripeCustomerId: varchar("stripe_customer_id", { length: 80 }),
+  stripePaymentMethodId: varchar("stripe_payment_method_id", { length: 80 }),
+  cardBrand: varchar("card_brand", { length: 40 }),
+  cardLast4: varchar("card_last4", { length: 4 }),
+  // How much we already auto-charged for no-show / late cancel. Lets the
+  // admin UI warn if someone tries to charge a fee twice.
+  cancellationFeeChargedCents: integer("cancellation_fee_charged_cents").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -157,7 +167,8 @@ export const stylistCommissions = pgTable("stylist_commissions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Deposits / payments
+// Deposits / payments (legacy — kept for the existing data; new rows should
+// land in `charges` below).
 export const deposits = pgTable("deposits", {
   id: uuid("id").primaryKey().defaultRandom(),
   appointmentId: uuid("appointment_id").notNull().references(() => appointments.id),
@@ -165,6 +176,28 @@ export const deposits = pgTable("deposits", {
   currency: varchar("currency", { length: 3 }).default("USD"),
   stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
   status: varchar("status", { length: 20 }).notNull(), // "pending", "succeeded", "refunded", "failed"
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Unified charges ledger. Deposits, cancellation fees, and manual admin
+// charges all record a row here so the admin UI + reports can show a
+// single financial timeline per client / appointment.
+export const charges = pgTable("charges", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  appointmentId: uuid("appointment_id").references(() => appointments.id, { onDelete: "set null" }),
+  clientEmail: varchar("client_email", { length: 200 }),
+  stripeCustomerId: varchar("stripe_customer_id", { length: 80 }),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }).unique(),
+  type: varchar("type", { length: 32 }).notNull(),       // deposit | cancellation_fee | manual
+  amount: integer("amount").notNull(),                   // cents
+  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
+  status: varchar("status", { length: 32 }).notNull(),   // pending | succeeded | requires_action | failed | refunded
+  cardBrand: varchar("card_brand", { length: 40 }),
+  cardLast4: varchar("card_last4", { length: 4 }),
+  reason: text("reason"),
+  failureReason: text("failure_reason"),
+  createdBy: varchar("created_by", { length: 200 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -220,6 +253,9 @@ export const clientProfiles = pgTable("client_profiles", {
   hairFormulas: text("hair_formulas"), // JSON: color formulas, treatments
   hairType: varchar("hair_type", { length: 100 }), // e.g. "Fine, straight, level 6"
   birthday: varchar("birthday", { length: 10 }), // MM-DD for birthday promotions
+  // Stripe Customer id — populated on first successful deposit. Lets admins
+  // charge a saved card off-session for cancellation fees.
+  stripeCustomerId: varchar("stripe_customer_id", { length: 80 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
