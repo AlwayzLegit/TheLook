@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { sendCancellationEmail } from "@/lib/email";
+import { sendCancellationSMS } from "@/lib/sms";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
@@ -55,6 +56,18 @@ export async function POST(request: NextRequest) {
     date: appointment.date,
     startTime: appointment.start_time,
   }).catch((err) => logError("appointments/cancel email", err));
+
+  if (appointment.client_phone) {
+    sendCancellationSMS({
+      phone: appointment.client_phone,
+      clientName: appointment.client_name,
+      serviceName: service?.name || "Your Service",
+      date: appointment.date,
+      time: appointment.start_time,
+      appointmentId: appointment.id,
+      clientEmail: appointment.client_email,
+    }).catch((err) => logError("appointments/cancel sms", err));
+  }
 
   return apiSuccess({ message: "Appointment cancelled" });
 }

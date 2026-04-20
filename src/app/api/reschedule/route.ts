@@ -2,6 +2,7 @@ import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { getAvailableSlots } from "@/lib/availability";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { sendStatusChangeEmail } from "@/lib/email";
+import { sendRescheduleSMS } from "@/lib/sms";
 import { NextRequest } from "next/server";
 
 function minToTime(m: number) {
@@ -109,6 +110,18 @@ export async function POST(request: NextRequest) {
     newStatus: "confirmed",
     cancelToken: appointment.cancel_token,
   }).catch((err) => logError("reschedule email", err));
+
+  if (appointment.client_phone) {
+    sendRescheduleSMS({
+      phone: appointment.client_phone,
+      clientName: appointment.client_name,
+      serviceName: service.name,
+      date: newDate,
+      time: newStartTime,
+      appointmentId: appointment.id,
+      clientEmail: appointment.client_email,
+    }).catch((err) => logError("reschedule sms", err));
+  }
 
   return apiSuccess({ success: true, newDate, newStartTime, newEndTime });
 }

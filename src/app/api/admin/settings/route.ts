@@ -6,9 +6,17 @@ import { NextRequest } from "next/server";
 
 const ALLOWED_KEYS = new Set([
   "staff_notification_emails",
+  "staff_notification_sms_numbers",
   "booking_email_enabled",
   "long_appointment_deposit_cents",
   "long_appointment_min_minutes",
+  "sms_enabled",
+  "sms_booking_confirm_enabled",
+  "sms_booking_reminder_enabled",
+  "sms_booking_status_change_enabled",
+  "sms_booking_cancelled_enabled",
+  "sms_booking_reschedule_enabled",
+  "sms_staff_new_booking_enabled",
 ]);
 
 export async function GET() {

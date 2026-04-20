@@ -4,6 +4,7 @@ import { adminAppointmentPatchSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { sendStatusChangeEmail } from "@/lib/email";
+import { sendStatusChangeSMS } from "@/lib/sms";
 import { NextRequest } from "next/server";
 
 export async function PATCH(
@@ -98,6 +99,21 @@ export async function PATCH(
       newStatus: payload.status,
       cancelToken: data.cancel_token,
     }).catch((err) => logError("status-email", err));
+
+    // Parallel SMS, gated by the client having a phone + the admin
+    // having SMS enabled globally + sms_booking_status_change_enabled.
+    if (data.client_phone) {
+      sendStatusChangeSMS({
+        phone: data.client_phone,
+        clientName: data.client_name,
+        serviceName,
+        date: data.date,
+        time: data.start_time,
+        newStatus: payload.status,
+        appointmentId: id,
+        clientEmail: data.client_email,
+      }).catch((err) => logError("status-sms", err));
+    }
 
     // Stylist-targeted dashboard notification is off until stylist accounts
     // come back. Admins see every status change via the admin bell already.

@@ -84,9 +84,16 @@ export async function GET(request: NextRequest) {
         : undefined,
     });
 
-    // Also send SMS if phone available
+    // Also send SMS if phone available. Pass raw HH:MM — sendReminderSMS
+    // formats it with its own 12h helper.
     if (appt.client_phone) {
-      await sendReminderSMS(appt.client_phone, appt.client_name, formatTime(appt.start_time));
+      await sendReminderSMS(
+        appt.client_phone,
+        appt.client_name,
+        appt.start_time,
+        appt.id,
+        appt.client_email,
+      );
     }
 
     await supabase

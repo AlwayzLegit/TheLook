@@ -1,14 +1,14 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { getAvailableSlots } from "@/lib/availability";
 import { sendBookingConfirmation, sendStaffNewBookingEmail } from "@/lib/email";
-import { sendBookingConfirmationSMS } from "@/lib/sms";
+import { sendBookingConfirmationSMS, sendStaffNewBookingSMS } from "@/lib/sms";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { appointmentCreateSchema } from "@/lib/validation";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { BOOKING, RATE_LIMITS } from "@/lib/constants";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { createNotification } from "@/lib/notifications";
-import { getStaffNotificationEmails } from "@/lib/settings";
+import { getStaffNotificationEmails, getStaffNotificationSmsNumbers } from "@/lib/settings";
 import { NextRequest } from "next/server";
 
 function minutesToTime(mins: number): string {
@@ -396,7 +396,28 @@ export async function POST(request: NextRequest) {
     cancelUrl: `${baseUrl}/book/cancel?token=${cancelToken}`,
   }).catch(console.error);
   if (clientPhone) {
-    sendBookingConfirmationSMS(clientPhone, clientName, serviceNamesCombined, date, startTime).catch(console.error);
+    sendBookingConfirmationSMS(
+      clientPhone,
+      clientName,
+      serviceNamesCombined,
+      date,
+      startTime,
+      appointmentId,
+      clientEmail,
+    ).catch(console.error);
+  }
+
+  // Fan out staff SMS alerts in parallel with the email.
+  const staffSmsNumbers = await getStaffNotificationSmsNumbers();
+  for (const number of staffSmsNumbers) {
+    sendStaffNewBookingSMS({
+      phone: number,
+      clientName,
+      serviceName: serviceNamesCombined,
+      date,
+      time: startTime,
+      appointmentId,
+    }).catch(console.error);
   }
 
   // Staff email + in-dashboard notification (admins + assigned stylist).

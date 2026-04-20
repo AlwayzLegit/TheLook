@@ -2,9 +2,17 @@ import { hasSupabaseConfig, supabase } from "./supabase";
 
 export type SettingsKey =
   | "staff_notification_emails"
+  | "staff_notification_sms_numbers"
   | "booking_email_enabled"
   | "long_appointment_deposit_cents"
-  | "long_appointment_min_minutes";
+  | "long_appointment_min_minutes"
+  | "sms_enabled"
+  | "sms_booking_confirm_enabled"
+  | "sms_booking_reminder_enabled"
+  | "sms_booking_status_change_enabled"
+  | "sms_booking_cancelled_enabled"
+  | "sms_booking_reschedule_enabled"
+  | "sms_staff_new_booking_enabled";
 
 const cache = new Map<string, { value: string | null; ts: number }>();
 const TTL_MS = 30_000;
@@ -50,4 +58,16 @@ export async function getStaffNotificationEmails(): Promise<string[]> {
     .split(/[\n,;]+/)
     .map((s) => s.trim().toLowerCase())
     .filter((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
+}
+
+// Staff phone numbers for SMS alerts. Stored as comma/newline-separated
+// in `staff_notification_sms_numbers`. Normalisation happens downstream in
+// sms.ts — this just returns trimmed non-empty entries.
+export async function getStaffNotificationSmsNumbers(): Promise<string[]> {
+  const raw = await getSetting("staff_notification_sms_numbers");
+  if (!raw) return [];
+  return raw
+    .split(/[\n,;]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 7);
 }

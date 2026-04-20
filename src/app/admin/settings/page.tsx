@@ -7,10 +7,22 @@ import AdminToast from "@/components/admin/AdminToast";
 
 interface Settings {
   staff_notification_emails?: string;
+  staff_notification_sms_numbers?: string;
   booking_email_enabled?: string;
   long_appointment_deposit_cents?: string;
   long_appointment_min_minutes?: string;
+  sms_enabled?: string;
+  sms_booking_confirm_enabled?: string;
+  sms_booking_reminder_enabled?: string;
+  sms_booking_status_change_enabled?: string;
+  sms_booking_cancelled_enabled?: string;
+  sms_booking_reschedule_enabled?: string;
+  sms_staff_new_booking_enabled?: string;
 }
+
+// Small helper — treat undefined/empty as the default ("true") so a fresh
+// install has every SMS event enabled by default.
+const truthy = (v: string | undefined, fallback = "true") => ((v ?? fallback) === "true");
 
 export default function SettingsPage() {
   const { status, data: session } = useSession();
@@ -19,6 +31,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [testPhone, setTestPhone] = useState("");
+  const [testing, setTesting] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const role = (session?.user as any)?.role || "admin";
 
@@ -47,6 +61,26 @@ export default function SettingsPage() {
     } else {
       const data = await res.json().catch(() => ({}));
       setToast({ type: "error", message: data.error || "Failed to save settings." });
+    }
+  };
+
+  const sendTestSms = async () => {
+    if (!testPhone.trim()) {
+      setToast({ type: "error", message: "Enter a phone number first." });
+      return;
+    }
+    setTesting(true);
+    try {
+      const res = await fetch("/api/admin/sms/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: testPhone.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setToast({ type: "success", message: `Test SMS queued to ${testPhone.trim()}.` });
+      else setToast({ type: "error", message: data.error || "Test SMS failed." });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -137,6 +171,90 @@ export default function SettingsPage() {
               Appointments with a total duration at or above the trigger will require this deposit
               before the customer can confirm.
             </p>
+          </section>
+
+          <section className="bg-white border border-navy/10 p-6">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <h2 className="font-heading text-lg mb-1">SMS notifications</h2>
+                <p className="text-navy/50 font-body text-xs">
+                  Requires Twilio env vars (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER).
+                  Trial Twilio numbers can only text verified phones and stamp a &ldquo;Sent from a
+                  trial account&rdquo; prefix on every message.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={truthy(s.sms_enabled)}
+                  onChange={(e) => setS({ ...s, sms_enabled: e.target.checked ? "true" : "false" })}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm font-body">SMS enabled</span>
+              </label>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3 text-sm font-body">
+              {[
+                ["sms_booking_confirm_enabled",       "Booking confirmation (new booking)"],
+                ["sms_booking_reminder_enabled",      "Day-before reminder"],
+                ["sms_booking_status_change_enabled", "Status changes (confirmed / completed / no-show)"],
+                ["sms_booking_cancelled_enabled",     "Cancellation notice"],
+                ["sms_booking_reschedule_enabled",    "Reschedule notice"],
+                ["sms_staff_new_booking_enabled",     "Staff alert on new booking"],
+              ].map(([key, label]) => (
+                <label key={key} className="flex items-center gap-2 cursor-pointer border border-navy/10 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={truthy(s[key as keyof Settings])}
+                    disabled={!truthy(s.sms_enabled)}
+                    onChange={(e) => setS({ ...s, [key]: e.target.checked ? "true" : "false" })}
+                    className="w-4 h-4"
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-5">
+              <label className="block text-xs text-navy/50 font-body mb-1">
+                Staff SMS recipients (for the new-booking alert)
+              </label>
+              <textarea
+                rows={2}
+                value={s.staff_notification_sms_numbers || ""}
+                onChange={(e) => setS({ ...s, staff_notification_sms_numbers: e.target.value })}
+                placeholder="e.g. +18185551234, 8185550000"
+                className="w-full border border-navy/20 px-3 py-2 text-sm font-body placeholder:text-navy/25 placeholder:italic"
+              />
+              <p className="text-navy/40 text-[11px] font-body mt-1">
+                One per line or comma-separated. 10-digit US numbers default to +1.
+              </p>
+            </div>
+
+            <div className="mt-5 border-t border-navy/5 pt-4">
+              <p className="text-xs font-body text-navy/60 mb-2">Test your Twilio config</p>
+              <div className="flex gap-2 flex-wrap">
+                <input
+                  type="tel"
+                  placeholder="+18185551234"
+                  value={testPhone}
+                  onChange={(e) => setTestPhone(e.target.value)}
+                  className="border border-navy/20 px-3 py-2 text-sm font-body min-w-[220px]"
+                />
+                <button
+                  onClick={sendTestSms}
+                  disabled={testing}
+                  className="px-4 py-2 text-xs font-body border border-navy/30 hover:bg-navy/5 uppercase tracking-widest disabled:opacity-60"
+                >
+                  {testing ? "Sending…" : "Send test SMS"}
+                </button>
+              </div>
+              <p className="text-navy/40 text-[11px] font-body mt-2">
+                The test SMS bypasses the global toggle but still respects opt-outs. Check the SMS log
+                under Activity if it doesn&apos;t arrive.
+              </p>
+            </div>
           </section>
 
           <button
