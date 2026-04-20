@@ -7,14 +7,21 @@ const securityHeaders: Record<string, string> = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+  // CSP allow-list. Stripe.js needs:
+  //   script-src  js.stripe.com                  (the loader)
+  //   connect-src api.stripe.com + m.stripe.network (XHR to Stripe)
+  //   frame-src   js.stripe.com + hooks.stripe.com (Elements iframes)
+  //   img-src     *.stripe.com                    (card-brand icons)
+  // Without these, loadStripe() rejects with a CSP violation and the
+  // booking form falls back to the "having trouble loading" panel.
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://js.stripe.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' https://images.unsplash.com https://static.wixstatic.com data:",
-    "connect-src 'self'",
-    "frame-src https://challenges.cloudflare.com https://www.google.com",
+    "img-src 'self' https://images.unsplash.com https://static.wixstatic.com https://*.stripe.com data:",
+    "connect-src 'self' https://api.stripe.com https://m.stripe.network",
+    "frame-src https://challenges.cloudflare.com https://www.google.com https://js.stripe.com https://hooks.stripe.com",
     "frame-ancestors 'none'",
   ].join("; "),
 };
