@@ -19,7 +19,6 @@ const serviceSubLinks = [
   { href: "/services/color", label: "Color & Highlights" },
   { href: "/services/styling", label: "Styling" },
   { href: "/services/treatments", label: "Treatments" },
-  { href: "/services/perms-and-more", label: "Perms & More" },
 ];
 
 export default function Navbar() {

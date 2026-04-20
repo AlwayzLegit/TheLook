@@ -25,7 +25,6 @@ const DEFAULT_CATEGORIES = [
   "Color",
   "Styling",
   "Treatments",
-  "Perms & More"
 ];
 
 export default function ServicesPage() {

@@ -17,7 +17,7 @@ interface ApiService {
 
 type GroupedServices = Record<string, ApiService[]>;
 
-const CATEGORY_ORDER = ["Haircuts", "Color", "Styling", "Treatments", "Perms & More"];
+const CATEGORY_ORDER = ["Haircuts", "Color", "Styling", "Treatments"];
 
 const CATEGORY_ICON: Record<string, ReactNode> = {
   Haircuts: (

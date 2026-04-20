@@ -47,15 +47,6 @@ export const SERVICE_CATEGORIES: ServiceCategoryMeta[] = [
       "Restore and rejuvenate your hair with deep conditioning, keratin straightening, vitamin smoothing, scalp oil treatments, and intensive repair at The Look Hair Salon in Glendale, CA.",
     heroImage: "/images/Treatments.jpg",
   },
-  {
-    slug: "perms-and-more",
-    category: "Perms & More",
-    title: "Perms & More",
-    subtitle: "Perms & Facial Hair Removal",
-    description:
-      "Classic perms and facial hair removal (threading & waxing) at The Look Hair Salon in Glendale, CA. Affordable pricing with expert care.",
-    heroImage: "/images/Styling.jpg",
-  },
 ];
 
 /** Look up a category config by its URL slug */

@@ -53,8 +53,8 @@ export const SALON_SERVICES = [
   { category: "Treatments", name: "Keratin Straightening", priceText: "$250+", priceMin: 25000, duration: 120 },
   { category: "Treatments", name: "Vitamin Smoothing (99% Natural)", priceText: "$250+", priceMin: 25000, duration: 120 },
   { category: "Treatments", name: "Scalp Oil Treatment", priceText: "$30+", priceMin: 3000, duration: 40 },
-  { category: "Perms & More", name: "Perm", priceText: "$90+", priceMin: 9000, duration: 80 },
-  { category: "Perms & More", name: "Facial Hair Removal (thread/wax)", priceText: "$5+", priceMin: 500, duration: 10 },
+  { category: "Treatments", name: "Perm", priceText: "$90+", priceMin: 9000, duration: 80 },
+  { category: "Treatments", name: "Facial Hair Removal", priceText: "$5+", priceMin: 500, duration: 10 },
 ];
 
 export const SALON_STYLISTS = [

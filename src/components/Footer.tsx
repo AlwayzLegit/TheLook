@@ -87,7 +87,6 @@ export default function Footer() {
                 { href: "/services/color", label: "Color & Highlights" },
                 { href: "/services/styling", label: "Styling" },
                 { href: "/services/treatments", label: "Treatments" },
-                { href: "/services/perms-and-more", label: "Perms & More" },
               ].map((link) => (
                 <Link
                   key={link.href}
