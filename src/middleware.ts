@@ -12,15 +12,18 @@ const securityHeaders: Record<string, string> = {
   //   connect-src api.stripe.com + m.stripe.network (XHR to Stripe)
   //   frame-src   js.stripe.com + hooks.stripe.com (Elements iframes)
   //   img-src     *.stripe.com                    (card-brand icons)
-  // Without these, loadStripe() rejects with a CSP violation and the
-  // booking form falls back to the "having trouble loading" panel.
+  // Supabase Storage (stylist photos, service photos) lives on
+  // *.supabase.co/storage/v1/object/public/** — without explicit
+  // img-src clearance the browser blocks every uploaded photo even
+  // though the URL is otherwise 200. Admin uploads also write directly
+  // to the storage REST API so connect-src needs *.supabase.co too.
   "Content-Security-Policy": [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://js.stripe.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' https://images.unsplash.com https://static.wixstatic.com https://*.stripe.com data:",
-    "connect-src 'self' https://api.stripe.com https://m.stripe.network",
+    "img-src 'self' https://images.unsplash.com https://static.wixstatic.com https://*.stripe.com https://*.supabase.co data: blob:",
+    "connect-src 'self' https://api.stripe.com https://m.stripe.network https://*.supabase.co wss://*.supabase.co",
     "frame-src https://challenges.cloudflare.com https://www.google.com https://js.stripe.com https://hooks.stripe.com",
     "frame-ancestors 'none'",
   ].join("; "),
