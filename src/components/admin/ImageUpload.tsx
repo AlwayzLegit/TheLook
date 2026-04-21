@@ -40,14 +40,27 @@ export default function ImageUpload({ value, onChange, name }: Props) {
     }
   }, [name, onChange]);
 
+  // Accept common camera formats in addition to the web-native trio. The
+  // server mirrors this list + falls back to the filename extension when a
+  // browser reports an empty MIME, so the final decision is made server-side.
+  const ALLOWED_MIMES = [
+    "image/jpeg", "image/pjpeg", "image/jfif",
+    "image/png", "image/webp", "image/heic", "image/heif",
+    "image/avif", "image/gif", "image/bmp", "image/tiff", "image/x-tiff",
+  ];
+  const ALLOWED_EXTS = ["jpg", "jpeg", "jfif", "png", "webp", "heic", "heif", "avif", "gif", "bmp", "tif", "tiff"];
+
   const handleFile = (file: File | undefined) => {
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setError("Use JPG, PNG, or WebP.");
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    const typeOk = file.type && ALLOWED_MIMES.includes(file.type);
+    const extOk = ALLOWED_EXTS.includes(ext);
+    if (!typeOk && !extOk) {
+      setError("Use JPG, PNG, WebP, HEIC, or AVIF.");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Max file size is 5MB.");
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Max file size is 10MB.");
       return;
     }
     upload(file);
@@ -98,7 +111,7 @@ export default function ImageUpload({ value, onChange, name }: Props) {
         <input
           ref={inputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/*,.jpg,.jpeg,.jfif,.png,.webp,.heic,.heif,.avif,.gif,.bmp,.tif,.tiff"
           className="hidden"
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
@@ -116,7 +129,7 @@ export default function ImageUpload({ value, onChange, name }: Props) {
             <p className="text-sm font-body text-navy/50">
               {value ? "Drop a new photo or click to replace" : "Drop a photo here or click to upload"}
             </p>
-            <p className="text-xs font-body text-navy/30 mt-1">JPG, PNG or WebP up to 5MB</p>
+            <p className="text-xs font-body text-navy/30 mt-1">JPG, PNG, WebP, HEIC, or AVIF · up to 10MB</p>
           </>
         )}
       </div>
