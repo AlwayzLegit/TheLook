@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import StylistImage from "@/components/StylistImage";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { BOOKING } from "@/lib/constants";
 import { normalizeSpecialties } from "@/lib/stylistSpecialties";
@@ -58,21 +59,20 @@ export default async function StylistsListPage() {
               {stylists.map((s: any) => (
                 <Link key={s.id} href={`/stylists/${s.slug}`} className="group block">
                   <div className="aspect-[3/4] overflow-hidden bg-navy/5 mb-4">
-                    {s.image_url ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={s.image_url} alt={s.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="font-heading text-6xl text-navy/20">{s.name.charAt(0)}</span>
-                      </div>
-                    )}
+                    <StylistImage
+                      src={s.image_url}
+                      alt={s.name}
+                      initial={s.name.charAt(0).toUpperCase()}
+                      initialClass="font-heading text-6xl text-navy/20"
+                      className="group-hover:scale-105 transition-transform duration-500"
+                    />
                   </div>
                   <h2 className="font-heading text-2xl group-hover:text-rose transition-colors">{s.name}</h2>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {s.specialties.slice(0, 3).map((sp: string) => (
-                      <span key={sp} className="text-[10px] font-body bg-gold/15 text-gold px-2 py-0.5">{sp}</span>
-                    ))}
-                  </div>
+                  {s.specialties.length > 0 && (
+                    <p className="text-xs font-body text-navy/50 mt-2">
+                      {s.specialties.slice(0, 3).join(" · ")}
+                    </p>
+                  )}
                   {s.bio && <p className="text-navy/50 text-sm font-body mt-3 line-clamp-2">{s.bio}</p>}
                 </Link>
               ))}

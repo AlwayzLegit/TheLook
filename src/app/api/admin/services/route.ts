@@ -45,7 +45,10 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const parsed = adminServiceSchema.safeParse(body);
   if (!parsed.success) {
-    return apiError("Invalid service payload.", 400);
+    const first = parsed.error.issues[0];
+    const path = (first?.path || []).join(".");
+    const msg = first?.message || "validation failed";
+    return apiError(`Invalid ${path || "payload"}: ${msg}`, 400);
   }
   if (!hasSupabaseConfig) {
     return apiError("Database not configured.", 503);

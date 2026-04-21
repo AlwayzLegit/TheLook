@@ -18,6 +18,11 @@ const galleryItems = [
   { title: "Blowout & Style", category: "Styling", image: "/images/gallery/gallery-10.jpg" },
   { title: "Color Correction", category: "Color", image: "/images/gallery/gallery-11.jpg" },
   { title: "Cut & Color", category: "Color", image: "/images/gallery/gallery-12.jpg" },
+  // Men's section — drop files into public/images/gallery/men-01.jpg,
+  // men-02.jpg, etc. and append matching entries here.
+  { title: "Men's Cut + Fade", category: "Men", image: "/images/gallery/men-01.jpg" },
+  { title: "Beard Trim", category: "Men", image: "/images/gallery/men-02.jpg" },
+  { title: "Scissor Cut", category: "Men", image: "/images/gallery/men-03.jpg" },
 ];
 
 export default function Gallery() {

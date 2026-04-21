@@ -5,6 +5,9 @@ import { contactCreateSchema } from "@/lib/validation";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { RATE_LIMITS } from "@/lib/constants";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { sendStaffNewMessageEmail } from "@/lib/email";
+import { getStaffNotificationEmails } from "@/lib/settings";
+import { createNotification } from "@/lib/notifications";
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -45,6 +48,28 @@ export async function POST(request: NextRequest) {
     logError("contact POST", error);
     return apiError("Failed to send message. Please try again.", 500);
   }
+
+  // Fan out staff notifications. Non-blocking — the customer's submission
+  // succeeds whether or not the email / bell notification lands.
+  const baseUrl = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
+  const staffEmails = await getStaffNotificationEmails();
+  sendStaffNewMessageEmail({
+    recipients: staffEmails,
+    name,
+    email,
+    phone: phone || null,
+    service: service || null,
+    message,
+    adminUrl: `${baseUrl}/admin/messages`,
+  }).catch((err) => logError("contact POST staff-email", err));
+
+  createNotification({
+    toAllAdmins: true,
+    type: "message.new",
+    title: `New message: ${name}`,
+    body: (service ? `About ${service}. ` : "") + message.slice(0, 120),
+    url: "/admin/messages",
+  }).catch((err) => logError("contact POST admin-bell", err));
 
   return apiSuccess({ success: true });
 }

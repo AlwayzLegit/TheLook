@@ -24,6 +24,27 @@ export default function Footer() {
       {/* Subtle radial glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[radial-gradient(ellipse,rgba(196,162,101,0.06)_0%,transparent_70%)]" />
 
+      {/* Book / Call CTA strip — sits above every public-page footer so
+          customers always have a one-tap path to book or phone in. */}
+      <div className="relative max-w-4xl mx-auto px-8 pt-16 pb-4 text-center">
+        <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">Ready when you are</p>
+        <h3 className="font-heading text-2xl md:text-3xl text-white mb-6">Book your next appointment</h3>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            href="/book"
+            className="bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)]"
+          >
+            Book Now
+          </Link>
+          <a
+            href="tel:+18186625665"
+            className="border border-white/20 hover:border-gold/60 bg-white/5 hover:bg-white/10 text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:-translate-y-0.5 backdrop-blur-sm"
+          >
+            Call (818) 662-5665
+          </a>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-8 lg:px-12 py-18 relative">
         <div className="grid md:grid-cols-5 gap-10">
           {/* Brand */}

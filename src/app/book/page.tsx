@@ -52,6 +52,7 @@ interface Stylist {
 }
 
 interface BookingResult {
+  id?: string;
   service?: string;
   services?: { id: string; name: string }[];
   stylist: string;
@@ -59,6 +60,7 @@ interface BookingResult {
   startTime: string;
   endTime: string;
   status?: string;
+  anyStylist?: boolean;
 }
 
 const FALLBACK_SERVICES: Record<string, Service[]> = {
@@ -541,16 +543,14 @@ export default function BookPage() {
 
               {error && <p className="text-red-600 text-sm font-body mt-4 text-center">{error}</p>}
 
-              {/* Last-look disclaimer before Confirm. Only relevant to
-                  bookings that triggered the deposit — short bookings have
-                  no card on file and nothing to forfeit. */}
               {requiresDeposit && (
                 <div className="mt-5 bg-rose/5 border border-rose/30 p-3 text-xs font-body text-navy/70 leading-relaxed">
                   <p className="font-bold text-navy mb-1">Cancellation Policy</p>
                   <p>
-                    Your <strong>${BOOKING.DEPOSIT_AMOUNT_CENTS / 100} deposit is
-                    non-refundable</strong>. If you no-show or cancel within 24&nbsp;hours of
-                    your appointment, the deposit is forfeited.
+                    Your <strong>${BOOKING.DEPOSIT_AMOUNT_CENTS / 100} deposit</strong> is
+                    refundable if you cancel at least 24&nbsp;hours in advance. Cancellations
+                    within 24&nbsp;hours of the appointment forfeit the deposit. Additional
+                    cancellation or no-show fees may apply where applicable.
                   </p>
                 </div>
               )}

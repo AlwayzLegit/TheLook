@@ -125,9 +125,9 @@ export function brandedEmail(args: BrandedEmailArgs): string {
       <td style="padding: 20px 28px 28px; color: ${BRAND.colors.softMute}; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.55;">
         <p style="margin: 0 0 6px;">
           <strong style="color: ${BRAND.colors.mute};">Deposit &amp; cancellation policy.</strong>
-          A $50 non-refundable deposit is charged at booking and applied to your service total at
-          the appointment. A 25% cancellation fee is charged on no-shows or cancellations within
-          24 hours of the scheduled appointment — billed automatically to the card on file.
+          Your deposit is applied toward your service total at the appointment. Refundable if
+          cancelled at least 24 hours in advance; cancellations within 24 hours (and no-shows)
+          forfeit the deposit. Additional cancellation or no-show fees may apply where applicable.
         </p>
       </td>
     </tr>` : "";

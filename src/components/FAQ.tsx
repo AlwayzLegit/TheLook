@@ -13,17 +13,22 @@ const faqs = [
   {
     question: "Will I be charged before the service?",
     answer:
-      "You will be charged a $50.00 deposit upon booking your appointment. The deposit is non-refundable. The amount of your deposit will be applied to the cost of your service at the time of your appointment. If you need to cancel, you will lose your deposit and an additional cancellation fee may apply.",
+      "A $50 deposit is taken at booking for appointments over $100 to secure your spot. The deposit is applied toward the total cost of your service at the time of your appointment.",
+  },
+  {
+    question: "Will I get my deposit back?",
+    answer:
+      "Your deposit will be applied toward the total cost of your service at the time of your appointment. To receive a refund of your deposit, cancellations must be made at least 24 hours in advance. Cancellations made within 24 hours of the scheduled appointment will result in the loss of the deposit. Please note that additional cancellation or no-show fees may apply where applicable.",
   },
   {
     question: "What is your cancellation policy?",
     answer:
-      "We ask for at least 24 hours' notice to cancel or reschedule. A 25% cancellation fee will be charged on no-shows or cancellations within 24 hours of the scheduled appointment. Any deposit paid at booking is non-refundable and will be forfeited on cancellation.",
+      "We ask for at least 24 hours' notice to cancel or reschedule. Cancellations made within 24 hours of the appointment forfeit the deposit. Additional cancellation or no-show fees may apply where applicable.",
   },
   {
     question: "What happens if I'm a no-show or cancel?",
     answer:
-      "You will lose your $50.00 deposit and may also be charged a cancellation fee. The Look Hair Salon has a 25% cancellation policy that may be applied. The cancellation fee is calculated on the total appointment value. Please provide as much notice as possible if you are unable to make it.",
+      "No-shows and same-day cancellations forfeit the deposit. Additional cancellation or no-show fees may apply where applicable. Please provide as much notice as possible if you are unable to make it — 24+ hours lets us refund your deposit and offer the slot to another client.",
   },
   {
     question: "How should I prepare for a color appointment?",

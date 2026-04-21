@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AnimatedSection from "./AnimatedSection";
+import StylistImage from "./StylistImage";
 
 interface TeamMember {
   id: string;
@@ -83,12 +84,12 @@ export default function Team() {
             <AnimatedSection key={member.id} delay={index * 0.15}>
               <Link href={`/stylists/${member.slug}`} className="group text-center block">
                 <div className="w-32 h-32 mx-auto mb-8 rounded-full bg-navy/8 flex items-center justify-center overflow-hidden group-hover:ring-2 group-hover:ring-gold/40 transition-all">
-                  {member.image_url ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={member.image_url} alt={member.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="font-heading text-3xl text-navy/30">{getInitials(member.name)}</span>
-                  )}
+                  <StylistImage
+                    src={member.image_url}
+                    alt={member.name}
+                    initial={getInitials(member.name)}
+                    initialClass="font-heading text-3xl text-navy/30"
+                  />
                 </div>
 
                 <h3 className="font-heading text-xl mb-1 group-hover:text-rose transition-colors">{member.name}</h3>
@@ -98,16 +99,11 @@ export default function Team() {
                   </p>
                 )}
 
-                <div className="flex flex-wrap justify-center gap-2">
-                  {member.specialties.slice(0, 3).map((s) => (
-                    <span
-                      key={s}
-                      className="text-[10px] font-body text-navy/50 tracking-[0.1em] uppercase border border-navy/10 px-3 py-1"
-                    >
-                      {s}
-                    </span>
-                  ))}
-                </div>
+                {member.specialties.length > 0 && (
+                  <p className="text-xs font-body text-navy/50 tracking-wide">
+                    {member.specialties.slice(0, 3).join(" · ")}
+                  </p>
+                )}
 
                 <p className="text-[10px] font-body text-rose uppercase tracking-[0.2em] mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
                   View Portfolio &rarr;

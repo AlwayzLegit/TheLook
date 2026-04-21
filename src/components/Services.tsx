@@ -6,6 +6,13 @@ import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
 import { getSlugForCategory } from "@/lib/service-categories";
 
+interface ApiVariant {
+  id: string;
+  name: string;
+  price_text: string;
+  duration: number;
+}
+
 interface ApiService {
   id: string;
   category: string;
@@ -13,11 +20,12 @@ interface ApiService {
   price_text: string;
   duration: number;
   image_url?: string | null;
+  variants?: ApiVariant[];
 }
 
 type GroupedServices = Record<string, ApiService[]>;
 
-const CATEGORY_ORDER = ["Haircuts", "Color", "Styling", "Treatments"];
+const CATEGORY_ORDER = ["Haircuts", "Color", "Styling", "Treatments", "Facial Services"];
 
 const CATEGORY_ICON: Record<string, ReactNode> = {
   Haircuts: (
@@ -51,7 +59,9 @@ export default function Services() {
 
   useEffect(() => {
     let mounted = true;
-    fetch("/api/services")
+    // ?include=variants returns each service with its variant rows embedded
+    // so the menu can show Facial Hair Removal → Eyebrows / Upper lip / etc.
+    fetch("/api/services?include=variants")
       .then((r) => {
         if (!r.ok) throw new Error("Failed to load services");
         return r.json();
@@ -163,7 +173,8 @@ export default function Services() {
                     const image = item.image_url?.trim() || null;
                     const imageKey = `${item.id}:${image || ""}`;
                     return (
-                    <div key={item.id} className="flex items-center gap-3 group">
+                    <div key={item.id}>
+                    <div className="flex items-center gap-3 group">
                       {image && !failedImages[imageKey] ? (
                         <div className="relative w-[100px] h-[100px] rounded-md overflow-hidden border border-navy/10 shrink-0">
                           {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic URLs from DB may not match next/image remotePatterns */}
@@ -191,7 +202,22 @@ export default function Services() {
                         {item.duration} min
                       </span>
                     </div>
-                    );
+                    {/* Variants (e.g. Facial Hair Removal — Brow/Lip/Chin)
+                        render as an indented sub-list so customers can see
+                        the price breakdown without opening the booking. */}
+                    {item.variants && item.variants.length > 0 && (
+                      <div className="mt-2 ml-6 pl-4 border-l border-gold/30 space-y-1.5">
+                        {item.variants.map((v) => (
+                          <div key={v.id} className="flex items-center gap-3 text-[13px] font-body text-navy/60">
+                            <span className="text-gold/80 font-heading text-sm w-20 text-left">{v.price_text}</span>
+                            <span className="flex-1 min-w-0">— {v.name}</span>
+                            <span className="text-navy/40 text-xs shrink-0">{v.duration} min</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    </div>
+                  );
                   })}
                 </div>
               </div>
@@ -204,9 +230,10 @@ export default function Services() {
           <p className="text-navy/55 text-xs font-body max-w-xl mx-auto leading-relaxed">
             All prices are based upon consultation &amp; subject to change.
             Pricing depends on hair length, thickness &amp; texture. A $50
-            non-refundable deposit is required for select services and is applied
-            to your service total at the appointment. A 25% cancellation fee
-            applies to no-shows or cancellations within 24 hours.
+            deposit is taken at booking for appointments over $100 — it&apos;s
+            applied to your service total at the appointment. Refundable if
+            cancelled 24+ hours in advance; cancellations within 24 hours
+            forfeit the deposit.
           </p>
         </AnimatedSection>
       </div>

@@ -53,16 +53,18 @@ export default function TermsPage() {
             <section>
               <h2 className="font-heading text-2xl text-navy mb-3">3. Deposit, Cancellation, and No-Show Policy</h2>
               <p className="mb-3">
-                Certain services (color, bleach, chemical treatments, extensions, and appointments
-                longer than 100 minutes) require a <strong>$50 deposit</strong> to confirm the
-                booking. <strong>The deposit is non-refundable.</strong> The amount is applied to
-                the cost of your service at the time of your appointment.
+                A <strong>$50 deposit</strong> is charged at booking for appointments
+                priced over $100 (color, bleach, chemical treatments, extensions, and other
+                high-value services). The deposit is{" "}
+                <strong>applied toward the total cost of your service</strong> at the time of
+                your appointment.
               </p>
               <p className="mb-3">
-                If you need to cancel or reschedule, please give us at least 24 hours&#39; notice.
-                <strong> A 25% cancellation fee will be charged on no-shows or cancellations
-                within 24 hours of the scheduled appointment</strong>, in addition to any
-                forfeited deposit.
+                To receive a refund of your deposit, cancellations must be made at least
+                <strong> 24 hours in advance</strong>. Cancellations made within 24 hours of
+                the scheduled appointment will result in the <strong>loss of the deposit</strong>.
+                Please note that additional cancellation or no-show fees may apply where
+                applicable.
               </p>
               <p>
                 Repeated late cancellations or no-shows may result in a requirement to pre-pay a

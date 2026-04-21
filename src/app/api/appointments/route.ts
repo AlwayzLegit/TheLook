@@ -394,6 +394,7 @@ export async function POST(request: NextRequest) {
     date,
     startTime,
     cancelUrl: `${baseUrl}/book/cancel?token=${cancelToken}`,
+    anyStylist: wantsAny,
   }).catch(console.error);
   if (clientPhone) {
     sendBookingConfirmationSMS(
@@ -467,6 +468,7 @@ export async function POST(request: NextRequest) {
     endTime,
     status: "pending",
     requestedStylist: !wantsAny,
+    anyStylist: wantsAny,
     depositRequiredCents: depositRequired,
     depositPaid,
   });

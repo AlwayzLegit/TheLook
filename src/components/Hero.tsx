@@ -60,7 +60,7 @@ export default function Hero() {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="font-heading text-4xl md:text-5xl lg:text-6xl text-white tracking-wide mb-5 leading-[1.15]"
         >
-          <span className="text-shimmer">Your new look is just one appointment away.</span>
+          <span className="text-shimmer">Book The Look</span>
         </motion.h1>
 
         {/* Ornamental divider */}
@@ -95,6 +95,12 @@ export default function Hero() {
           transition={{ duration: 0.8, delay: 1.2 }}
           className="flex flex-col sm:flex-row gap-4 justify-center"
         >
+          <Link
+            href="/book"
+            className="bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-11 py-4 rounded-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)]"
+          >
+            Book Now
+          </Link>
           <Link
             href="/services"
             className="border border-white/20 hover:border-gold/60 bg-white/5 hover:bg-white/10 text-white text-[11px] tracking-[0.2em] uppercase px-11 py-4 rounded-sm transition-all duration-300 hover:-translate-y-0.5 backdrop-blur-sm"

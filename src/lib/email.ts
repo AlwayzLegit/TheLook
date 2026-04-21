@@ -21,6 +21,10 @@ interface AppointmentDetails {
   date: string;
   startTime: string;
   cancelUrl?: string;
+  // True when the customer chose "Any Stylist" — the email renders that
+  // wording instead of the resolved stylist's name so expectations stay
+  // aligned with what they picked.
+  anyStylist?: boolean;
 }
 
 // ----------------------------------------------------------------------
@@ -28,27 +32,31 @@ interface AppointmentDetails {
 // ----------------------------------------------------------------------
 
 export async function sendBookingConfirmation(details: AppointmentDetails) {
-  const { clientName, clientEmail, serviceName, stylistName, date, startTime, cancelUrl } = details;
+  const { clientName, clientEmail, serviceName, stylistName, date, startTime, cancelUrl, anyStylist } = details;
   const rescheduleUrl = cancelUrl ? cancelUrl.replace("/book/cancel", "/book/reschedule") : undefined;
+  const stylistDisplay = anyStylist ? "Any available stylist" : stylistName;
 
   const html = brandedEmail({
-    preheader: `Your ${serviceName} appointment is confirmed for ${formatDate(date)}.`,
-    kicker: "Appointment pending approval",
+    preheader: `Your ${serviceName} booking request for ${formatDate(date)} is pending.`,
+    kicker: "Appointment pending",
     headline: `Thanks, ${clientName.split(" ")[0]} — we got your request.`,
     bodyHtml: `
       <p style="margin: 0 0 14px;">
-        Your booking is in. A stylist will review and confirm shortly, and you&#39;ll get a
-        second email once we do. Here are the details so far:
+        Your appointment is <strong>pending</strong>. The salon will review your booking
+        and send a final confirmation by email shortly.
       </p>
       ${detailsTable([
         ["Service", serviceName],
-        ["Stylist", stylistName],
+        ["Stylist", stylistDisplay],
         ["Date", formatDate(date)],
         ["Time", formatTime(startTime)],
       ])}
-      <p style="margin: 18px 0 8px;">
-        <strong>Prep tips:</strong> arrive with your natural hair texture (unwashed 1–2 days
-        before color is ideal), and bring reference photos if you have a look in mind.
+      <p style="margin: 18px 0 8px;"><strong>Before your visit</strong></p>
+      <p style="margin: 0 0 14px;">
+        Please arrive with clean hair unless otherwise instructed for your specific service.
+        For color services, 1–2 days of unwashed hair is recommended. If you have a
+        particular style or color in mind, feel free to bring photos for reference — this
+        helps ensure we achieve your desired look. We look forward to seeing you soon!
       </p>
       <p style="margin: 0 0 14px;">
         Need to change something? Use the Reschedule link below, or call us — we&#39;re friendly
@@ -74,7 +82,7 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
     await getResend().emails.send({
       from: FROM,
       to: SALON_EMAIL,
-      subject: `New booking: ${clientName} — ${serviceName} with ${stylistName}`,
+      subject: `New booking: ${clientName} — ${serviceName} with ${stylistDisplay}`,
       html: brandedEmail({
         preheader: `New booking for ${clientName} on ${formatDate(date)}.`,
         kicker: "New booking alert",
@@ -83,7 +91,7 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
           ${detailsTable([
             ["Client", `${clientName}<br/><span style="color:#999; font-size:12px;">${clientEmail}</span>`],
             ["Service", serviceName],
-            ["Stylist", stylistName],
+            ["Stylist", anyStylist ? `${stylistDisplay} <span style="background:#999;color:#fff;padding:2px 6px;font-size:10px;">ANY</span> (resolved → ${stylistName})` : stylistName],
             ["Date", formatDate(date)],
             ["Time", formatTime(startTime)],
           ])}
@@ -232,15 +240,18 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
       ctaUrl: `${SITE}/book`,
     },
     completed: {
-      subject: "Thanks for visiting The Look Hair Salon!",
-      kicker: "Thanks for visiting",
-      headline: "Thanks for coming in.",
+      subject: "We loved having you at The Look!",
+      kicker: "Hope you loved it",
+      headline: "We hope you're loving your new look.",
       body: `
-        <p style="margin: 0 0 14px;">Hi ${clientName}, we hope you loved your new look.</p>
+        <p style="margin: 0 0 14px;">Hi ${clientName},</p>
         <p style="margin: 0 0 14px;">
-          If you have a minute, a Google or Yelp review helps other Glendale locals find us and
-          tells our team they&#39;re doing it right. Took you less than a minute to find us —
-          takes even less to leave a line.
+          Thank you for choosing The Look Hair Salon — it was wonderful having you in. We hope
+          you&#39;re loving the result.
+        </p>
+        <p style="margin: 0 0 14px;">
+          If you have a moment, a quick Google or Yelp review helps other neighbors find us and
+          lets our team know we&#39;re on the right track.
         </p>
         <p style="margin: 0 0 0;">See you next time!</p>
       `,
@@ -370,6 +381,49 @@ export async function sendStaffNewBookingEmail(details: StaffNewBookingDetails) 
   }
 }
 
+interface StaffNewMessageDetails {
+  recipients: string[];
+  name: string;
+  email: string;
+  phone: string | null;
+  service: string | null;
+  message: string;
+  adminUrl: string;
+}
+
+// Staff alert when a new contact form lands. Mirrors the new-booking email
+// shape so the inbox reads consistently.
+export async function sendStaffNewMessageEmail(details: StaffNewMessageDetails) {
+  const { recipients, name, email, phone, service, message, adminUrl } = details;
+  if (recipients.length === 0) return;
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to: recipients,
+      subject: `[Inbox] New contact message from ${name}`,
+      html: brandedEmail({
+        preheader: `${name} sent a message${service ? ` about ${service}` : ""}.`,
+        kicker: "New contact form submission",
+        headline: `${name} reached out`,
+        bodyHtml: `
+          ${detailsTable([
+            ["From", `${name}<br/><span style="color:#999; font-size:12px;">${email}${phone ? " · " + phone : ""}</span>`],
+            ...(service ? [["Service interest", service] as [string, string]] : []),
+            ["Message", message.replace(/</g, "&lt;").replace(/\n/g, "<br/>")],
+          ])}
+        `,
+        ctaLabel: "Open in admin",
+        ctaUrl: adminUrl,
+        signoff: "Auto-sent by The Look",
+        includeSupportFooter: false,
+        includePolicyFooter: false,
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to send staff new-message email:", error);
+  }
+}
+
 // ----------------------------------------------------------------------
 // Reviews
 // ----------------------------------------------------------------------
@@ -394,15 +448,16 @@ export async function sendReviewRequestEmail(details: ReviewRequestDetails) {
       to: clientEmail,
       subject: "How was your visit?",
       html: brandedEmail({
-        preheader: `Thanks for coming in for your ${serviceName}.`,
-        kicker: "Thank you",
+        preheader: `We hope you loved your ${serviceName}.`,
+        kicker: "How was it?",
         headline: "How was your visit?",
         bodyHtml: `
           <p style="margin: 0 0 14px;">Hi ${clientName},</p>
           <p style="margin: 0 0 14px;">
-            Thanks for coming in for your <strong>${serviceName}</strong> with <strong>${stylistName}</strong>
-            on ${formatDate(date)}. If you loved it, a quick review on Google or Yelp would
-            genuinely help us.
+            We hope you&#39;re loving your <strong>${serviceName}</strong> with{" "}
+            <strong>${stylistName}</strong> from ${formatDate(date)}. If you enjoyed your visit,
+            a quick review on Google or Yelp would mean a lot — it&#39;s how other Glendale
+            neighbors find us.
           </p>
           <table width="100%" cellpadding="0" cellspacing="0" style="margin: 12px 0;">
             <tr>

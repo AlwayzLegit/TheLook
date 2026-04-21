@@ -107,13 +107,14 @@ export default function ClientInfoForm({
           {requiresDeposit ? (
             <>
               <div className="bg-cream/50 border border-navy/10 p-4 text-sm font-body text-navy/70">
-                <p className="font-bold text-navy mb-2">Deposit Policy</p>
+                <p className="font-bold text-navy mb-2">Deposit & Cancellation Policy</p>
                 <p className="text-xs leading-relaxed">
-                  A <strong>${depositDollars} deposit</strong> is charged upon booking to
-                  secure your appointment. The deposit is{" "}
-                  <strong>applied to your service total</strong> at the appointment. If you
-                  no-show or cancel within 24&nbsp;hours of your appointment, the deposit is
-                  <strong> forfeited</strong>.
+                  A <strong>${depositDollars} deposit</strong> is charged now to secure this
+                  appointment. The deposit is <strong>applied toward your total</strong> at
+                  the time of service. If you need to cancel, please give us{" "}
+                  <strong>at least 24 hours&apos; notice</strong> to receive a refund —
+                  cancellations within 24&nbsp;hours (and no-shows) forfeit the deposit.
+                  Additional cancellation or no-show fees may apply where applicable.
                 </p>
               </div>
 
@@ -126,9 +127,8 @@ export default function ClientInfoForm({
                   required
                 />
                 <span className="text-xs text-navy/70">
-                  I agree to the <strong>deposit policy</strong> above and authorize The Look
-                  Hair Salon to charge the ${depositDollars} deposit now. I understand the
-                  deposit is forfeited if I no-show or cancel within 24&nbsp;hours. *
+                  I agree to the <strong>deposit & cancellation policy</strong> above and
+                  authorize The Look Hair Salon to charge the ${depositDollars} deposit now. *
                 </span>
               </label>
             </>

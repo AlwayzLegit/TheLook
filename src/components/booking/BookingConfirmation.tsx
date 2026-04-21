@@ -12,6 +12,7 @@ interface Props {
     date: string;
     startTime: string;
     endTime: string;
+    anyStylist?: boolean;
   };
 }
 
@@ -89,15 +90,16 @@ export default function BookingConfirmation({ result }: Props) {
         transition={{ delay: 0.4, duration: 0.4 }}
         className="font-heading text-3xl mb-2"
       >
-        You&apos;re All Set!
+        Appointment Pending
       </motion.h2>
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="text-navy/50 font-body text-sm mb-2"
+        className="text-navy/60 font-body text-sm mb-2 leading-relaxed"
       >
-        A confirmation email has been sent with your appointment details.
+        Your booking request has been received. The salon will review your appointment
+        and send a final confirmation by email shortly.
       </motion.p>
       {result.id && (
         <motion.p
@@ -134,7 +136,9 @@ export default function BookingConfirmation({ result }: Props) {
         </div>
         <div className="flex justify-between">
           <span className="text-navy/50 text-sm font-body">Stylist</span>
-          <span className="font-body font-bold text-sm">{result.stylist}</span>
+          <span className="font-body font-bold text-sm">
+            {result.anyStylist ? "Any available stylist" : result.stylist}
+          </span>
         </div>
         <div className="flex justify-between">
           <span className="text-navy/50 text-sm font-body">Date</span>

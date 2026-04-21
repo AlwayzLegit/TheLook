@@ -29,7 +29,12 @@ export async function PATCH(
   const body = await request.json();
   const parsed = adminServiceSchema.safeParse(body);
   if (!parsed.success) {
-    return apiError("Invalid service payload.", 400);
+    // Surface the specific field error so the admin can fix it instead
+    // of staring at "Invalid service payload".
+    const first = parsed.error.issues[0];
+    const path = (first?.path || []).join(".");
+    const msg = first?.message || "validation failed";
+    return apiError(`Invalid ${path || "payload"}: ${msg}`, 400);
   }
   const payload = parsed.data;
   const slugSource = payload.slug && payload.slug.trim().length > 0 ? payload.slug : payload.name;

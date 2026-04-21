@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import StylistImage from "@/components/StylistImage";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { BOOKING } from "@/lib/constants";
 import type { Metadata } from "next";
@@ -72,14 +73,11 @@ export default async function StylistPage({ params }: any) {
 
           <div className="grid md:grid-cols-2 gap-12 mb-16">
             <div className="aspect-[3/4] overflow-hidden bg-navy/5">
-              {stylist.image_url ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={stylist.image_url} alt={stylist.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="font-heading text-9xl text-navy/20">{stylist.name.charAt(0)}</span>
-                </div>
-              )}
+              <StylistImage
+                src={stylist.image_url}
+                alt={stylist.name}
+                initial={stylist.name.charAt(0).toUpperCase()}
+              />
             </div>
             <div className="flex flex-col justify-center">
               <div className="flex items-center gap-3 mb-4">
@@ -88,11 +86,11 @@ export default async function StylistPage({ params }: any) {
               </div>
               <h1 className="font-heading text-5xl md:text-6xl mb-4">{stylist.name}</h1>
 
-              <div className="flex flex-wrap gap-2 mb-6">
-                {stylist.specialties.map((s: string) => (
-                  <span key={s} className="text-xs font-body bg-gold/15 text-gold px-3 py-1">{s}</span>
-                ))}
-              </div>
+              {stylist.specialties.length > 0 && (
+                <p className="text-sm font-body text-navy/60 mb-6">
+                  {stylist.specialties.join(" · ")}
+                </p>
+              )}
 
               {stylist.bio && (
                 <p className="text-navy/70 font-body font-light leading-relaxed mb-8">{stylist.bio}</p>
@@ -118,15 +116,16 @@ export default async function StylistPage({ params }: any) {
                     <h3 className="font-heading text-xl mb-4 pb-2 border-b border-navy/10">{cat}</h3>
                     <div className="space-y-3">
                       {items.map((svc) => (
-                        <div key={svc.id} className="flex items-baseline justify-between">
-                          <div className="flex-1">
+                        // Fixed-column grid so price + Book link line up
+                        // neatly across every row, regardless of service
+                        // name length.
+                        <div key={svc.id} className="grid grid-cols-[1fr_auto_auto] gap-4 items-baseline">
+                          <div>
                             <p className="font-body text-sm">{svc.name}</p>
                             <p className="text-navy/40 text-xs font-body">{svc.duration} min</p>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-gold font-heading">{svc.price_text}</span>
-                            <Link href={`/book?service=${svc.id}&stylist=${stylist.id}`} className="text-[10px] font-body text-rose hover:underline">Book</Link>
-                          </div>
+                          <span className="text-gold font-heading text-right tabular-nums min-w-[70px]">{svc.price_text}</span>
+                          <Link href={`/book?service=${svc.id}&stylist=${stylist.id}`} className="text-[10px] font-body text-rose hover:underline">Book</Link>
                         </div>
                       ))}
                     </div>

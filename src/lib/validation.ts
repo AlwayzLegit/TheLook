@@ -56,13 +56,15 @@ export const adminServiceSchema = z.object({
   // Optional — server auto-generates from name when blank.
   slug: z.string().trim().max(160).nullable().optional(),
   price_text: z.string().trim().min(1).max(50),
-  price_min: z.number().int().min(0).max(1_000_000),
+  // Raised ceiling from $10k to $100k so high-end extensions + bridal
+  // packages don't bounce.
+  price_min: z.number().int().min(0).max(10_000_000),
   duration: z.number().int().min(1).max(600),
   image_url: z.string().trim().max(500).nullable().optional(),
   description: z.string().max(5000).nullable().optional(),
   products_used: z.string().max(2000).nullable().optional(),
   active: z.boolean().optional(),
-  sort_order: z.number().int().min(0).max(10_000).optional(),
+  sort_order: z.number().int().min(0).max(1_000_000).optional(),
 });
 
 export const adminStylistSchema = z.object({
