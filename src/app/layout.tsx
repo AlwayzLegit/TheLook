@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import "./globals.css";
 
 const siteUrl = (() => {
@@ -151,9 +152,11 @@ export default function RootLayout({
         ) : null}
       </head>
       <body className="antialiased">
-        {children}
-        <Analytics />
-        <SpeedInsights />
+        <PostHogProvider>
+          {children}
+          <Analytics />
+          <SpeedInsights />
+        </PostHogProvider>
       </body>
     </html>
   );
