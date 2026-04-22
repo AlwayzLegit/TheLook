@@ -89,11 +89,12 @@ export default function Gallery() {
               <button
                 ref={(el) => { if (lightboxIndex === null) triggerRef.current = el; }}
                 onClick={() => { triggerRef.current = document.activeElement as HTMLButtonElement; setLightboxIndex(index); }}
+                aria-label={`Open ${item.title} — ${item.category} gallery image in lightbox`}
                 className="group relative aspect-square overflow-hidden cursor-pointer w-full rounded-sm bg-gradient-to-br from-navy/5 to-gold/10"
               >
                 <Image
                   src={item.image}
-                  alt={item.title}
+                  alt={`${item.title} — ${item.category} service at The Look Hair Salon`}
                   fill
                   className="object-cover transition-all duration-700 group-hover:scale-110"
                 />
@@ -141,7 +142,7 @@ export default function Gallery() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <button onClick={(e) => { e.stopPropagation(); goPrev(); }} aria-label="Previous" className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors z-10">
+            <button onClick={(e) => { e.stopPropagation(); goPrev(); }} aria-label="Previous" className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors z-10">
               <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
               </svg>
@@ -161,12 +162,12 @@ export default function Gallery() {
                 <p className="text-gold text-sm font-body">{galleryItems[lightboxIndex].category}</p>
               </div>
             </motion.div>
-            <button onClick={(e) => { e.stopPropagation(); goNext(); }} aria-label="Next" className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors z-10">
+            <button onClick={(e) => { e.stopPropagation(); goNext(); }} aria-label="Next" className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors z-10">
               <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
               </svg>
             </button>
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/40 text-sm font-body tracking-wider">
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/60 text-sm font-body tracking-wider">
               {lightboxIndex + 1} / {galleryItems.length}
             </div>
           </motion.div>

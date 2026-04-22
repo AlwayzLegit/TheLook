@@ -123,6 +123,29 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-navy);
 }
 
+/* ── Focus ring ──
+   Brand-coloured focus outline for keyboard users on the public site.
+   The admin shell has its own focus style scoped to `.admin-shell`
+   further down — this is the fallback for every other route so the
+   default browser blue doesn't show against the rose CTAs. */
+:where(button, a, input, select, textarea, [role="button"], [role="menuitem"], [tabindex]):focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Respect reduced-motion preferences. Disables CSS transitions and
+   animations; framer-motion is handled via useReducedMotion() in
+   AnimatedSection + Hero. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 5px;

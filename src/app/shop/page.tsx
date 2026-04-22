@@ -49,7 +49,7 @@ export default function ShopPage() {
             </Link>
           </div>
 
-          <div className="mt-16 pt-10 border-t border-navy/10 text-navy/40 font-body text-xs tracking-wider">
+          <div className="mt-16 pt-10 border-t border-navy/10 text-navy/60 font-body text-xs tracking-wider">
             919 South Central Ave Suite #E, Glendale, CA 91204 · (818) 662-5665
           </div>
         </div>

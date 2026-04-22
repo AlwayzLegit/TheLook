@@ -1,9 +1,27 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import { Forum, Lato } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import "./globals.css";
+
+// Self-hosted Google Fonts via next/font — eliminates the render-blocking
+// <link> to fonts.googleapis.com, handles subsetting + preload + CSS
+// inlining automatically. Matches the two tokens already declared in
+// globals.css (--font-heading, --font-body) via CSS variables.
+const forum = Forum({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-heading",
+});
+const lato = Lato({
+  weight: ["300", "400", "700"],
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-body",
+});
 
 const siteUrl = (() => {
   const raw = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
@@ -128,18 +146,8 @@ export default function RootLayout({
 }>) {
   const hasTurnstile = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
   return (
-    <html lang="en">
+    <html lang="en" className={`${forum.variable} ${lato.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Forum&family=Lato:wght@300;400;700&display=swap"
-          rel="stylesheet"
-        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

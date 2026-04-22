@@ -71,7 +71,7 @@ export default function SalonHours({ variant = "light", className = "" }: Props)
 
   const isDark = variant === "dark";
   const openClass = isDark ? "text-white/75" : "text-navy/70";
-  const closedClass = isDark ? "text-white/40" : "text-navy/40";
+  const closedClass = isDark ? "text-white/60" : "text-navy/60";
 
   return (
     <div className={`text-sm font-body font-light space-y-2 ${className}`}>

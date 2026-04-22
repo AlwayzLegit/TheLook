@@ -70,21 +70,21 @@ export default function About() {
             <div className="flex gap-6 lg:gap-10 pt-7 border-t border-navy/10">
               <div className="text-center px-3">
                 <p className="font-heading text-3xl text-navy">830+</p>
-                <p className="text-navy/45 text-[10px] tracking-wider uppercase font-body mt-1">
+                <p className="text-navy/60 text-[10px] tracking-wider uppercase font-body mt-1">
                   Yelp Reviews
                 </p>
               </div>
               <div className="w-[1px] bg-navy/10" />
               <div className="text-center px-3">
                 <p className="font-heading text-3xl text-navy">4.2</p>
-                <p className="text-navy/45 text-[10px] tracking-wider uppercase font-body mt-1">
+                <p className="text-navy/60 text-[10px] tracking-wider uppercase font-body mt-1">
                   Star Rating
                 </p>
               </div>
               <div className="w-[1px] bg-navy/10" />
               <div className="text-center px-3">
                 <p className="font-heading text-3xl text-navy">639+</p>
-                <p className="text-navy/45 text-[10px] tracking-wider uppercase font-body mt-1">
+                <p className="text-navy/60 text-[10px] tracking-wider uppercase font-body mt-1">
                   Photos
                 </p>
               </div>

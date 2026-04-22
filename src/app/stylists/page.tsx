@@ -52,7 +52,7 @@ export default async function StylistsListPage() {
           </div>
 
           {stylists.length === 0 ? (
-            <p className="text-navy/40 text-center font-body">Our stylists are being featured here soon.</p>
+            <p className="text-navy/60 text-center font-body">Our stylists are being featured here soon.</p>
           ) : (
             <div className="grid md:grid-cols-3 gap-8">
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

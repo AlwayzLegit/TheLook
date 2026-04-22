@@ -83,7 +83,7 @@ function RescheduleInner() {
           <h1 className="font-heading text-4xl mb-2 text-center">Reschedule Appointment</h1>
 
           {loading ? (
-            <p className="text-navy/40 font-body text-sm text-center mt-10">Loading...</p>
+            <p className="text-navy/60 font-body text-sm text-center mt-10">Loading...</p>
           ) : error ? (
             <div className="mt-10 bg-white border border-red-200 p-8 text-center">
               <p className="text-red-600 font-body">{error}</p>
@@ -100,7 +100,7 @@ function RescheduleInner() {
               <p className="text-navy/60 font-body text-sm mb-2">Your appointment is now:</p>
               <p className="font-body font-bold text-navy">{formatDate(success.date)}</p>
               <p className="font-body text-navy">{formatTime(success.time)}</p>
-              <p className="text-navy/40 text-xs font-body mt-4">A confirmation email is on its way.</p>
+              <p className="text-navy/60 text-xs font-body mt-4">A confirmation email is on its way.</p>
               <Link href="/" className="inline-block mt-6 border border-navy/20 text-navy text-[11px] tracking-[0.2em] uppercase px-8 py-3 hover:border-navy">Return Home</Link>
             </div>
           ) : appointment ? (
@@ -110,7 +110,7 @@ function RescheduleInner() {
               </p>
 
               <div className="bg-white border border-navy/10 p-6 mb-6">
-                <p className="text-xs font-body text-navy/40 mb-1">Current:</p>
+                <p className="text-xs font-body text-navy/60 mb-1">Current:</p>
                 <p className="font-body text-sm">{formatDate(appointment.date)} at {formatTime(appointment.startTime)}</p>
               </div>
 

@@ -61,15 +61,22 @@ function FAQItem({
   faq,
   isOpen,
   onToggle,
+  id,
 }: {
   faq: (typeof faqs)[0];
   isOpen: boolean;
   onToggle: () => void;
+  id: string;
 }) {
+  const panelId = `${id}-panel`;
+  const buttonId = `${id}-button`;
   return (
-    <div className="border-b border-navy/8">
+    <div className="border-b border-navy/15">
       <button
+        id={buttonId}
         onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-controls={panelId}
         className="w-full flex items-center justify-between py-6 text-left group"
       >
         <span className="font-heading text-lg pr-6 group-hover:text-rose transition-colors">
@@ -78,6 +85,7 @@ function FAQItem({
         <motion.div
           animate={{ rotate: isOpen ? 45 : 0 }}
           transition={{ duration: 0.2 }}
+          aria-hidden
           className="w-6 h-6 flex items-center justify-center shrink-0 border border-navy/15 rounded-full group-hover:border-rose/30 transition-colors"
         >
           <svg className="w-3 h-3 text-rose" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,6 +96,9 @@ function FAQItem({
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            id={panelId}
+            role="region"
+            aria-labelledby={buttonId}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -128,6 +139,7 @@ export default function FAQ() {
             {faqs.map((faq, index) => (
               <FAQItem
                 key={index}
+                id={`faq-${index}`}
                 faq={faq}
                 isOpen={openIndex === index}
                 onToggle={() =>

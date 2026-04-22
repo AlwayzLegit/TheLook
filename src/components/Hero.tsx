@@ -2,17 +2,23 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
 
 export default function Hero() {
   const ref = useRef(null);
+  const prefersReducedMotion = useReducedMotion();
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"],
   });
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "25%"]);
-  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  // When the user prefers reduced motion, pin the parallax layer —
+  // useScroll still runs but we drop the transform so there's no
+  // frame-by-frame movement.
+  const rawY = useTransform(scrollYProgress, [0, 1], ["0%", "25%"]);
+  const rawOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  const y = prefersReducedMotion ? "0%" : rawY;
+  const opacity = prefersReducedMotion ? 1 : rawOpacity;
 
   return (
     <section

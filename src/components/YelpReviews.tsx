@@ -304,7 +304,7 @@ export default function YelpReviews() {
                 <div className="flex items-center gap-1.5">
                   <span className="font-body font-bold text-sm text-white/90">{yelpRating.toFixed(1)}</span>
                   <StarRating rating={Math.round(yelpRating)} />
-                  <span className="text-white/40 text-xs font-body">{yelpTotal}+</span>
+                  <span className="text-white/60 text-xs font-body">{yelpTotal}+</span>
                 </div>
                 <p className="text-white/30 text-[10px] font-body mt-0.5 group-hover:text-gold/60 transition-colors">
                   Yelp reviews &rarr;
@@ -328,7 +328,7 @@ export default function YelpReviews() {
                 <div className="flex items-center gap-1.5">
                   <span className="font-body font-bold text-sm text-white/90">{googleRating.toFixed(1)}</span>
                   <StarRating rating={Math.round(googleRating)} />
-                  <span className="text-white/40 text-xs font-body">{googleTotal}+</span>
+                  <span className="text-white/60 text-xs font-body">{googleTotal}+</span>
                 </div>
                 <p className="text-white/30 text-[10px] font-body mt-0.5 group-hover:text-gold/60 transition-colors">
                   Google reviews &rarr;

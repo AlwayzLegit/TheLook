@@ -12,14 +12,14 @@ export default function BookingProgress({ current }: { current: number }) {
                   ? "bg-rose text-white"
                   : i === current
                     ? "bg-navy text-white"
-                    : "bg-navy/10 text-navy/40"
+                    : "bg-navy/10 text-navy/60"
               }`}
             >
               {i < current ? "✓" : i + 1}
             </div>
             <span
               className={`hidden sm:inline text-xs font-body ${
-                i <= current ? "text-navy" : "text-navy/40"
+                i <= current ? "text-navy" : "text-navy/60"
               }`}
             >
               {step}

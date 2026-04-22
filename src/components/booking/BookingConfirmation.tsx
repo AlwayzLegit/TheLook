@@ -106,7 +106,7 @@ export default function BookingConfirmation({ result }: Props) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.55 }}
-          className="text-navy/40 font-body text-xs mb-8"
+          className="text-navy/60 font-body text-xs mb-8"
         >
           Reference: <span className="font-mono text-navy/60">{result.id.slice(0, 8).toUpperCase()}</span>
         </motion.p>

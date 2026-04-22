@@ -22,7 +22,7 @@ export default function PrivacyPage() {
               <span className="w-10 h-[1px] bg-gradient-to-l from-transparent to-gold" />
             </div>
             <h1 className="font-heading text-5xl md:text-6xl mb-4">Privacy Policy</h1>
-            <p className="text-navy/40 text-xs tracking-wider uppercase font-body">Last updated: {LAST_UPDATED}</p>
+            <p className="text-navy/60 text-xs tracking-wider uppercase font-body">Last updated: {LAST_UPDATED}</p>
           </div>
 
           <div className="bg-white border border-navy/10 p-8 md:p-10 space-y-6 font-body text-navy/75 leading-relaxed text-[15px]">
@@ -195,7 +195,7 @@ export default function PrivacyPage() {
             </section>
           </div>
 
-          <p className="text-center text-navy/40 text-xs font-body mt-6">
+          <p className="text-center text-navy/60 text-xs font-body mt-6">
             This policy is provided for convenience and is not legal advice.
           </p>
         </div>

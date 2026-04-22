@@ -83,7 +83,7 @@ export default function ClientInfoForm({
             onChange={(e) => onChange({ ...info, phone: e.target.value })}
             className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors"
           />
-          <p className="text-xs text-navy/40 font-body mt-1">
+          <p className="text-xs text-navy/60 font-body mt-1">
             Required so we can reach you about same-day changes.
           </p>
         </div>

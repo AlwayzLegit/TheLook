@@ -92,7 +92,7 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
 
       {/* Breadcrumb */}
       <div className="max-w-7xl mx-auto px-8 lg:px-12 pt-8">
-        <nav className="flex items-center gap-2 text-xs font-body text-navy/45">
+        <nav className="flex items-center gap-2 text-xs font-body text-navy/60">
           <Link href="/" className="hover:text-gold transition-colors">
             Home
           </Link>
@@ -164,7 +164,7 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
                         <p className="text-navy/80 text-sm sm:text-[15px] font-body group-hover:text-navy transition-colors">
                           {service.name}
                         </p>
-                        <p className="text-navy/40 text-xs font-body mt-0.5">
+                        <p className="text-navy/60 text-xs font-body mt-0.5">
                           {service.duration} min
                         </p>
                       </div>
@@ -186,12 +186,12 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
               </div>
 
               {category.bookingNote && (
-                <p className="text-navy/45 text-xs font-body font-light text-center mt-6 leading-relaxed">
+                <p className="text-navy/60 text-xs font-body font-light text-center mt-6 leading-relaxed">
                   {category.bookingNote}
                 </p>
               )}
 
-              <p className="text-navy/40 text-xs font-body font-light text-center mt-4 leading-relaxed">
+              <p className="text-navy/60 text-xs font-body font-light text-center mt-4 leading-relaxed">
                 All prices are based upon consultation &amp; subject to change.
                 Pricing depends on hair length, thickness &amp; texture.
               </p>

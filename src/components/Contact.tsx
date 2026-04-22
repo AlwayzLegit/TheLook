@@ -70,14 +70,16 @@ export default function Contact() {
         // retry gets a fresh token (P2-1).
         turnstileRef.current?.reset();
         setTurnstileToken(null);
-        setTimeout(() => setStatus("idle"), 5000);
+        // Error state stays sticky — if a user switched tabs or got
+        // distracted, the "something went wrong" message must still
+        // be visible when they come back. Success auto-dismisses (it's
+        // a "we got it" ack, not actionable).
       }
     } catch {
       track("contact_failed", { status: 0, error: "network" });
       setStatus("error");
       turnstileRef.current?.reset();
       setTurnstileToken(null);
-      setTimeout(() => setStatus("idle"), 5000);
     }
   };
 
@@ -95,9 +97,9 @@ export default function Contact() {
             </span>
             <span className="w-10 h-[1px] bg-gradient-to-l from-transparent to-gold" />
           </div>
-          <h2 className="font-heading text-4xl md:text-5xl mb-6">
+          <h1 className="font-heading text-4xl md:text-5xl mb-6">
             Contact Us
-          </h2>
+          </h1>
           <p className="text-navy/60 font-body font-light max-w-xl mx-auto">
             The absolute best way to reach us is by calling the salon directly.
             We will be glad to assist you with any questions you may have.

@@ -110,9 +110,9 @@ export default function Services() {
             </span>
             <span className="w-10 h-[1px] bg-gradient-to-l from-transparent to-gold" />
           </div>
-          <h2 className="font-heading text-4xl md:text-5xl mb-6">
+          <h1 className="font-heading text-4xl md:text-5xl mb-6">
             Services &amp; Pricing
-          </h2>
+          </h1>
           <p className="text-navy/60 font-body font-light max-w-lg mx-auto text-[15px]">
             The highest quality hair salon services in Glendale at unbeatable prices.
           </p>
@@ -198,7 +198,7 @@ export default function Services() {
                       <span className="text-navy/70 text-[14px] font-body group-hover:text-navy transition-colors duration-200 flex-1 min-w-0">
                         {item.name}
                       </span>
-                      <span className="text-navy/45 text-xs font-body shrink-0">
+                      <span className="text-navy/60 text-xs font-body shrink-0">
                         {item.duration} min
                       </span>
                     </div>
@@ -211,7 +211,7 @@ export default function Services() {
                           <div key={v.id} className="flex items-center gap-3 text-[13px] font-body text-navy/60">
                             <span className="text-gold/80 font-heading text-sm w-20 text-left">{v.price_text}</span>
                             <span className="flex-1 min-w-0">— {v.name}</span>
-                            <span className="text-navy/40 text-xs shrink-0">{v.duration} min</span>
+                            <span className="text-navy/60 text-xs shrink-0">{v.duration} min</span>
                           </div>
                         ))}
                       </div>

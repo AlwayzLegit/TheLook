@@ -198,7 +198,9 @@ export default function Navbar() {
               onClick={handleToggle}
               disabled={animating}
               className="lg:hidden w-10 h-10 flex items-center justify-center"
-              aria-label="Toggle menu"
+              aria-label={isOpen ? "Close menu" : "Open menu"}
+              aria-expanded={isOpen}
+              aria-controls="mobile-nav"
             >
               {isOpen ? (
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,6 +220,10 @@ export default function Navbar() {
       {isOpen && (
         <div
           ref={overlayRef}
+          id="mobile-nav"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Site navigation"
           className="lg:hidden"
           style={{
             position: "fixed",
@@ -270,7 +276,7 @@ export default function Navbar() {
                         href={sub.href}
                         onClick={handleLinkClick}
                         className={`text-xs tracking-[0.15em] uppercase font-body transition-colors ${
-                          pathname === sub.href ? "text-gold/80" : "text-white/40 hover:text-gold/70"
+                          pathname === sub.href ? "text-gold/80" : "text-white/60 hover:text-gold/70"
                         }`}
                       >
                         {sub.label}

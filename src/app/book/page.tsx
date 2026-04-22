@@ -468,6 +468,9 @@ export default function BookPage() {
     <>
       <Navbar />
       <main className="pt-24 pb-20 min-h-screen bg-cream">
+        {/* Screen-reader anchor — design shows the step-specific h2s,
+            but every route needs a page-level h1 for assistive tech. */}
+        <h1 className="sr-only">Book an appointment at The Look Hair Salon</h1>
         <div className="max-w-4xl mx-auto px-6">
           {step < STEP_DONE && <BookingProgress current={step} />}
 
@@ -641,7 +644,7 @@ export default function BookPage() {
                 </div>
               )}
 
-              <p className="text-navy/40 text-xs font-body mt-4 text-center">
+              <p className="text-navy/60 text-xs font-body mt-4 text-center">
                 After you submit, your booking will be reviewed by the salon. You&apos;ll get an email
                 once it&apos;s approved.
               </p>

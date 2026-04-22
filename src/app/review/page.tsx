@@ -31,7 +31,7 @@ export default function ReviewPage() {
           <LeaveReviewCTA variant="light" />
 
           <div className="mt-12 text-center">
-            <p className="text-navy/40 text-xs tracking-[0.25em] uppercase font-body mb-3">
+            <p className="text-navy/60 text-xs tracking-[0.25em] uppercase font-body mb-3">
               Had an issue instead?
             </p>
             <p className="text-navy/60 font-body text-sm mb-4">

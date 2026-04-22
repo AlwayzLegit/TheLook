@@ -160,12 +160,12 @@ export default function StylistPicker({
                 </p>
               )}
               {!offersAll && (
-                <p className="text-xs text-navy/40 font-body mt-3 text-center">
+                <p className="text-xs text-navy/60 font-body mt-3 text-center">
                   Doesn&apos;t offer all selected services
                 </p>
               )}
               {offersAll && !free && date && startTime && !isAny && (
-                <p className="text-xs text-navy/40 font-body mt-3 text-center">
+                <p className="text-xs text-navy/60 font-body mt-3 text-center">
                   {state === "off" ? "Off today" : "Not available at this time"}
                 </p>
               )}
@@ -174,7 +174,7 @@ export default function StylistPicker({
         })}
       </div>
       {checking && (
-        <p className="text-center text-xs text-navy/40 font-body mt-4">Checking availability…</p>
+        <p className="text-center text-xs text-navy/60 font-body mt-4">Checking availability…</p>
       )}
     </div>
   );

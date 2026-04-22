@@ -63,13 +63,13 @@ export default function CalendarGrid({ selectedDate, onSelectDate, onMonthChange
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <button onClick={prevMonth} className="text-navy/40 hover:text-navy p-1">
+        <button onClick={prevMonth} className="text-navy/60 hover:text-navy p-1">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         <span className="font-heading text-lg">{monthName}</span>
-        <button onClick={nextMonth} className="text-navy/40 hover:text-navy p-1">
+        <button onClick={nextMonth} className="text-navy/60 hover:text-navy p-1">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
@@ -78,7 +78,7 @@ export default function CalendarGrid({ selectedDate, onSelectDate, onMonthChange
 
       <div className="grid grid-cols-7 gap-1 text-center">
         {DAYS.map((d) => (
-          <div key={d} className="text-xs font-body text-navy/40 py-1">
+          <div key={d} className="text-xs font-body text-navy/60 py-1">
             {d}
           </div>
         ))}

@@ -69,7 +69,7 @@ export default async function StylistPage({ params }: any) {
       <Navbar />
       <main className="pt-24 pb-20 min-h-screen bg-cream">
         <div className="max-w-6xl mx-auto px-6">
-          <Link href="/stylists" className="text-xs text-navy/40 hover:text-navy font-body mb-6 inline-block">&larr; All Stylists</Link>
+          <Link href="/stylists" className="text-xs text-navy/60 hover:text-navy font-body mb-6 inline-block">&larr; All Stylists</Link>
 
           <div className="grid md:grid-cols-2 gap-12 mb-16">
             <div className="aspect-[3/4] overflow-hidden bg-navy/5">
@@ -122,7 +122,7 @@ export default async function StylistPage({ params }: any) {
                         <div key={svc.id} className="grid grid-cols-[1fr_auto_auto] gap-4 items-baseline">
                           <div>
                             <p className="font-body text-sm">{svc.name}</p>
-                            <p className="text-navy/40 text-xs font-body">{svc.duration} min</p>
+                            <p className="text-navy/60 text-xs font-body">{svc.duration} min</p>
                           </div>
                           <span className="text-gold font-heading text-right tabular-nums min-w-[70px]">{svc.price_text}</span>
                           <Link href={`/book?service=${svc.id}&stylist=${stylist.id}`} className="text-[10px] font-body text-rose hover:underline">Book</Link>

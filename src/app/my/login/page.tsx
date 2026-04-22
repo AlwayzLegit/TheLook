@@ -76,13 +76,13 @@ export default function ClientLoginPage() {
               >
                 {submitting ? "Sending..." : "Send Sign-In Link"}
               </button>
-              <p className="text-xs text-navy/40 text-center font-body pt-2">
+              <p className="text-xs text-navy/60 text-center font-body pt-2">
                 You must have booked with us before to sign in.
               </p>
             </form>
           )}
 
-          <p className="text-center mt-8 text-xs text-navy/40 font-body">
+          <p className="text-center mt-8 text-xs text-navy/60 font-body">
             <Link href="/book" className="text-rose hover:underline">First time? Book an appointment</Link>
           </p>
         </div>

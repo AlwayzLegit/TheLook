@@ -90,7 +90,7 @@ export default async function ServiceDetailPage(
       <Navbar />
       <main className="pt-20 pb-20 min-h-screen bg-cream">
         {/* Breadcrumbs */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 text-xs font-body text-navy/40">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 text-xs font-body text-navy/60">
           <Link href="/" className="hover:text-navy">Home</Link>
           <span className="mx-2">/</span>
           <Link href="/services" className="hover:text-navy">Services</Link>
@@ -134,7 +134,7 @@ export default async function ServiceDetailPage(
             </h1>
             <div className="flex items-center gap-4 mb-6">
               <span className="text-gold font-heading text-2xl">{service.price_text}</span>
-              <span className="text-navy/40 font-body text-sm">
+              <span className="text-navy/60 font-body text-sm">
                 {formatDuration(service.duration)}
               </span>
             </div>
@@ -173,7 +173,7 @@ export default async function ServiceDetailPage(
                     <li key={v.id} className="flex items-baseline justify-between py-2">
                       <span className="font-body text-sm text-navy">{v.name}</span>
                       <span className="flex items-baseline gap-3 shrink-0">
-                        <span className="text-navy/40 text-xs font-body">
+                        <span className="text-navy/60 text-xs font-body">
                           {formatDuration(v.duration)}
                         </span>
                         <span className="text-gold font-heading text-base">{v.price_text}</span>
@@ -199,7 +199,7 @@ export default async function ServiceDetailPage(
               </Link>
             </div>
 
-            <p className="text-navy/40 text-[11px] font-body mt-6">
+            <p className="text-navy/60 text-[11px] font-body mt-6">
               919 South Central Ave Suite #E, Glendale, CA 91204 · (818) 662-5665
             </p>
           </div>

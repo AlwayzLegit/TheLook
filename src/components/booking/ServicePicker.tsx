@@ -73,9 +73,11 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
         {categories.map((cat) => {
           const selectedInCat = services[cat].filter((s) => selectedKeys.has(rowKey(s))).length;
           return (
-            <div key={cat} className="border border-navy/8 rounded-sm overflow-hidden bg-white">
+            <div key={cat} className="border border-navy/15 rounded-sm overflow-hidden bg-white">
               <button
                 onClick={() => setOpenCategory(openCategory === cat ? null : cat)}
+                aria-expanded={openCategory === cat}
+                aria-controls={`service-category-${cat.replace(/\s+/g, "-").toLowerCase()}`}
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-cream/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
@@ -87,13 +89,14 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-navy/50 text-xs font-body">
+                  <span className="text-navy/60 text-xs font-body">
                     {services[cat].length} services
                   </span>
                   <motion.svg
                     animate={{ rotate: openCategory === cat ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
-                    className="w-4 h-4 text-navy/45"
+                    aria-hidden
+                    className="w-4 h-4 text-navy/60"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -106,6 +109,8 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
               <AnimatePresence>
                 {openCategory === cat && (
                   <motion.div
+                    id={`service-category-${cat.replace(/\s+/g, "-").toLowerCase()}`}
+                    role="region"
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
@@ -149,7 +154,7 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
                               <p className={`font-body text-sm ${isSelected ? "text-rose font-medium" : "text-navy"}`}>
                                 {service.name}
                               </p>
-                              <p className="font-body text-xs text-navy/40 mt-0.5">
+                              <p className="font-body text-xs text-navy/60 mt-0.5">
                                 {formatDuration(service.duration)}
                               </p>
                             </div>
