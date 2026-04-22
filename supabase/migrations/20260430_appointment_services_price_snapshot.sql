@@ -16,12 +16,19 @@ ALTER TABLE public.appointment_services
   ADD COLUMN IF NOT EXISTS duration integer;
 
 -- Backfill legacy rows. Variant values take precedence because that's
--- what the booking flow actually charged for.
+-- what the booking flow actually charged for. Postgres doesn't allow
+-- the UPDATE-target alias (`aps`) to appear in JOIN ON clauses inside
+-- FROM, so variant lookups are done via correlated subqueries instead.
 UPDATE public.appointment_services aps
 SET
-  price_min = COALESCE(v.price_min, s.price_min),
-  duration  = COALESCE(v.duration,  s.duration)
+  price_min = COALESCE(
+    (SELECT sv.price_min FROM public.service_variants sv WHERE sv.id = aps.variant_id),
+    s.price_min
+  ),
+  duration = COALESCE(
+    (SELECT sv.duration FROM public.service_variants sv WHERE sv.id = aps.variant_id),
+    s.duration
+  )
 FROM public.services s
-LEFT JOIN public.service_variants v ON v.id = aps.variant_id
 WHERE aps.service_id = s.id
   AND (aps.price_min IS NULL OR aps.duration IS NULL);
