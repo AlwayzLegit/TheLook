@@ -76,7 +76,16 @@ const FALLBACK_STYLISTS: Stylist[] = [];
 export default function BookPage() {
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const searchParams = useSearchParams();
-  const [step, setStep] = useState(STEP_SERVICE);
+
+  // URL-backed step. Read ?step= once on mount to hydrate, then
+  // replaceState on every transition so browser back/forward + refresh
+  // land the user at the same step they were on. Valid range clamped
+  // so a manually-mangled URL doesn't jump past validation gates.
+  const [step, setStep] = useState<number>(() => {
+    const raw = parseInt(searchParams.get("step") || "0", 10);
+    if (!Number.isFinite(raw)) return STEP_SERVICE;
+    return Math.max(STEP_SERVICE, Math.min(STEP_DONE, raw));
+  });
   const [services, setServices] = useState<Record<string, Service[]>>({});
   const [allStylists, setAllStylists] = useState<Stylist[]>([]);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
@@ -87,6 +96,41 @@ export default function BookPage() {
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Mirror step → URL (replaceState so we don't spam the back stack).
+  // Done via direct history API instead of router.replace() to skip
+  // Next's route-rerender on every forward/backward step click —
+  // wizard state lives in React; URL is just a bookmark.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const current = url.searchParams.get("step");
+    const target = String(step);
+    if (current === target) return;
+    url.searchParams.set("step", target);
+    window.history.replaceState(null, "", url.toString());
+  }, [step]);
+
+  // Listen for back/forward so the step state follows the URL.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onPop = () => {
+      const raw = parseInt(new URL(window.location.href).searchParams.get("step") || "0", 10);
+      if (Number.isFinite(raw)) setStep(Math.max(STEP_SERVICE, Math.min(STEP_DONE, raw)));
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // Forward-navigation guard — if the user deep-links to step=3 but
+  // hasn't picked services yet, bounce them back to step 0.
+  useEffect(() => {
+    if (step === STEP_SERVICE) return;
+    if (step >= STEP_DATETIME && selectedServices.length === 0) setStep(STEP_SERVICE);
+    else if (step >= STEP_STYLIST && (!selectedDate || !selectedTime)) setStep(STEP_DATETIME);
+    else if (step >= STEP_INFO && !selectedStylist) setStep(STEP_STYLIST);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   // DEF-019: stale submit errors linger across Back + change-selection.
   // Whenever anything upstream of Confirm changes, drop the error so the
