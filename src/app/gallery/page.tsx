@@ -6,12 +6,15 @@ import BeforeAfterCarousel from "@/components/BeforeAfterCarousel";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
 import { BEFORE_AFTER_PAIRS } from "@/lib/beforeAfterPairs";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Gallery | The Look Hair Salon",
-  description:
-    "Browse our gallery of hair transformations — balayage, highlights, color corrections, precision cuts, and styling at The Look Hair Salon in Glendale, CA.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Gallery",
+    descriptionFor: (b) =>
+      `Browse our gallery of hair transformations — balayage, highlights, color corrections, precision cuts, and styling at ${b.name} in Glendale, CA.`,
+  });
+}
 
 export default function GalleryPage() {
   return (

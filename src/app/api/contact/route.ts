@@ -8,6 +8,7 @@ import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { sendStaffNewMessageEmail } from "@/lib/email";
 import { getStaffNotificationEmails } from "@/lib/settings";
 import { createNotification } from "@/lib/notifications";
+import { getBranding } from "@/lib/branding";
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -21,7 +22,8 @@ export async function POST(request: NextRequest) {
   }
 
   if (!hasSupabaseConfig) {
-    return apiError("Contact backend is not configured. Please call us directly at (818) 662-5665.", 503);
+    const brand = await getBranding();
+    return apiError(`Contact backend is not configured. Please call us directly at ${brand.phone}.`, 503);
   }
 
   const body = await request.json();

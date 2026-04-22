@@ -170,13 +170,15 @@ function pretty12h(time: string) {
   return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${ampm}`;
 }
 
-// Short-form brand for SMS. Keeps character count down — falls back to
-// the first two words of the full name if the owner hasn't saved a
-// short label explicitly (future brand_short_name field).
+// Short-form brand for SMS. Keeps character count down — splits on both
+// whitespace AND hyphens so "TEST-Brand-Salon" shortens to "TEST Brand"
+// the same way "The Look Hair Salon" shortens to "The Look". Hard caps
+// at 20 chars so a single long token ("MegaSalonXYZ123456789Inc") still
+// fits alongside the rest of the SMS body.
 function smsShortName(name: string): string {
-  const words = name.trim().split(/\s+/);
-  if (words.length <= 2) return name;
-  return words.slice(0, 2).join(" ");
+  const tokens = name.trim().split(/[\s-]+/).filter(Boolean);
+  const first = tokens.length <= 2 ? tokens.join(" ") : tokens.slice(0, 2).join(" ");
+  return first.length > 20 ? first.slice(0, 20).trim() : first;
 }
 
 export async function sendBookingConfirmationSMS(

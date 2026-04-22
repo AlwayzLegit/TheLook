@@ -5,12 +5,15 @@ import Team from "@/components/Team";
 import YelpReviews from "@/components/YelpReviews";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "About & Team | The Look Hair Salon",
-  description:
-    "Meet the team at The Look Hair Salon — family owned & operated since 2011 with over 25 years in the beauty industry. Located in Glendale, CA.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "About & Team",
+    descriptionFor: (b) =>
+      `Meet the team at ${b.name} — family owned & operated since 2011 with over 25 years in the beauty industry. Located in Glendale, CA.`,
+  });
+}
 
 export default function AboutPage() {
   return (

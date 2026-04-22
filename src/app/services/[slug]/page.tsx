@@ -5,6 +5,7 @@ import ServiceCategory from "@/components/ServiceCategory";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
 import { SERVICE_CATEGORIES, getCategoryBySlug } from "@/lib/service-categories";
+import { getBranding } from "@/lib/branding";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -19,8 +20,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const category = getCategoryBySlug(slug);
   if (!category) return {};
 
+  const brand = await getBranding();
   return {
-    title: `${category.title} | The Look Hair Salon`,
+    title: `${category.title} | ${brand.name}`,
     description: category.description,
   };
 }

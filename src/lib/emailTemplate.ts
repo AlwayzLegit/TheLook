@@ -18,6 +18,17 @@
  * All styling is inlined — most email clients strip external CSS.
  */
 
+// Branding values consumed in the footer / header / signoff. The caller
+// (email.ts) passes live values from getBranding(); falling back to the
+// defaults below keeps the template renderable in tests or if upstream
+// forgets to pass brand.
+export interface EmailBrand {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+}
+
 export interface BrandedEmailArgs {
   // One-line summary that previews in Gmail / Apple Mail. Keep ≤90 chars.
   preheader: string;
@@ -33,20 +44,24 @@ export interface BrandedEmailArgs {
   // A secondary CTA (e.g. "Cancel" beside the primary "Reschedule").
   secondaryLabel?: string;
   secondaryUrl?: string;
-  // Signed-by line at the end of the body. Defaults to "— The Look Hair Salon".
+  // Signed-by line at the end of the body. Defaults to "— <brand.name> team".
   signoff?: string;
   // Include the "address / phone / hours" block above the final footer.
   includeSupportFooter?: boolean;
   // Include the deposit + cancellation policy recap at the very bottom.
   includePolicyFooter?: boolean;
+  // Live salon identity. Falls back to the hardcoded defaults when missing.
+  brand?: EmailBrand;
 }
 
-const BRAND = {
+const BRAND_DEFAULTS = {
   name: "The Look Hair Salon",
   address: "919 South Central Ave Suite #E, Glendale, CA 91204",
   phone: "(818) 662-5665",
-  phoneHref: "+18186625665",
   email: "thelook_hairsalon@yahoo.com",
+};
+
+const BRAND_STATIC = {
   website: "https://www.thelookhairsalonla.com",
   bookUrl: "https://www.thelookhairsalonla.com/book",
   hoursSummary: "Mon, Wed–Fri 10am–6pm · Sat 10am–6pm · Sun 10am–5pm · Tue closed",
@@ -62,6 +77,18 @@ const BRAND = {
   },
 };
 
+// Keep the phone-href normalization inline so emailTemplate.ts stays a
+// dependency-free rendering primitive (no @/lib/branding import loop).
+function phoneToTelHref(phone: string): string {
+  const hadPlus = phone.trim().startsWith("+");
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return "";
+  if (hadPlus) return `+${digits}`;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return digits;
+}
+
 export function brandedEmail(args: BrandedEmailArgs): string {
   const {
     preheader,
@@ -72,15 +99,19 @@ export function brandedEmail(args: BrandedEmailArgs): string {
     ctaUrl,
     secondaryLabel,
     secondaryUrl,
-    signoff = `— The ${BRAND.name} team`,
     includeSupportFooter = true,
     includePolicyFooter = true,
+    brand: brandOverride,
   } = args;
+
+  const brand = { ...BRAND_DEFAULTS, ...(brandOverride || {}) };
+  const phoneHref = phoneToTelHref(brand.phone);
+  const signoff = args.signoff ?? `— The ${brand.name} team`;
 
   const ctaBlock = ctaLabel && ctaUrl
     ? `<tr>
          <td style="padding: 24px 0 8px; text-align: center;">
-           <a href="${ctaUrl}" style="display: inline-block; background: ${BRAND.colors.rose}; color: #fff; text-decoration: none; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; padding: 14px 28px; border-radius: 2px;">
+           <a href="${ctaUrl}" style="display: inline-block; background: ${BRAND_STATIC.colors.rose}; color: #fff; text-decoration: none; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; padding: 14px 28px; border-radius: 2px;">
              ${ctaLabel}
            </a>
          </td>
@@ -88,7 +119,7 @@ export function brandedEmail(args: BrandedEmailArgs): string {
        ${secondaryLabel && secondaryUrl ? `
        <tr>
          <td style="padding: 6px 0 0; text-align: center;">
-           <a href="${secondaryUrl}" style="color: ${BRAND.colors.mute}; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; text-decoration: underline;">
+           <a href="${secondaryUrl}" style="color: ${BRAND_STATIC.colors.mute}; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; text-decoration: underline;">
              ${secondaryLabel}
            </a>
          </td>
@@ -97,23 +128,23 @@ export function brandedEmail(args: BrandedEmailArgs): string {
 
   const supportBlock = includeSupportFooter ? `
     <tr>
-      <td style="padding: 28px 28px 0; border-top: 1px solid ${BRAND.colors.border};">
-        <table width="100%" cellpadding="0" cellspacing="0" style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: ${BRAND.colors.mute}; line-height: 1.55;">
+      <td style="padding: 28px 28px 0; border-top: 1px solid ${BRAND_STATIC.colors.border};">
+        <table width="100%" cellpadding="0" cellspacing="0" style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: ${BRAND_STATIC.colors.mute}; line-height: 1.55;">
           <tr>
             <td style="padding-bottom: 8px;">
-              <strong style="color: ${BRAND.colors.navy};">Need help?</strong>
-              Call or text <a href="tel:${BRAND.phoneHref}" style="color: ${BRAND.colors.rose}; text-decoration: none;">${BRAND.phone}</a>
+              <strong style="color: ${BRAND_STATIC.colors.navy};">Need help?</strong>
+              Call or text <a href="tel:${phoneHref}" style="color: ${BRAND_STATIC.colors.rose}; text-decoration: none;">${brand.phone}</a>
               or reply to this email.
             </td>
           </tr>
           <tr>
             <td style="padding: 2px 0;">
-              <a href="${BRAND.website}" style="color: ${BRAND.colors.navy}; text-decoration: none;">${BRAND.address}</a>
+              <a href="${BRAND_STATIC.website}" style="color: ${BRAND_STATIC.colors.navy}; text-decoration: none;">${brand.address}</a>
             </td>
           </tr>
           <tr>
-            <td style="padding: 2px 0; color: ${BRAND.colors.softMute}; font-size: 12px;">
-              ${BRAND.hoursSummary}
+            <td style="padding: 2px 0; color: ${BRAND_STATIC.colors.softMute}; font-size: 12px;">
+              ${BRAND_STATIC.hoursSummary}
             </td>
           </tr>
         </table>
@@ -122,9 +153,9 @@ export function brandedEmail(args: BrandedEmailArgs): string {
 
   const policyFooter = includePolicyFooter ? `
     <tr>
-      <td style="padding: 20px 28px 28px; color: ${BRAND.colors.softMute}; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.55;">
+      <td style="padding: 20px 28px 28px; color: ${BRAND_STATIC.colors.softMute}; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.55;">
         <p style="margin: 0 0 6px;">
-          <strong style="color: ${BRAND.colors.mute};">Deposit &amp; cancellation policy.</strong>
+          <strong style="color: ${BRAND_STATIC.colors.mute};">Deposit &amp; cancellation policy.</strong>
           Your deposit is applied toward your service total at the appointment. Refundable if
           cancelled at least 24 hours in advance; cancellations within 24 hours (and no-shows)
           forfeit the deposit. Additional cancellation or no-show fees may apply where applicable.
@@ -139,22 +170,22 @@ export function brandedEmail(args: BrandedEmailArgs): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(headline)}</title>
 </head>
-<body style="margin: 0; padding: 0; background: ${BRAND.colors.bg};">
-  <div style="display:none; font-size:1px; color:${BRAND.colors.bg}; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">
+<body style="margin: 0; padding: 0; background: ${BRAND_STATIC.colors.bg};">
+  <div style="display:none; font-size:1px; color:${BRAND_STATIC.colors.bg}; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">
     ${escapeHtml(preheader)}
   </div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: ${BRAND.colors.bg}; padding: 36px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: ${BRAND_STATIC.colors.bg}; padding: 36px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background: ${BRAND.colors.card}; border: 1px solid ${BRAND.colors.border};">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background: ${BRAND_STATIC.colors.card}; border: 1px solid ${BRAND_STATIC.colors.border};">
 
           <!-- Brand header -->
           <tr>
-            <td style="padding: 32px 28px 24px; text-align: center; border-bottom: 1px solid ${BRAND.colors.border};">
-              <p style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 26px; letter-spacing: 1px; color: ${BRAND.colors.navy};">
-                ${BRAND.name.toUpperCase()}
+            <td style="padding: 32px 28px 24px; text-align: center; border-bottom: 1px solid ${BRAND_STATIC.colors.border};">
+              <p style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 26px; letter-spacing: 1px; color: ${BRAND_STATIC.colors.navy};">
+                ${escapeHtml(brand.name.toUpperCase())}
               </p>
-              <p style="margin: 8px 0 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; letter-spacing: 3px; color: ${BRAND.colors.gold}; text-transform: uppercase;">
+              <p style="margin: 8px 0 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10px; letter-spacing: 3px; color: ${BRAND_STATIC.colors.gold}; text-transform: uppercase;">
                 Glendale, CA · Est. 2011
               </p>
             </td>
@@ -163,7 +194,7 @@ export function brandedEmail(args: BrandedEmailArgs): string {
           ${kicker ? `
           <tr>
             <td style="padding: 24px 28px 0; text-align: center;">
-              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; letter-spacing: 3px; color: ${BRAND.colors.rose}; text-transform: uppercase;">
+              <p style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; letter-spacing: 3px; color: ${BRAND_STATIC.colors.rose}; text-transform: uppercase;">
                 ${escapeHtml(kicker)}
               </p>
             </td>
@@ -172,7 +203,7 @@ export function brandedEmail(args: BrandedEmailArgs): string {
           <!-- Headline -->
           <tr>
             <td style="padding: ${kicker ? "10px" : "24px"} 28px 8px; text-align: center;">
-              <h1 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 26px; line-height: 1.25; color: ${BRAND.colors.navy}; font-weight: normal;">
+              <h1 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 26px; line-height: 1.25; color: ${BRAND_STATIC.colors.navy}; font-weight: normal;">
                 ${escapeHtml(headline)}
               </h1>
             </td>
@@ -188,7 +219,7 @@ export function brandedEmail(args: BrandedEmailArgs): string {
           ${ctaBlock}
 
           <tr>
-            <td style="padding: 24px 28px 4px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: ${BRAND.colors.mute};">
+            <td style="padding: 24px 28px 4px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: ${BRAND_STATIC.colors.mute};">
               ${escapeHtml(signoff)}
             </td>
           </tr>
@@ -197,8 +228,8 @@ export function brandedEmail(args: BrandedEmailArgs): string {
           ${policyFooter}
 
         </table>
-        <p style="margin: 16px 0 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: ${BRAND.colors.softMute};">
-          © ${new Date().getFullYear()} ${BRAND.name}. All rights reserved.
+        <p style="margin: 16px 0 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: ${BRAND_STATIC.colors.softMute};">
+          © ${new Date().getFullYear()} ${escapeHtml(brand.name)}. All rights reserved.
         </p>
       </td>
     </tr>

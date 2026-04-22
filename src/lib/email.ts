@@ -39,6 +39,7 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
   const stylistDisplay = anyStylist ? "Any available stylist" : stylistName;
 
   const html = brandedEmail({
+    brand,
     preheader: `Your ${serviceName} booking request for ${formatDate(date)} is pending.`,
     kicker: "Appointment pending",
     headline: `Thanks, ${clientName.split(" ")[0]} — we got your request.`,
@@ -86,6 +87,7 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
       to: SALON_EMAIL,
       subject: `New booking: ${clientName} — ${serviceName} with ${stylistDisplay}`,
       html: brandedEmail({
+        brand,
         preheader: `New booking for ${clientName} on ${formatDate(date)}.`,
         kicker: "New booking alert",
         headline: `${clientName} just booked`,
@@ -120,6 +122,7 @@ export async function sendCancellationEmail(details: Omit<AppointmentDetails, "c
       to: clientEmail,
       subject: `Appointment cancelled — ${formatDate(date)}`,
       html: brandedEmail({
+        brand,
         preheader: `Your ${serviceName} appointment on ${formatDate(date)} has been cancelled.`,
         kicker: "Appointment cancelled",
         headline: "Your appointment was cancelled.",
@@ -154,6 +157,7 @@ export async function sendReminderEmail(details: AppointmentDetails) {
       to: clientEmail,
       subject: `Reminder: your appointment tomorrow at ${formatTime(startTime)}`,
       html: brandedEmail({
+        brand,
         preheader: `See you tomorrow at ${formatTime(startTime)} for ${serviceName}.`,
         kicker: "Appointment reminder",
         headline: `See you tomorrow, ${clientName.split(" ")[0]}.`,
@@ -294,6 +298,7 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
       to: clientEmail,
       subject: t.subject,
       html: brandedEmail({
+        brand,
         preheader: t.headline,
         kicker: t.kicker,
         headline: t.headline,
@@ -361,6 +366,7 @@ export async function sendStaffNewBookingEmail(details: StaffNewBookingDetails) 
       to: recipients,
       subject: `[ACTION REQUIRED] New booking: ${clientName} — ${serviceName}`,
       html: brandedEmail({
+        brand,
         preheader: `${clientName} booked ${serviceName} for ${formatDate(date)}.`,
         kicker: "New booking — needs approval",
         headline: `${clientName} just booked online`,
@@ -409,6 +415,7 @@ export async function sendStaffNewMessageEmail(details: StaffNewMessageDetails) 
       to: recipients,
       subject: `[Inbox] New contact message from ${name}`,
       html: brandedEmail({
+        brand,
         preheader: `${name} sent a message${service ? ` about ${service}` : ""}.`,
         kicker: "New contact form submission",
         headline: `${name} reached out`,
@@ -456,6 +463,7 @@ export async function sendReviewRequestEmail(details: ReviewRequestDetails) {
       to: clientEmail,
       subject: "How was your visit?",
       html: brandedEmail({
+        brand,
         preheader: `We hope you loved your ${serviceName}.`,
         kicker: "How was it?",
         headline: "How was your visit?",
@@ -521,6 +529,7 @@ export async function sendReviewDigestEmail(items: ReviewDigestItem[], ratingSna
       to: SALON_EMAIL,
       subject: `${items.length} new review${items.length === 1 ? "" : "s"} this week`,
       html: brandedEmail({
+        brand,
         preheader: `${items.length} new review${items.length === 1 ? "" : "s"} this week.`,
         kicker: "Weekly review digest",
         headline: `${items.length} new review${items.length === 1 ? "" : "s"}`,
@@ -568,6 +577,7 @@ export async function sendCancellationFeeReceipt(r: CancellationFeeReceipt) {
       to: r.clientEmail,
       subject: `Cancellation fee charged — ${amount}`,
       html: brandedEmail({
+        brand,
         preheader: `${amount} was charged to your ${cardLine}.`,
         kicker: "Cancellation fee receipt",
         headline: `${amount} charged to your ${cardLine}.`,
