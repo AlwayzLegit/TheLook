@@ -58,11 +58,19 @@ export default function AdminDashboard() {
     let active = true;
     const load = () => {
       fetch("/api/admin/dashboard")
-        .then((r) => r.json())
+        .then(async (r) => {
+          if (!r.ok) return null;
+          try { return await r.json(); } catch { return null; }
+        })
         .then((data) => {
           if (!active) return;
-          setPayload(data);
-          setLastUpdate(new Date());
+          // Only accept a payload that has the shape we expect — a 500
+          // returns `{ error }` which would otherwise crash downstream
+          // `.trend` / `.attention` reads.
+          if (data && typeof data === "object" && "trend" in data && "attention" in data) {
+            setPayload(data as Payload);
+            setLastUpdate(new Date());
+          }
         })
         .catch(() => {})
         .finally(() => setLoading(false));
