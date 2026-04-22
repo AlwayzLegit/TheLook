@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { displayEmail } from "@/lib/format";
 
 interface ClientRow {
   email: string;
@@ -281,7 +282,21 @@ export default function ClientsPage() {
                     <span className="text-[10px] font-body bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">{c.noShows} no-show{c.noShows > 1 ? "s" : ""}</span>
                   )}
                 </div>
-                <p className="text-navy/50 text-xs font-body break-all">{c.email}{c.phone ? ` · ${c.phone}` : ""}</p>
+                {(() => {
+                  const emailShown = displayEmail(c.email);
+                  return (
+                    <p className="text-navy/50 text-xs font-body break-all flex items-center gap-1.5">
+                      {emailShown ? (
+                        <>{emailShown}{c.phone ? ` · ${c.phone}` : ""}</>
+                      ) : (
+                        <>
+                          <svg className="h-3 w-3 text-navy/30" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.6} aria-label="No email on file"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                          <span className="text-navy/40">{c.phone || "no contact on file"}</span>
+                        </>
+                      )}
+                    </p>
+                  );
+                })()}
                 <p className="text-navy/40 text-xs font-body mt-1">
                   {c.birthday ? `🎂 ${c.birthday} · ` : ""}Last visit: {c.lastVisit || "—"}
                 </p>
@@ -290,7 +305,9 @@ export default function ClientsPage() {
                 <p className="font-heading text-sm text-green-600">{formatCents(c.totalSpent)}</p>
                 <p className="text-xs font-body text-navy/40">{c.visits} visit{c.visits !== 1 ? "s" : ""}</p>
                 <div className="flex gap-2 mt-2 justify-end">
-                  <a href={`mailto:${c.email}`} className="text-[10px] font-body text-blue-600 border border-blue-200 px-2 py-0.5 hover:bg-blue-50">Email</a>
+                  {displayEmail(c.email) && (
+                    <a href={`mailto:${c.email}`} className="text-[10px] font-body text-blue-600 border border-blue-200 px-2 py-0.5 hover:bg-blue-50">Email</a>
+                  )}
                   {c.phone && <a href={`tel:${c.phone}`} className="text-[10px] font-body text-green-600 border border-green-200 px-2 py-0.5 hover:bg-green-50">Call</a>}
                 </div>
               </div>

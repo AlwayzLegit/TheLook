@@ -20,9 +20,81 @@
   --color-blush: #f5e6e0;
   --color-sage: #e8ede4;
 
+  /* ── Admin Phase 0 Design Tokens ─────────────────────────
+     Surfaces, text + semantic colours layered on top of the
+     existing brand palette. Components in src/components/ui/
+     read these via `var(--…)` so restyling is a one-file swap.
+     -------------------------------------------------------- */
+
+  /* Navy ramp for sidebar / text on light */
+  --color-navy-950: #0f1117;
+  --color-navy-900: #1d1f2e;
+  --color-navy-800: #262a3d;
+
+  /* Cream ramp for page / card / sunken surfaces */
+  --color-cream-50:  #faf7f0;
+  --color-cream-100: #ffffff;
+  --color-cream-200: #ece5d4;
+
+  /* Crimson ramp for primary actions */
+  --color-crimson-600: #c43353;
+  --color-crimson-700: #a62847;
+
+  /* Gold accent for eyebrows + editorial flourishes */
+  --color-accent-gold: #b48a3c;
+
+  /* Semantic colours (quieter, editorial feel vs default tailwind) */
+  --color-success: #3f8a5c;
+  --color-warning: #b8752a;
+  --color-danger:  #b83a3a;
+  --color-info:    #3d6ea8;
+
+  /* Text */
+  --color-text:         #0f1117;
+  --color-text-muted:   #5b5f6e;
+  --color-text-subtle:  #868a96;
+  --color-text-inverse: #faf7f0;
+
+  /* Borders */
+  --color-border:        #ece5d4;
+  --color-border-strong: #d6cfbb;
+
+  /* Surface roles */
+  --color-surface:         #ffffff;
+  --color-surface-sunken:  #faf7f0;
+  --color-surface-raised:  #ffffff;
+
+  /* Chart palette — 6 ordered slots, used by <Chart> + stylist colors */
+  --color-chart-1: #1d1f2e; /* navy     */
+  --color-chart-2: #c43353; /* crimson  */
+  --color-chart-3: #b48a3c; /* gold     */
+  --color-chart-4: #7c9a7a; /* sage     */
+  --color-chart-5: #c98a9a; /* rose-dusk */
+  --color-chart-6: #8b8577; /* warm grey */
+
+  /* Radius + shadow — keeps cards calm on cream */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --shadow-card:   0 1px 2px rgba(15, 17, 23, 0.04), 0 1px 1px rgba(15, 17, 23, 0.03);
+  --shadow-raised: 0 4px 12px rgba(15, 17, 23, 0.06), 0 2px 4px rgba(15, 17, 23, 0.04);
+  --shadow-sheet:  0 20px 48px rgba(15, 17, 23, 0.18), 0 8px 16px rgba(15, 17, 23, 0.08);
+  --shadow-ring:   0 0 0 3px rgba(196, 51, 83, 0.25);
+
   /* ── Typography ── */
   --font-heading: "Forum", Georgia, "Times New Roman", serif;
   --font-body: "Lato", "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-heading);
+  --font-sans:    var(--font-body);
+
+  /* UI scale — 11/13/15/17/22/30/44 (plan §5.1) */
+  --text-xs:      0.6875rem; /* 11 */
+  --text-sm:      0.8125rem; /* 13 */
+  --text-base:    0.9375rem; /* 15 */
+  --text-lg:      1.0625rem; /* 17 */
+  --text-xl:      1.375rem;  /* 22 */
+  --text-2xl:     1.875rem;  /* 30 */
+  --text-display: 2.75rem;   /* 44 */
 }
 
 /* ── Base ── */
@@ -141,6 +213,50 @@ h1, h2, h3, h4, h5, h6 {
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--color-gold) transparent;
+}
+
+/* ── Admin Phase 0 — quiet editorial defaults inside /admin ─────────
+   Scoped so the public-site look is never affected. */
+.admin-shell {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+.admin-shell h1, .admin-shell h2, .admin-shell h3 {
+  font-family: var(--font-display);
+  letter-spacing: 0;
+  color: var(--color-text);
+}
+.admin-shell ::selection { background: rgba(180, 138, 60, 0.2); color: var(--color-text); }
+
+/* Accessible focus ring for every interactive element inside admin */
+.admin-shell :where(button, a, input, select, textarea, [role="button"], [role="menuitem"]):focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-ring);
+  border-radius: var(--radius-md);
+}
+
+/* Animations used by Sheet / Dialog — kept minimal so reduced-motion
+   users still get crisp open/close without a jarring slide. */
+@keyframes admin-fade-in    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes admin-fade-out   { from { opacity: 1; } to { opacity: 0; } }
+@keyframes admin-slide-in-right {
+  from { transform: translateX(100%); } to { transform: translateX(0); }
+}
+@keyframes admin-slide-out-right {
+  from { transform: translateX(0); } to { transform: translateX(100%); }
+}
+@keyframes admin-scale-in   { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+@keyframes admin-scale-out  { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.97); } }
+
+.data-\[state\=open\]\:animate-admin-fade-in[data-state="open"] { animation: admin-fade-in 180ms ease; }
+.data-\[state\=closed\]\:animate-admin-fade-out[data-state="closed"] { animation: admin-fade-out 150ms ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell *, .admin-shell *::before, .admin-shell *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ── Print styles for admin ── */

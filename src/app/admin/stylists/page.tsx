@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import ImageUpload from "@/components/admin/ImageUpload";
+import StylistImage from "@/components/StylistImage";
+import { parseSpecialties } from "@/components/ui/Tag";
 
 interface Stylist {
   id: string;
@@ -217,21 +219,19 @@ export default function StylistsPage() {
     <div key={stylist.id} className={inactive ? "opacity-60" : ""}>
       <div className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          {stylist.image_url ? (
-            /* eslint-disable-next-line @next/next/no-img-element -- Admin-uploaded URLs may not match remotePatterns */
-            <img
+          <div className={`w-12 h-12 rounded-full overflow-hidden shrink-0 ${inactive ? "grayscale" : ""}`}>
+            <StylistImage
               src={stylist.image_url}
               alt={stylist.name}
-              className={`w-12 h-12 rounded-full object-cover ${inactive ? "grayscale" : ""}`}
+              initial={stylist.name.charAt(0).toUpperCase()}
+              initialClass="text-lg font-heading text-navy/60"
             />
-          ) : (
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${inactive ? "bg-gray-200" : "bg-navy/10"}`}>
-              <span className={`text-lg font-heading ${inactive ? "text-gray-500" : ""}`}>{stylist.name.charAt(0)}</span>
-            </div>
-          )}
+          </div>
           <div>
             <p className="font-body font-bold text-sm">{stylist.name}</p>
-            <p className="text-navy/50 text-xs font-body">{stylist.specialties}</p>
+            <p className="text-navy/50 text-xs font-body">
+              {parseSpecialties(stylist.specialties).join(" · ") || "—"}
+            </p>
             {inactive && (
               <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5">Inactive</span>
             )}

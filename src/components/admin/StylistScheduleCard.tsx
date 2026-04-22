@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { normalizeSpecialties } from "@/lib/stylistSpecialties";
+import StylistImage from "@/components/StylistImage";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -174,15 +175,13 @@ export default function StylistScheduleCard({
         className="w-full px-4 sm:px-5 py-4 flex items-center gap-4 text-left hover:bg-cream/40 transition-colors"
         aria-expanded={open}
       >
-        <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-navy/10 to-gold/20 shrink-0 flex items-center justify-center">
-          {stylist.image_url ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={stylist.image_url} alt={stylist.name} className="w-full h-full object-cover" />
-          ) : (
-            <span className="font-heading text-lg text-navy/70">
-              {stylist.name.trim().charAt(0).toUpperCase()}
-            </span>
-          )}
+        <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-navy/10 to-gold/20 shrink-0">
+          <StylistImage
+            src={stylist.image_url}
+            alt={stylist.name}
+            initial={stylist.name.trim().charAt(0).toUpperCase()}
+            initialClass="font-heading text-lg text-navy/70"
+          />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
