@@ -61,11 +61,9 @@ export default function AppointmentsPage() {
   const { status } = useSession();
   const router = useRouter();
   const [listTab, setListTab] = useState<"active" | "archived">("active");
-  const [showTest, setShowTest] = useState(false);
   const { appointments: realtimeAppts, loading, error, lastUpdate, refresh } = usePolledAppointments({
     enabled: status === "authenticated",
     archived: listTab === "archived",
-    includeTest: showTest,
   });
   const [selectedAppt, setSelectedAppt] = useState<EnrichedAppointment | null>(null);
   const [services, setServices] = useState<Service[]>([]);
@@ -446,16 +444,6 @@ export default function AppointmentsPage() {
             Archived bookings auto-delete 30 days after they were archived.
           </span>
         )}
-
-        <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-body text-navy/60">
-          <input
-            type="checkbox"
-            checked={showTest}
-            onChange={(e) => setShowTest(e.target.checked)}
-            className="w-4 h-4"
-          />
-          Show test bookings
-        </label>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">

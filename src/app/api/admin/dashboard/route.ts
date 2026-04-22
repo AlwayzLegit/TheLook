@@ -52,19 +52,16 @@ export async function GET() {
   const trendEnd   = addDays(todayDate, 14);  // timeline + upcoming
 
   try {
-    // Fetch once — trim in memory. Hidden rows (archived / test) are already
-    // handled by the normal admin appointments reads, but the dashboard
-    // needs a direct DB pull for date efficiency.
+    // Fetch once — trim in memory. Archived rows are always hidden from
+    // the dashboard so purge-safe bookings don't polute today's counts.
     let { data: rows, error } = await supabase
       .from("appointments")
-      .select("id, client_name, client_email, client_phone, service_id, stylist_id, date, start_time, end_time, status, requested_stylist, is_test, archived_at")
+      .select("id, client_name, client_email, client_phone, service_id, stylist_id, date, start_time, end_time, status, requested_stylist, archived_at")
       .gte("date", isoDay(trendStart))
       .lte("date", isoDay(trendEnd))
-      .eq("is_test", false)
       .is("archived_at", null)
       .order("date", { ascending: true });
-    // Schema fall-back — same pattern as /api/admin/appointments.
-    if (error && /is_test|archived_at/i.test(error.message || "")) {
+    if (error && /archived_at/i.test(error.message || "")) {
       const retry = await supabase
         .from("appointments")
         .select("id, client_name, client_email, client_phone, service_id, stylist_id, date, start_time, end_time, status, requested_stylist")

@@ -33,14 +33,12 @@ export async function GET(request: NextRequest) {
   const stylistId = searchParams.get("stylistId");
   // "true" -> archived tab (show only archived), anything else -> active list.
   const archived = searchParams.get("archived") === "true";
-  // B-27: hide is_test rows by default; admin can opt-in via ?includeTest=true.
-  const includeTest = searchParams.get("includeTest") === "true";
 
   // Note: the daily Vercel cron at /api/cron/purge-archived owns the purge
   // now (B-19/20). Read-path lazy purge was removed so the admin list GET
   // doesn't pay that cost on every load.
 
-  const buildQuery = (opts: { archive: boolean; testFilter: boolean }) => {
+  const buildQuery = (opts: { archive: boolean }) => {
     let q = supabase
       .from("appointments")
       .select("*")
@@ -49,7 +47,6 @@ export async function GET(request: NextRequest) {
     if (opts.archive) {
       q = archived ? q.not("archived_at", "is", null) : q.is("archived_at", null);
     }
-    if (opts.testFilter && !includeTest) q = q.eq("is_test", false);
     if (dateFrom) q = q.gte("date", dateFrom);
     if (dateTo) q = q.lte("date", dateTo);
     if (status) q = q.eq("status", status);
@@ -57,18 +54,12 @@ export async function GET(request: NextRequest) {
     return q;
   };
 
-  // Self-healing retries when the schema is behind (migration not yet
-  // applied on this env). We used to logError on each retry even when the
-  // recovery succeeded — Vercel treated those as prod errors (V-1). Now
-  // we silently drop the offending filter and only surface a real error
-  // if every retry fails too.
-  let { data: rows, error } = await buildQuery({ archive: true, testFilter: true });
-  if (error && /is_test/i.test(error.message || "")) {
-    ({ data: rows, error } = await buildQuery({ archive: true, testFilter: false }));
-  }
+  // Self-healing retry for envs where the archived_at migration hasn't
+  // landed yet.
+  let { data: rows, error } = await buildQuery({ archive: true });
   if (error && /archived_at/i.test(error.message || "")) {
     if (archived) return apiSuccess([]);
-    ({ data: rows, error } = await buildQuery({ archive: false, testFilter: false }));
+    ({ data: rows, error } = await buildQuery({ archive: false }));
   }
 
   if (error) {
@@ -133,9 +124,6 @@ const adminBookingSchema = z.object({
   staffNotes: z.string().trim().max(2000).optional().nullable(),
   status: z.enum(["pending", "confirmed", "completed"]).default("confirmed"),
   overrideConflicts: z.boolean().optional(),
-  // Admin-marked test booking — excluded from emails, analytics, dashboard
-  // counts, and crons. Defaults false so accidental flagging takes intent.
-  isTest: z.boolean().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -228,13 +216,8 @@ export async function POST(request: NextRequest) {
     approved_at: p.status === "confirmed" ? new Date().toISOString() : null,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     approved_by: p.status === "confirmed" ? ((session.user as any)?.email || "admin") : null,
-    is_test: p.isTest === true,
   };
-  let { error: insertErr } = await supabase.from("appointments").insert(insertPayload);
-  if (insertErr && /is_test/i.test(insertErr.message || "")) {
-    delete insertPayload.is_test;
-    ({ error: insertErr } = await supabase.from("appointments").insert(insertPayload));
-  }
+  const { error: insertErr } = await supabase.from("appointments").insert(insertPayload);
   if (insertErr) {
     logError("admin/appointments POST", insertErr);
     return apiError(`Failed to create appointment: ${insertErr.message}`, 500);

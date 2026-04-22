@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
   const { data: appts } = emails.length > 0
     ? await supabase
         .from("appointments")
-        .select("client_email, client_name, client_phone, status, date, service_id, stylist_id, is_test")
+        .select("client_email, client_name, client_phone, status, date, service_id, stylist_id")
         .in("client_email", emails)
     : { data: [] };
 
@@ -62,7 +62,6 @@ export async function GET(request: NextRequest) {
   const stats: Record<string, { visits: number; noShows: number; totalSpent: number; lastVisit: string; phone: string | null; name: string | null }> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const a of (appts || []) as any[]) {
-    if (a.is_test) continue;
     const key = (a.client_email || "").toLowerCase();
     if (!stats[key]) stats[key] = { visits: 0, noShows: 0, totalSpent: 0, lastVisit: "", phone: null, name: null };
     const s = stats[key];

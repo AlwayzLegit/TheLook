@@ -20,23 +20,12 @@ export async function GET(request: NextRequest) {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split("T")[0];
 
-  // Never email test rows. Filter is_test=false; if the column doesn't
-  // exist yet (pre-migration), retry without it so the cron isn't broken.
-  let { data: upcoming, error } = await supabase
+  const { data: upcoming, error } = await supabase
     .from("appointments")
     .select("*")
     .eq("date", tomorrowStr)
     .eq("status", "confirmed")
-    .eq("reminder_sent", false)
-    .eq("is_test", false);
-  if (error && /is_test/i.test(error.message || "")) {
-    ({ data: upcoming, error } = await supabase
-      .from("appointments")
-      .select("*")
-      .eq("date", tomorrowStr)
-      .eq("status", "confirmed")
-      .eq("reminder_sent", false));
-  }
+    .eq("reminder_sent", false);
 
   if (error) {
     logError("cron/reminders GET", error);

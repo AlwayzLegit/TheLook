@@ -75,7 +75,6 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
   const [clientNotes, setClientNotes] = useState("");
   const [staffNotes, setStaffNotes] = useState("");
   const [override, setOverride] = useState(false);
-  const [isTest, setIsTest] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Reset state when sheet reopens.
@@ -104,7 +103,6 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
     setClientNotes("");
     setStaffNotes("");
     setOverride(false);
-    setIsTest(false);
     setError(null);
   }, [open, prefill]);
 
@@ -259,7 +257,6 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
           staffNotes: staffNotes || null,
           status,
           overrideConflicts: override,
-          isTest,
         }),
       });
       const data = await res.json();
@@ -541,12 +538,6 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
                 onCheckedChange={setOverride}
                 label="Override conflicts"
                 hint="Allow booking outside regular hours or over another appointment."
-              />
-              <Switch
-                checked={isTest}
-                onCheckedChange={setIsTest}
-                label="Test booking"
-                hint="Excluded from emails, dashboard, analytics, and crons."
               />
             </div>
           </details>

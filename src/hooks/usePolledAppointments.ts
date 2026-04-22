@@ -33,13 +33,10 @@ interface UsePolledAppointmentsOptions {
   // archive view wants to see *all* past archived bookings so we also skip
   // the default `from=today` filter.
   archived?: boolean;
-  // When true, include is_test=true rows. Defaults false so test data
-  // never leaks into the regular admin view.
-  includeTest?: boolean;
 }
 
 export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}) {
-  const { enabled = true, pollMs = POLLING.APPOINTMENTS_MS, archived = false, includeTest = false } = options;
+  const { enabled = true, pollMs = POLLING.APPOINTMENTS_MS, archived = false } = options;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +53,6 @@ export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}
     const params = new URLSearchParams();
     if (archived) params.set("archived", "true");
     else params.set("from", todayISOInLA());
-    if (includeTest) params.set("includeTest", "true");
     const res = await fetch(`/api/admin/appointments?${params.toString()}`);
     if (!res.ok) {
       setError("Failed to fetch appointments.");
@@ -73,7 +69,7 @@ export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}
     } finally {
       setLoading(false);
     }
-  }, [enabled, archived, includeTest]);
+  }, [enabled, archived]);
 
   useEffect(() => {
     if (!enabled) {
