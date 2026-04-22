@@ -20,6 +20,8 @@ interface Profile {
   hair_formulas: string | null;
   hair_type: string | null;
   birthday: string | null;
+  banned: boolean | null;
+  banned_reason: string | null;
 }
 
 interface Appointment {
@@ -76,6 +78,7 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [deletePhotoId, setDeletePhotoId] = useState<string | null>(null);
@@ -162,6 +165,58 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
       });
       if (res.ok) setToast({ type: "success", message: "Profile saved." });
       else setToast({ type: "error", message: "Failed to save." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Soft action — flips client_profiles.banned (+ optional reason) via
+  // the same PUT endpoint so the existing profile payload isn't touched.
+  const toggleBan = async (next: boolean, reason: string | null = null) => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/clients/${encodeURIComponent(email)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // Keep the existing profile fields intact — the PUT route
+          // upserts, so omitting them would blank them out.
+          name, phone,
+          preferredStylistId: preferredStylistId || null,
+          tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+          preferences, internalNotes, allergyInfo,
+          hairFormulas, hairType, birthday,
+          banned: next,
+          bannedReason: reason,
+        }),
+      });
+      if (res.ok) {
+        setProfile((p) => p ? { ...p, banned: next, banned_reason: next ? reason : null } : p);
+        setToast({ type: "success", message: next ? "Client banned." : "Client unbanned." });
+      } else {
+        setToast({ type: "error", message: "Failed to update ban status." });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Hard delete — removes the profile + their uploaded photos, then
+  // routes back to the clients list. Past appointments stay.
+  const deleteClient = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/clients/${encodeURIComponent(email)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setToast({ type: "success", message: "Client deleted." });
+        // Navigate back to the list.
+        setTimeout(() => router.push("/admin/clients"), 600);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToast({ type: "error", message: data.error || "Failed to delete client." });
+      }
     } finally {
       setSaving(false);
     }
@@ -374,6 +429,68 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
                   </div>
                 </div>
               </div>
+
+              {/* ── Danger zone ──
+                  Ban = soft action (keeps client in the list, flags them
+                  with a Banned badge + stops booking). Delete = hard
+                  action (removes the client_profiles row + their photos;
+                  past appointments stay as historical record). */}
+              <div className="mt-8 bg-white border border-red-200 rounded">
+                <div className="px-5 py-3 border-b border-red-200 bg-red-50/40">
+                  <h3 className="font-heading text-sm text-red-700">Danger zone</h3>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="text-sm font-body font-bold text-navy">
+                        {profile?.banned ? "Client is banned" : "Ban this client"}
+                      </p>
+                      <p className="text-xs font-body text-navy/60 mt-0.5">
+                        {profile?.banned
+                          ? (profile.banned_reason
+                              ? `Reason: ${profile.banned_reason}`
+                              : "No reason recorded.")
+                          : "Blocks online bookings from this email. Keeps the profile + history intact. Reversible."}
+                      </p>
+                    </div>
+                    {profile?.banned ? (
+                      <button
+                        onClick={() => toggleBan(false)}
+                        disabled={saving}
+                        className="text-xs font-body text-navy border border-navy/20 px-3 py-1.5 hover:bg-navy/5 disabled:opacity-60"
+                      >
+                        Unban
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          const reason = window.prompt("Optional reason (shown only to staff):") || "";
+                          toggleBan(true, reason.trim() || null);
+                        }}
+                        disabled={saving}
+                        className="text-xs font-body text-amber-700 border border-amber-300 px-3 py-1.5 hover:bg-amber-50 disabled:opacity-60"
+                      >
+                        Ban client
+                      </button>
+                    )}
+                  </div>
+                  <div className="pt-4 border-t border-red-200/60 flex items-start justify-between gap-4 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="text-sm font-body font-bold text-navy">Delete client</p>
+                      <p className="text-xs font-body text-navy/60 mt-0.5">
+                        Removes the profile + uploaded photos. Past appointments stay (history of service).
+                        This cannot be undone.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="text-xs font-body text-red-700 border border-red-300 px-3 py-1.5 hover:bg-red-100"
+                    >
+                      Delete client
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -561,6 +678,15 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
           message="Are you sure you want to delete this photo?"
           onConfirm={() => { deletePhoto(deletePhotoId); setDeletePhotoId(null); }}
           onCancel={() => setDeletePhotoId(null)}
+        />
+      )}
+
+      {confirmDelete && (
+        <ConfirmModal
+          title="Delete client?"
+          message={`This permanently removes the profile + any uploaded photos for ${name || email}. Past appointments stay as a service record. This can't be undone.`}
+          onConfirm={() => { setConfirmDelete(false); deleteClient(); }}
+          onCancel={() => setConfirmDelete(false)}
         />
       )}
 

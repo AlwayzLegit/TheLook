@@ -64,7 +64,7 @@ export async function PUT(
   const decodedEmail = decodeURIComponent(email);
   const body = await request.json();
 
-  const profileData = {
+  const profileData: Record<string, unknown> = {
     email: decodedEmail,
     name: body.name || decodedEmail,
     phone: body.phone || null,
@@ -78,6 +78,12 @@ export async function PUT(
     birthday: body.birthday || null,
     updated_at: new Date().toISOString(),
   };
+  // Only set the banned flag when the caller explicitly included it —
+  // otherwise an ordinary profile save would clear the ban state.
+  if (Object.prototype.hasOwnProperty.call(body, "banned")) {
+    profileData.banned = !!body.banned;
+    profileData.banned_reason = body.banned ? (body.bannedReason || null) : null;
+  }
 
   // Upsert: try update first, then insert
   const { data: existing } = await supabase
@@ -105,4 +111,36 @@ export async function PUT(
 
   logAdminAction("client.profile_update", JSON.stringify({ email: decodedEmail }));
   return apiSuccess({ success: true });
+}
+
+// DELETE removes the client_profiles row. Past appointments, discount
+// usage, and photos stay — they're a historical record of what
+// happened at the salon. Use PUT { banned: true, bannedReason: "..." }
+// for soft-ban instead; this is a GDPR-shaped hard delete.
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ email: string }> },
+) {
+  const session = await auth();
+  if (!session) return apiError("Unauthorized", 401);
+  if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
+
+  const { email } = await params;
+  const decodedEmail = decodeURIComponent(email);
+
+  // Also wipe their client-uploaded photos — they're PII.
+  await supabase.from("client_photos").delete().eq("client_email", decodedEmail);
+
+  const { error } = await supabase
+    .from("client_profiles")
+    .delete()
+    .eq("email", decodedEmail);
+
+  if (error) {
+    logError("admin/clients DELETE", error);
+    return apiError(`Failed to delete client: ${error.message || "unknown"}`, 500);
+  }
+
+  logAdminAction("client.delete", JSON.stringify({ email: decodedEmail }));
+  return apiSuccess({ ok: true });
 }
