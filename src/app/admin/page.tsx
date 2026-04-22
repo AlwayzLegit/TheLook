@@ -4,62 +4,50 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePolledAppointments } from "@/hooks/usePolledAppointments";
-import ReviewStatsWidget from "@/components/admin/ReviewStatsWidget";
+import TodayTimeline from "@/components/admin/TodayTimeline";
+import { Card, Eyebrow } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
+import { Sparkline, CHART_COLORS } from "@/components/ui/Chart";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { formatMoney } from "@/lib/format";
 
-interface Service {
-  id: string;
-  name: string;
-  price_min: number;
+interface Payload {
+  today: { date: string; revenue: number; appointments: number; confirmed: number; pending: number; sparkline: number[] };
+  trend: {
+    revenueWeek: number; revenueWeekPrev: number;
+    revenueMonth: number; revenueMonthPrev: number;
+    apptsWeek: number; apptsWeekPrev: number;
+    apptsMonth: number; apptsMonthPrev: number;
+    sparkRevenue: number[];
+    sparkAppts: number[];
+  };
+  timeline: Array<{
+    id: string; clientName: string; serviceName: string;
+    stylistId: string | null; stylistName: string; stylistColor: string | null;
+    start: string; end: string; status: string; requested?: boolean;
+  }>;
+  workload: Array<{
+    stylistId: string; name: string; color: string | null;
+    hoursToday: number; apptsToday: number; revenueToday: number; revenueWeek: number;
+  }>;
+  attention: { pending: number; unreadMessages: number; waitlist: number; lowInventory: number };
+  health: { noShows: number; cancellations: number; cancelRate: number; totalWeek: number };
 }
 
-interface Stylist {
-  id: string;
-  name: string;
-}
-
-interface EnrichedAppointment {
-  id: string;
-  client_name: string;
-  client_email: string;
-  client_phone: string | null;
-  service_id: string;
-  stylist_id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  status: string;
-  notes: string | null;
-  staff_notes?: string | null;
-  serviceName: string;
-  stylistName: string;
-  priceMin: number;
-}
-
-function formatTime(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
-}
-
-function formatCents(cents: number) {
-  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
-function timeToMinutes(t: string) {
-  const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
+function deltaPct(curr: number, prev: number): number | null {
+  if (prev === 0) return curr === 0 ? 0 : null;
+  return ((curr - prev) / prev) * 100;
 }
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { appointments: realtimeAppts, loading, error, lastUpdate } = usePolledAppointments({
-    enabled: status === "authenticated",
-  });
-  const [services, setServices] = useState<Service[]>([]);
-  const [stylists, setStylists] = useState<Stylist[]>([]);
-  const [messageCount, setMessageCount] = useState(0);
+  const [payload, setPayload] = useState<Payload | null>(null);
+  const [loading, setLoading] = useState(true);
   const [staffEmailsConfigured, setStaffEmailsConfigured] = useState<boolean | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -67,21 +55,21 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-
-    fetch("/api/admin/services")
-      .then((r) => r.json())
-      .then((data) => setServices(Array.isArray(data) ? data : []));
-
-    fetch("/api/admin/stylists")
-      .then((r) => r.json())
-      .then((data) => setStylists(Array.isArray(data) ? data : []));
-
-    fetch("/api/admin/messages")
-      .then((r) => r.json())
-      .then((data) => setMessageCount(Array.isArray(data) ? data.length : 0));
-
-    // Surface a banner when staff notification emails are missing —
-    // otherwise no one knows new bookings are landing.
+    let active = true;
+    const load = () => {
+      fetch("/api/admin/dashboard")
+        .then((r) => r.json())
+        .then((data) => {
+          if (!active) return;
+          setPayload(data);
+          setLastUpdate(new Date());
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    };
+    load();
+    const t = setInterval(load, 30_000);
+    // Banner for missing staff emails.
     fetch("/api/admin/settings")
       .then((r) => r.json())
       .then((data) => {
@@ -89,330 +77,308 @@ export default function AdminDashboard() {
         setStaffEmailsConfigured(val.length > 0);
       })
       .catch(() => setStaffEmailsConfigured(null));
+    return () => { active = false; clearInterval(t); };
   }, [status]);
 
   if (status !== "authenticated") return null;
 
-  const serviceMap = Object.fromEntries(services.map((s) => [s.id, s]));
-  const stylistMap = Object.fromEntries(stylists.map((s) => [s.id, s]));
-
-  const enrichedAppts: EnrichedAppointment[] = realtimeAppts.map((a) => {
-    // Multi-service revenue: sum priceMin across all services on the appointment.
-    const ids = (a.serviceIds && a.serviceIds.length > 0)
-      ? a.serviceIds
-      : a.service_id
-        ? [a.service_id]
-        : [];
-    const priceMin = ids.reduce((sum, id) => sum + (serviceMap[id]?.price_min || 0), 0);
-    return {
-      ...a,
-      serviceName: a.serviceName || serviceMap[a.service_id]?.name || "Unknown Service",
-      stylistName: a.stylistName || stylistMap[a.stylist_id]?.name || "Unknown Stylist",
-      priceMin,
-    };
-  });
-
-  const today = new Date().toISOString().split("T")[0];
-
-  // Date helpers
-  const startOfWeek = new Date();
-  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-  const weekStart = startOfWeek.toISOString().split("T")[0];
-
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  const monthStart = startOfMonth.toISOString().split("T")[0];
-
-  // Today's appointments
-  const todayAppts = enrichedAppts
-    .filter((a) => a.date === today)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time));
-
-  // Upcoming (next 7 days) — exclude cancelled/no-show so the panel shows
-  // what the salon actually needs to prepare for.
-  const nextWeek = new Date();
-  nextWeek.setDate(nextWeek.getDate() + 7);
-  const upcomingAppts = enrichedAppts
-    .filter((a) => {
-      if (a.status === "cancelled" || a.status === "no_show") return false;
-      const d = new Date(a.date);
-      return d > new Date(today) && d <= nextWeek;
-    })
-    .sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
-    .slice(0, 5);
-
-  const confirmed = todayAppts.filter((a) => a.status === "confirmed");
-  const pending = todayAppts.filter((a) => a.status === "pending");
-
-  // ── Revenue ──
-  const billable = (a: EnrichedAppointment) => a.status === "confirmed" || a.status === "completed";
-  const revenueToday = enrichedAppts.filter((a) => a.date === today && billable(a)).reduce((s, a) => s + a.priceMin, 0);
-  const revenueWeek = enrichedAppts.filter((a) => a.date >= weekStart && billable(a)).reduce((s, a) => s + a.priceMin, 0);
-  const revenueMonth = enrichedAppts.filter((a) => a.date >= monthStart && billable(a)).reduce((s, a) => s + a.priceMin, 0);
-
-  // ── No-shows & cancellations (this week) ──
-  const weekAppts = enrichedAppts.filter((a) => a.date >= weekStart);
-  const noShows = weekAppts.filter((a) => a.status === "no_show").length;
-  const cancelled = weekAppts.filter((a) => a.status === "cancelled").length;
-  const cancelRate = weekAppts.length > 0 ? Math.round(((noShows + cancelled) / weekAppts.length) * 100) : 0;
-
-  // ── Stylist workload today ──
-  // Defensive: drop any stylist that's named "Any Stylist" so dashboard
-  // never renders the sentinel/dup row even if the DB has one.
-  const realStylists = stylists.filter((s) => s.name.trim().toLowerCase() !== "any stylist");
-  const stylistWorkload = realStylists.map((s) => {
-    const appts = todayAppts.filter((a) => a.stylist_id === s.id && billable(a));
-    const totalMins = appts.reduce((sum, a) => {
-      return sum + (timeToMinutes(a.end_time) - timeToMinutes(a.start_time));
-    }, 0);
-    return {
-      ...s,
-      count: appts.length,
-      hours: Math.round(totalMins / 60 * 10) / 10,
-      revenue: appts.reduce((sum, a) => sum + a.priceMin, 0),
-    };
-  }).filter((s) => s.count > 0 || todayAppts.length > 0)
-    .sort((a, b) => b.count - a.count);
-
-  // ── Revenue by stylist (this week) ──
-  const stylistRevenue = realStylists.map((s) => {
-    const rev = enrichedAppts
-      .filter((a) => a.stylist_id === s.id && a.date >= weekStart && billable(a))
-      .reduce((sum, a) => sum + a.priceMin, 0);
-    return { ...s, revenue: rev };
-  }).filter((s) => s.revenue > 0)
-    .sort((a, b) => b.revenue - a.revenue);
-
-  // ── Popular services (this month) ──
-  const servicePopularity = services.map((s) => {
-    const count = enrichedAppts.filter(
-      (a) => a.service_id === s.id && a.date >= monthStart && billable(a)
-    ).length;
-    return { ...s, count };
-  }).filter((s) => s.count > 0)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
+  const greeting = session?.user?.name ? `Welcome back, ${session.user.name.split(" ")[0]}.` : "Welcome back.";
 
   return (
-    <div className="p-4 sm:p-8">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="font-heading text-3xl">Dashboard</h1>
-        {lastUpdate && (
-          <span className="text-xs text-navy/40 font-body">
-            Updated {lastUpdate.toLocaleTimeString()}
-          </span>
-        )}
+    <div className="p-4 sm:p-8 max-w-[1400px] mx-auto">
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-1">
+        <div>
+          <Eyebrow>Dashboard</Eyebrow>
+          <h1 className="mt-1 text-[2rem] font-[var(--font-display)] text-[var(--color-text)] leading-none">
+            {greeting}
+          </h1>
+          <p className="text-[0.8125rem] text-[var(--color-text-muted)] mt-1.5">
+            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+            {lastUpdate && (
+              <span className="ml-3 inline-flex items-center gap-1.5 text-[0.75rem]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)] animate-pulse" />
+                Live
+              </span>
+            )}
+          </p>
+        </div>
+        <Button asChild variant="secondary" size="sm">
+          <Link href="/admin/appointments">Open appointments →</Link>
+        </Button>
       </div>
 
       {staffEmailsConfigured === false && (
-        <div className="mb-4 p-3 bg-amber-50 border border-amber-300 text-amber-900 text-sm font-body flex items-center gap-3">
-          <span className="text-lg">⚠</span>
+        <div className="mt-6 flex items-center gap-3 rounded-md border border-[var(--color-warning)]/40 bg-[var(--color-warning)]/10 px-4 py-3 text-[0.8125rem] text-[var(--color-warning)]">
+          <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 3h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.995L13.732 4.005c-.77-1.333-2.694-1.333-3.464 0L3.34 16.005C2.57 17.333 3.532 19 5.072 19z" />
+          </svg>
           <span className="flex-1">
-            <b>No staff notification emails configured.</b> Nobody is getting alerted when
-            customers book online.{" "}
+            <b>No staff notification emails configured.</b> No one is getting alerted when customers book online.
           </span>
-          <Link href="/admin/settings" className="underline font-bold shrink-0">Fix in Settings →</Link>
+          <Link href="/admin/settings" className="font-medium underline shrink-0">Fix in Settings →</Link>
         </div>
       )}
-      <p className="text-navy/50 font-body text-sm mb-8">
-        Welcome back, {session?.user?.name}
-      </p>
 
-      {/* ── Row 1: Appointment Stats ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <Link href="/admin/appointments" className="bg-white p-5 border border-navy/10 hover:border-navy/20 transition-colors">
-          <p className="text-navy/40 text-xs font-body">Today</p>
-          <p className="font-heading text-2xl mt-1">{todayAppts.length}</p>
-          <p className="text-navy/30 text-xs font-body mt-1">appointments</p>
-        </Link>
-        <div className="bg-white p-5 border border-navy/10">
-          <p className="text-navy/40 text-xs font-body">Confirmed</p>
-          <p className="font-heading text-2xl mt-1 text-green-600">{confirmed.length}</p>
-          <p className="text-navy/30 text-xs font-body mt-1">of {todayAppts.length} today</p>
-        </div>
-        <div className="bg-white p-5 border border-navy/10">
-          <p className="text-navy/40 text-xs font-body">Pending</p>
-          <p className={`font-heading text-2xl mt-1 ${pending.length > 0 ? "text-amber-500" : "text-navy/30"}`}>{pending.length}</p>
-          <p className="text-navy/30 text-xs font-body mt-1">need confirmation</p>
-        </div>
-        <Link href="/admin/messages" className="bg-white p-5 border border-navy/10 hover:border-navy/20 transition-colors">
-          <p className="text-navy/40 text-xs font-body">Messages</p>
-          <p className={`font-heading text-2xl mt-1 ${messageCount > 0 ? "text-blue-600" : "text-navy/30"}`}>{messageCount}</p>
-          <p className="text-navy/30 text-xs font-body mt-1">contact inquiries</p>
-        </Link>
-      </div>
-
-      {/* ── Row 2: Revenue + Reviews ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-5 border border-navy/10">
-          <p className="text-navy/40 text-xs font-body">Revenue Today</p>
-          <p className="font-heading text-2xl mt-1 text-green-600">{formatCents(revenueToday)}</p>
-        </div>
-        <div className="bg-white p-5 border border-navy/10">
-          <p className="text-navy/40 text-xs font-body">This Week</p>
-          <p className="font-heading text-2xl mt-1">{formatCents(revenueWeek)}</p>
-        </div>
-        <div className="bg-white p-5 border border-navy/10">
-          <p className="text-navy/40 text-xs font-body">This Month</p>
-          <p className="font-heading text-2xl mt-1">{formatCents(revenueMonth)}</p>
-        </div>
-        <ReviewStatsWidget />
-      </div>
-
-      {/* ── Row 3: Health & Workload ── */}
-      <div className="grid lg:grid-cols-3 gap-6 mb-8">
-        {/* No-shows & cancellations */}
-        <div className="bg-white p-5 border border-navy/10">
-          <h3 className="font-heading text-sm mb-3">This Week&apos;s Health</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-body text-navy/50">No-shows</span>
-              <span className={`text-sm font-heading ${noShows > 0 ? "text-red-500" : "text-green-600"}`}>{noShows}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-body text-navy/50">Cancellations</span>
-              <span className={`text-sm font-heading ${cancelled > 0 ? "text-amber-500" : "text-green-600"}`}>{cancelled}</span>
-            </div>
-            <div className="flex justify-between items-center pt-2 border-t border-navy/5">
-              <span className="text-xs font-body text-navy/50">Cancel rate</span>
-              <span className={`text-sm font-heading ${cancelRate > 15 ? "text-red-500" : cancelRate > 5 ? "text-amber-500" : "text-green-600"}`}>
-                {cancelRate}%
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Stylist workload today */}
-        <div className="bg-white p-5 border border-navy/10">
-          <h3 className="font-heading text-sm mb-3">Stylist Workload Today</h3>
-          {stylistWorkload.length === 0 ? (
-            <p className="text-navy/30 text-xs font-body">No appointments today</p>
-          ) : (
-            <div className="space-y-2">
-              {stylistWorkload.map((s) => (
-                <div key={s.id} className="flex justify-between items-center">
-                  <span className="text-xs font-body text-navy/60">{s.name}</span>
-                  <span className="text-xs font-body text-navy/40">
-                    {s.count} appts &middot; {s.hours}h &middot; {formatCents(s.revenue)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Revenue by stylist this week */}
-        <div className="bg-white p-5 border border-navy/10">
-          <h3 className="font-heading text-sm mb-3">Revenue by Stylist (Week)</h3>
-          {stylistRevenue.length === 0 ? (
-            <p className="text-navy/30 text-xs font-body">No revenue data</p>
-          ) : (
-            <div className="space-y-2">
-              {stylistRevenue.map((s) => (
-                <div key={s.id} className="flex justify-between items-center">
-                  <span className="text-xs font-body text-navy/60">{s.name}</span>
-                  <span className="text-sm font-heading">{formatCents(s.revenue)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Popular Services ── */}
-      {servicePopularity.length > 0 && (
-        <div className="mb-8">
-          <h3 className="font-heading text-sm mb-3">Popular Services (This Month)</h3>
-          <div className="flex flex-wrap gap-3">
-            {servicePopularity.map((s, i) => (
-              <div key={s.id} className="bg-white px-4 py-2 border border-navy/10 flex items-center gap-3">
-                <span className="text-xs font-heading text-navy/30">#{i + 1}</span>
-                <div>
-                  <p className="text-sm font-body font-bold">{s.name}</p>
-                  <p className="text-xs font-body text-navy/40">{s.count} booking{s.count !== 1 ? "s" : ""}</p>
-                </div>
+      {/* ─────── Hero row ─────── */}
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Today card */}
+        <Card className="lg:col-span-3 flex flex-col" padded={false}>
+          <div className="p-5 flex-1">
+            <Eyebrow>Today</Eyebrow>
+            {loading ? (
+              <Skeleton className="h-11 w-28 mt-2" />
+            ) : (
+              <p className="mt-2 text-[2.25rem] font-[var(--font-display)] text-[var(--color-text)] tracking-tight leading-none">
+                {formatMoney(payload?.today.revenue ?? 0, { from: "cents" })}
+              </p>
+            )}
+            <p className="mt-1 text-[0.75rem] text-[var(--color-text-muted)]">
+              {payload?.today.appointments ?? 0} appointments
+              {payload && payload.today.confirmed > 0 && (
+                <> · <span className="text-[var(--color-success)]">{payload.today.confirmed} confirmed</span></>
+              )}
+              {payload && payload.today.pending > 0 && (
+                <> · <span className="text-[var(--color-warning)]">{payload.today.pending} pending</span></>
+              )}
+            </p>
+            {payload && payload.today.sparkline.length > 1 && (
+              <div className="mt-4">
+                <Sparkline values={payload.today.sparkline} color={CHART_COLORS[1]} height={36} />
+                <p className="mt-1 text-[0.6875rem] uppercase tracking-wider text-[var(--color-text-subtle)]">7-day revenue</p>
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      )}
+        </Card>
 
-      {/* ── Row 4: Today's Schedule + Upcoming ── */}
-      <div className="grid lg:grid-cols-2 gap-8">
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-heading text-xl">Today&apos;s Schedule</h2>
-            <Link href="/admin/appointments" className="text-rose text-sm font-body hover:underline">
-              View all &rarr;
+        {/* Today's timeline */}
+        <Card className="lg:col-span-6" padded={false}>
+          <div className="px-5 pt-4 pb-1 flex items-center justify-between">
+            <Eyebrow>Today&apos;s timeline</Eyebrow>
+            <Link href="/admin/appointments" className="text-[0.75rem] text-[var(--color-crimson-600)] hover:underline">
+              Open →
             </Link>
           </div>
+          <div className="p-5 pt-2">
+            {loading ? (
+              <Skeleton className="h-40 w-full" />
+            ) : (
+              <TodayTimeline appointments={payload?.timeline || []} />
+            )}
+          </div>
+        </Card>
 
-          {loading ? (
-            <p className="text-navy/40 font-body text-sm">Loading...</p>
-          ) : error ? (
-            <p className="text-red-600 font-body text-sm">{error}</p>
-          ) : todayAppts.length === 0 ? (
-            <p className="text-navy/40 font-body text-sm">No appointments today.</p>
-          ) : (
-            <div className="bg-white border border-navy/10 divide-y divide-navy/5">
-              {todayAppts.map((appt) => (
-                <div key={appt.id} className="px-5 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="font-body font-bold text-sm">{appt.client_name}</p>
-                    <p className="text-navy/50 text-xs font-body">
-                      {appt.serviceName} with {appt.stylistName}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-body text-sm">{formatTime(appt.start_time)} – {formatTime(appt.end_time)}</p>
-                    <span className={`text-xs font-body px-2 py-0.5 ${
-                      appt.status === "confirmed" ? "bg-green-100 text-green-700" :
-                      appt.status === "completed" ? "bg-blue-100 text-blue-700" :
-                      appt.status === "cancelled" ? "bg-red-100 text-red-700" :
-                      appt.status === "no_show" ? "bg-gray-100 text-gray-600" :
-                      "bg-amber-100 text-amber-700"
-                    }`}>
-                      {appt.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <h2 className="font-heading text-xl mb-4">Upcoming (Next 7 Days)</h2>
-          {loading ? (
-            <p className="text-navy/40 font-body text-sm">Loading...</p>
-          ) : upcomingAppts.length === 0 ? (
-            <p className="text-navy/40 font-body text-sm">No upcoming appointments.</p>
-          ) : (
-            <div className="bg-white border border-navy/10 divide-y divide-navy/5">
-              {upcomingAppts.map((appt) => (
-                <div key={appt.id} className="px-5 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="font-body font-bold text-sm">{appt.client_name}</p>
-                    <p className="text-navy/50 text-xs font-body">
-                      {appt.serviceName} with {appt.stylistName}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-body text-sm">{new Date(appt.date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</p>
-                    <p className="font-body text-xs text-navy/60">{formatTime(appt.start_time)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Needs attention */}
+        <Card className="lg:col-span-3">
+          <Eyebrow>Needs attention</Eyebrow>
+          <div className="mt-3 space-y-2">
+            <AttentionRow
+              label={`${payload?.attention.pending ?? 0} pending confirmation${(payload?.attention.pending ?? 0) === 1 ? "" : "s"}`}
+              href="/admin/appointments?status=pending"
+              count={payload?.attention.pending ?? 0}
+              tone="warning"
+            />
+            <AttentionRow
+              label={`${payload?.attention.unreadMessages ?? 0} message${(payload?.attention.unreadMessages ?? 0) === 1 ? "" : "s"}`}
+              href="/admin/messages"
+              count={payload?.attention.unreadMessages ?? 0}
+              tone="info"
+            />
+            <AttentionRow
+              label={`${payload?.attention.waitlist ?? 0} on the waitlist`}
+              href="/admin/waitlist"
+              count={payload?.attention.waitlist ?? 0}
+              tone="accent"
+            />
+            <AttentionRow
+              label={`${payload?.attention.lowInventory ?? 0} low-stock product${(payload?.attention.lowInventory ?? 0) === 1 ? "" : "s"}`}
+              href="/admin/products"
+              count={payload?.attention.lowInventory ?? 0}
+              tone="danger"
+            />
+          </div>
+        </Card>
       </div>
 
-      {/* Real-time indicator */}
-      <div className="mt-8 flex items-center gap-2 text-xs text-navy/40 font-body">
-        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-        Auto-refreshing every 15 seconds
+      {/* ─────── Trend row ─────── */}
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Revenue · week"
+          value={loading ? <Skeleton className="h-8 w-24" /> : formatMoney(payload?.trend.revenueWeek ?? 0, { from: "cents" })}
+          delta={payload ? deltaPct(payload.trend.revenueWeek, payload.trend.revenueWeekPrev) : null}
+          deltaLabel="vs previous week"
+          sparkline={payload ? <Sparkline values={payload.trend.sparkRevenue} color={CHART_COLORS[1]} /> : undefined}
+        />
+        <StatCard
+          label="Revenue · month"
+          value={loading ? <Skeleton className="h-8 w-24" /> : formatMoney(payload?.trend.revenueMonth ?? 0, { from: "cents" })}
+          delta={payload ? deltaPct(payload.trend.revenueMonth, payload.trend.revenueMonthPrev) : null}
+          deltaLabel="vs previous month"
+          sparkline={payload ? <Sparkline values={payload.trend.sparkRevenue} color={CHART_COLORS[2]} /> : undefined}
+        />
+        <StatCard
+          label="Appointments · week"
+          value={loading ? <Skeleton className="h-8 w-16" /> : (payload?.trend.apptsWeek ?? 0).toLocaleString()}
+          delta={payload ? deltaPct(payload.trend.apptsWeek, payload.trend.apptsWeekPrev) : null}
+          deltaLabel="vs previous week"
+          sparkline={payload ? <Sparkline values={payload.trend.sparkAppts} color={CHART_COLORS[3]} /> : undefined}
+        />
+        <StatCard
+          label="Appointments · month"
+          value={loading ? <Skeleton className="h-8 w-16" /> : (payload?.trend.apptsMonth ?? 0).toLocaleString()}
+          delta={payload ? deltaPct(payload.trend.apptsMonth, payload.trend.apptsMonthPrev) : null}
+          deltaLabel="vs previous month"
+          sparkline={payload ? <Sparkline values={payload.trend.sparkAppts} color={CHART_COLORS[0]} /> : undefined}
+        />
+      </div>
+
+      {/* ─────── Operational row ─────── */}
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Health */}
+        <Card>
+          <Eyebrow>This week&apos;s health</Eyebrow>
+          <dl className="mt-4 divide-y divide-[var(--color-border)]">
+            <HealthRow label="No-shows" value={payload?.health.noShows ?? 0} tone={(payload?.health.noShows ?? 0) > 0 ? "warning" : "success"} />
+            <HealthRow label="Cancellations" value={payload?.health.cancellations ?? 0} tone={(payload?.health.cancellations ?? 0) > 0 ? "warning" : "success"} />
+            <HealthRow
+              label="Cancel rate"
+              value={`${payload?.health.cancelRate ?? 0}%`}
+              tone={(payload?.health.cancelRate ?? 0) > 15 ? "danger" : (payload?.health.cancelRate ?? 0) > 5 ? "warning" : "success"}
+              subtle={`across ${payload?.health.totalWeek ?? 0} bookings`}
+            />
+          </dl>
+        </Card>
+
+        {/* Stylist workload today */}
+        <Card>
+          <Eyebrow>Stylist workload · today</Eyebrow>
+          {loading ? (
+            <div className="mt-4 space-y-2">
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-5 w-1/2" />
+            </div>
+          ) : !payload?.workload.length || payload.workload.every((w) => w.hoursToday === 0) ? (
+            <EmptyState compact title="No appointments today" description="Your schedule is clear." />
+          ) : (
+            <StylistBars
+              rows={payload.workload.filter((w) => w.hoursToday > 0)}
+              valueFor={(r) => r.hoursToday}
+              formatValue={(v) => `${v.toFixed(1)}h`}
+              hint={(r) => `${r.apptsToday} appt${r.apptsToday === 1 ? "" : "s"}`}
+            />
+          )}
+        </Card>
+
+        {/* Revenue by stylist — this week */}
+        <Card>
+          <Eyebrow>Revenue by stylist · week</Eyebrow>
+          {loading ? (
+            <div className="mt-4 space-y-2">
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-5 w-1/2" />
+            </div>
+          ) : !payload?.workload.length || payload.workload.every((w) => w.revenueWeek === 0) ? (
+            <EmptyState compact title="No revenue yet" description="Revenue appears once a booking is confirmed or completed." />
+          ) : (
+            <StylistBars
+              rows={[...payload.workload].filter((w) => w.revenueWeek > 0).sort((a, b) => b.revenueWeek - a.revenueWeek)}
+              valueFor={(r) => r.revenueWeek}
+              formatValue={(v) => formatMoney(v, { from: "cents" })}
+            />
+          )}
+        </Card>
       </div>
     </div>
+  );
+}
+
+function AttentionRow({
+  label, href, count, tone,
+}: {
+  label: string;
+  href: string;
+  count: number;
+  tone: "warning" | "info" | "accent" | "danger";
+}) {
+  const muted = count === 0;
+  return (
+    <Link
+      href={href}
+      className={
+        "group flex items-center justify-between rounded-md border border-[var(--color-border)] px-3 py-2 transition-colors " +
+        (muted ? "bg-[var(--color-cream-50)]" : "bg-[var(--color-surface)] hover:border-[var(--color-border-strong)]")
+      }
+    >
+      <span className="flex items-center gap-2">
+        <span
+          className={
+            "h-1.5 w-1.5 rounded-full " +
+            (muted
+              ? "bg-[var(--color-text-subtle)]"
+              : tone === "warning"
+                ? "bg-[var(--color-warning)]"
+                : tone === "danger"
+                  ? "bg-[var(--color-danger)]"
+                  : tone === "accent"
+                    ? "bg-[var(--color-crimson-600)]"
+                    : "bg-[var(--color-info)]")
+          }
+          aria-hidden
+        />
+        <span className={"text-[0.8125rem] " + (muted ? "text-[var(--color-text-subtle)]" : "text-[var(--color-text)]")}>{label}</span>
+      </span>
+      <svg className={"h-3.5 w-3.5 " + (muted ? "text-[var(--color-text-subtle)]" : "text-[var(--color-text-muted)] group-hover:text-[var(--color-text)]")} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </Link>
+  );
+}
+
+function HealthRow({ label, value, tone, subtle }: { label: string; value: number | string; tone: "success" | "warning" | "danger"; subtle?: string }) {
+  const col = tone === "danger" ? "var(--color-danger)" : tone === "warning" ? "var(--color-warning)" : "var(--color-success)";
+  return (
+    <div className="flex items-baseline justify-between py-2.5 first:pt-0 last:pb-0">
+      <div>
+        <dt className="text-[0.8125rem] text-[var(--color-text)]">{label}</dt>
+        {subtle && <p className="text-[0.6875rem] text-[var(--color-text-subtle)]">{subtle}</p>}
+      </div>
+      <dd className="text-[1rem] font-medium" style={{ color: col }}>{value}</dd>
+    </div>
+  );
+}
+
+function StylistBars<T extends { stylistId: string; name: string; color: string | null }>(
+  { rows, valueFor, formatValue, hint }: {
+    rows: T[];
+    valueFor: (r: T) => number;
+    formatValue: (v: number) => string;
+    hint?: (r: T) => string;
+  },
+) {
+  const max = Math.max(1, ...rows.map(valueFor));
+  return (
+    <ul className="mt-4 space-y-2.5">
+      {rows.map((r) => {
+        const v = valueFor(r);
+        const pct = Math.round((v / max) * 100);
+        return (
+          <li key={r.stylistId}>
+            <div className="flex items-baseline justify-between text-[0.8125rem] mb-1">
+              <span className="inline-flex items-center gap-2 min-w-0">
+                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: r.color || "var(--color-text-subtle)" }} aria-hidden />
+                <span className="truncate text-[var(--color-text)]">{r.name}</span>
+              </span>
+              <span className="text-[var(--color-text-muted)] tabular-nums">{formatValue(v)}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-[var(--color-cream-200)]/60 overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: r.color || "var(--color-text-muted)" }} />
+            </div>
+            {hint && <p className="mt-1 text-[0.6875rem] text-[var(--color-text-subtle)]">{hint(r)}</p>}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
