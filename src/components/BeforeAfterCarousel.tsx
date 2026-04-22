@@ -20,30 +20,16 @@ interface Props {
 // Simple before/after pair carousel. Each pair shows the before photo on
 // the left and the after on the right, with a caption under. Prev/next
 // controls cycle through pairs. Drop image pairs into
-// public/images/before-after/ as before-01.jpg / after-01.jpg and pass
-// them as props from the calling page.
+// public/images/before-after/ as before-01.jpg / after-01.jpg and wire
+// them through src/lib/beforeAfterPairs.ts.
 //
-// If `pairs` is empty the component renders a placeholder card inviting
-// the salon to upload their first pair — prevents a blank section on
-// pages that haven't been backfilled with photos yet.
+// When `pairs` is empty the component renders NOTHING — owners +
+// carriers should never see a "coming soon" placeholder in production.
+// Add pairs to the data file to light the section up.
 export default function BeforeAfterCarousel({ pairs, title = "Before / After", subtitle, className = "" }: Props) {
   const [i, setI] = useState(0);
 
-  if (!pairs || pairs.length === 0) {
-    return (
-      <AnimatedSection className={className}>
-        <div className="max-w-3xl mx-auto text-center py-12">
-          <h3 className="font-heading text-3xl mb-3">{title}</h3>
-          {subtitle && <p className="text-navy/60 font-body mb-6">{subtitle}</p>}
-          <div className="border-2 border-dashed border-navy/15 p-10 text-navy/40 font-body text-sm">
-            Before / after photos coming soon — drop pairs into
-            <code className="bg-navy/5 text-navy/60 px-1.5 py-0.5 mx-1 text-xs">public/images/before-after/</code>
-            and wire them into the page component.
-          </div>
-        </div>
-      </AnimatedSection>
-    );
-  }
+  if (!pairs || pairs.length === 0) return null;
 
   const pair = pairs[i];
   const prev = () => setI((v) => (v - 1 + pairs.length) % pairs.length);

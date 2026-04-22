@@ -19,9 +19,11 @@ export default function GalleryPage() {
       <Navbar />
       <main className="pt-20">
         <Gallery />
-        <section className="py-20 md:py-24 bg-cream">
-          <BeforeAfterCarousel pairs={BEFORE_AFTER_PAIRS} title="Before & After" />
-        </section>
+        {BEFORE_AFTER_PAIRS.length > 0 && (
+          <section className="py-20 md:py-24 bg-cream">
+            <BeforeAfterCarousel pairs={BEFORE_AFTER_PAIRS} title="Before & After" />
+          </section>
+        )}
         <InstagramFeed />
       </main>
       <Footer />

@@ -24,13 +24,15 @@ export default function Home() {
         <ColorGallery />
         <StylingGallery />
         <TreatmentsGallery />
-        <section className="py-24 md:py-32 bg-cream">
-          <BeforeAfterCarousel
-            pairs={BEFORE_AFTER_PAIRS}
-            title="Before & After"
-            subtitle="Real transformations from our chairs"
-          />
-        </section>
+        {BEFORE_AFTER_PAIRS.length > 0 && (
+          <section className="py-24 md:py-32 bg-cream">
+            <BeforeAfterCarousel
+              pairs={BEFORE_AFTER_PAIRS}
+              title="Before & After"
+              subtitle="Real transformations from our chairs"
+            />
+          </section>
+        )}
         <ServicesPreview />
         <YelpReviews />
         <InstagramFeed />
