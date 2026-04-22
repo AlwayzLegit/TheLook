@@ -17,6 +17,9 @@ interface Appointment {
   status: string;
   client_email: string;
   created_at: string;
+  // Booking-time price snapshot (PR A). Falls back to svcMap lookup
+  // for legacy rows where the API couldn't derive it either.
+  totalPriceMin?: number;
 }
 
 interface Service {
@@ -62,6 +65,13 @@ export default function AnalyticsPage() {
   if (status !== "authenticated") return null;
 
   const svcMap = Object.fromEntries(services.map((s) => [s.id, s]));
+  // Prefer the booking-time snapshot (returned as totalPriceMin by the
+  // admin appointments API); only fall back to current services pricing
+  // for pre-PR-A legacy rows.
+  const priceOf = (a: Appointment): number => {
+    if (typeof a.totalPriceMin === "number") return a.totalPriceMin;
+    return svcMap[a.service_id]?.price_min || 0;
+  };
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - range);
   const cutoffStr = cutoff.toISOString().split("T")[0];
@@ -73,7 +83,7 @@ export default function AnalyticsPage() {
   const priorBillable = appointments.filter(
     (a) => a.date >= priorCutoffStr && a.date < cutoffStr && (a.status === "confirmed" || a.status === "completed"),
   );
-  const priorRevenue = priorBillable.reduce((s, a) => s + (svcMap[a.service_id]?.price_min || 0), 0);
+  const priorRevenue = priorBillable.reduce((s, a) => s + priceOf(a), 0);
   const pctDelta = (curr: number, prev: number): number | null => {
     if (prev === 0) return null;
     return ((curr - prev) / prev) * 100;
@@ -82,7 +92,7 @@ export default function AnalyticsPage() {
   // Revenue by day
   const revenueByDay: Record<string, number> = {};
   billable.forEach((a) => {
-    revenueByDay[a.date] = (revenueByDay[a.date] || 0) + (svcMap[a.service_id]?.price_min || 0);
+    revenueByDay[a.date] = (revenueByDay[a.date] || 0) + priceOf(a);
   });
   const dailyRevenue = Object.entries(revenueByDay).sort(([a], [b]) => a.localeCompare(b));
 
@@ -114,7 +124,7 @@ export default function AnalyticsPage() {
     const cat = s.category;
     if (!svcCounts[cat]) svcCounts[cat] = { name: cat, count: 0, revenue: 0 };
     svcCounts[cat].count++;
-    svcCounts[cat].revenue += s.price_min;
+    svcCounts[cat].revenue += priceOf(a);
   });
   const svcBreakdown = Object.values(svcCounts).sort((a, b) => b.count - a.count);
   const totalBookings = svcBreakdown.reduce((s, v) => s + v.count, 0) || 1;
@@ -135,7 +145,7 @@ export default function AnalyticsPage() {
     : 0;
 
   // Summary stats
-  const totalRevenue = billable.reduce((s, a) => s + (svcMap[a.service_id]?.price_min || 0), 0);
+  const totalRevenue = billable.reduce((s, a) => s + priceOf(a), 0);
   const avgTransaction = billable.length > 0 ? Math.round(totalRevenue / billable.length) : 0;
   const priorAvg = priorBillable.length > 0 ? Math.round(priorRevenue / priorBillable.length) : 0;
   const totalHours = billable.reduce((s, a) => s + (timeToMin(a.end_time) - timeToMin(a.start_time)), 0) / 60;

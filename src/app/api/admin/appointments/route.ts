@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
   const { data: mappings } = apptIds.length > 0
     ? await supabase
         .from("appointment_services")
-        .select("appointment_id, service_id, sort_order")
+        .select("appointment_id, service_id, sort_order, price_min, duration")
         .in("appointment_id", apptIds)
         .order("sort_order", { ascending: true })
     : { data: [] };
@@ -83,23 +83,42 @@ export async function GET(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stylistMap = Object.fromEntries((allStylists || []).map((s: any) => [s.id, s]));
 
-  // Group mappings by appointment_id
+  // Group mappings by appointment_id. `lines` keeps the booking-time
+  // snapshot (price_min/duration) per service so consumers don't recompute
+  // revenue against the current services table. Fall back to the current
+  // services row when a legacy pre-snapshot row has null.
+  type Line = { service_id: string; price_min: number | null; duration: number | null };
   const servicesByAppt = new Map<string, string[]>();
-  for (const m of mappings || []) {
-    const list = servicesByAppt.get(m.appointment_id) || [];
-    list.push(m.service_id);
-    servicesByAppt.set(m.appointment_id, list);
+  const linesByAppt = new Map<string, Line[]>();
+  for (const m of (mappings || []) as Line[] & { appointment_id: string }[]) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mm = m as any;
+    const ids = servicesByAppt.get(mm.appointment_id) || [];
+    ids.push(mm.service_id);
+    servicesByAppt.set(mm.appointment_id, ids);
+    const lines = linesByAppt.get(mm.appointment_id) || [];
+    lines.push({ service_id: mm.service_id, price_min: mm.price_min ?? null, duration: mm.duration ?? null });
+    linesByAppt.set(mm.appointment_id, lines);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const enriched = (rows || []).map((a: any) => {
     const ids = servicesByAppt.get(a.id) || (a.service_id ? [a.service_id] : []);
     const serviceNames = ids.map((id) => serviceMap[id]?.name).filter(Boolean);
+    const lines = linesByAppt.get(a.id) || (a.service_id ? [{ service_id: a.service_id, price_min: null, duration: null }] : []);
+    const priceMinSnapshot = lines.reduce((sum: number, l: Line) => {
+      if (l.price_min != null) return sum + l.price_min;
+      return sum + (serviceMap[l.service_id]?.price_min || 0);
+    }, 0);
     return {
       ...a,
       serviceIds: ids,
       serviceName: serviceNames.join(", ") || serviceMap[a.service_id]?.name,
       serviceNames,
+      serviceLines: lines,
+      // Convenience field so analytics + commissions pages don't each have
+      // to fold price_min/duration themselves.
+      totalPriceMin: priceMinSnapshot,
       stylistName: stylistMap[a.stylist_id]?.name,
     };
   });
@@ -223,11 +242,15 @@ export async function POST(request: NextRequest) {
     return apiError(`Failed to create appointment: ${insertErr.message}`, 500);
   }
 
+  // Snapshot price + duration at booking time so historical revenue
+  // doesn't shift when a service is later re-priced (migration 20260430).
   const mappingRows = effective.map((e, i) => ({
     appointment_id: appointmentId,
     service_id: e.serviceId,
     variant_id: e.variantId,
     sort_order: i,
+    price_min: e.priceMin,
+    duration: e.duration,
   }));
   const { error: mErr } = await supabase.from("appointment_services").insert(mappingRows);
   if (mErr) logError("admin/appointments POST (services)", mErr);

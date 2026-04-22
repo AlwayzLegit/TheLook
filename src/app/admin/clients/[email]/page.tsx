@@ -32,6 +32,8 @@ interface Appointment {
   status: string;
   notes: string | null;
   staff_notes: string | null;
+  // Booking-time price snapshot (PR A). Falls back to svcMap.
+  totalPriceMin?: number;
 }
 
 interface Photo {
@@ -206,7 +208,11 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
   const svcMap = Object.fromEntries(services.map((s) => [s.id, s]));
   const styMap = Object.fromEntries(stylists.map((s) => [s.id, s]));
   const billable = appointments.filter((a) => a.status === "confirmed" || a.status === "completed");
-  const totalSpent = billable.reduce((s, a) => s + (svcMap[a.service_id]?.price_min || 0), 0);
+  const priceOf = (a: Appointment): number => {
+    if (typeof a.totalPriceMin === "number") return a.totalPriceMin;
+    return svcMap[a.service_id]?.price_min || 0;
+  };
+  const totalSpent = billable.reduce((s, a) => s + priceOf(a), 0);
   const noShows = appointments.filter((a) => a.status === "no_show").length;
 
   // Most used services
@@ -467,7 +473,7 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
                             a.status === "no_show" ? "bg-gray-100 text-gray-700" :
                             "bg-amber-100 text-amber-700"
                           }`}>{a.status}</span>
-                          <p className="text-xs font-body text-navy/40 mt-1">{formatCents(svcMap[a.service_id]?.price_min || 0)}</p>
+                          <p className="text-xs font-body text-navy/40 mt-1">{formatCents(priceOf(a))}</p>
                         </div>
                       </div>
                     </div>

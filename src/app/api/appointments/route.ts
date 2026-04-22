@@ -275,11 +275,15 @@ export async function POST(request: NextRequest) {
   // Mirror multi-service rows — always insert so variant_id is recorded
   // even on single-service bookings. Appointments without variants still
   // resolve cleanly; this replaces the previous "only-insert-if-multi" path.
+  // price_min + duration are snapshotted here so historical revenue can't
+  // drift when a service's price is edited later (migration 20260430).
   const mappingRows = effective.map((e, i) => ({
     appointment_id: appointmentId,
     service_id: e.service.id,
     variant_id: e.variantId,
     sort_order: i,
+    price_min: e.priceMin,
+    duration: e.duration,
   }));
   const { error: mappingError } = await supabase
     .from("appointment_services")

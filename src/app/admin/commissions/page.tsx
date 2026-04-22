@@ -10,7 +10,15 @@ interface Stylist { id: string; name: string; color?: string | null; }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface Commission { stylist_id: string; commission_percent: number; hourly_rate: number | null; stylists?: any; }
 
-interface Appointment { id: string; stylist_id: string; service_id: string; date: string; status: string; }
+interface Appointment {
+  id: string;
+  stylist_id: string;
+  service_id: string;
+  date: string;
+  status: string;
+  // Booking-time snapshot (PR A). Falls back to svcMap when absent.
+  totalPriceMin?: number;
+}
 interface Service { id: string; price_min: number; }
 
 // Always-two-decimal money via the shared helper (plan bug #4).
@@ -67,7 +75,10 @@ export default function CommissionsPage() {
   const realStylists = stylists.filter((s) => s.name.trim().toLowerCase() !== "any stylist");
   const stylistData = realStylists.map((s) => {
     const appts = billable.filter((a) => a.stylist_id === s.id);
-    const revenue = appts.reduce((sum, a) => sum + (svcMap[a.service_id]?.price_min || 0), 0);
+    const revenue = appts.reduce((sum, a) => {
+      if (typeof a.totalPriceMin === "number") return sum + a.totalPriceMin;
+      return sum + (svcMap[a.service_id]?.price_min || 0);
+    }, 0);
     const percent = commissionMap[s.id]?.commission_percent ?? 50;
     const commission = Math.round(revenue * percent / 100);
     return { ...s, revenue, percent, commission, count: appts.length };

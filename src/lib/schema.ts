@@ -48,6 +48,11 @@ export const appointmentServices = pgTable("appointment_services", {
   // Removal — Brow). Null for services that don't use variants.
   variantId: uuid("variant_id"),
   sortOrder: integer("sort_order").notNull().default(0),
+  // Booking-time snapshot — migration 20260430. Historical rows are
+  // backfilled by the migration; new bookings are written by the POST
+  // routes so later price edits don't retroactively shift revenue.
+  priceMin: integer("price_min"),
+  duration: integer("duration"),
 }, (table) => [
   index("idx_appointment_services_appointment").on(table.appointmentId),
 ]);

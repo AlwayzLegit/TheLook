@@ -92,7 +92,7 @@ export async function GET() {
       supabase.from("services").select("id, name, price_min, duration"),
       supabase.from("stylists").select("id, name, color, active, sort_order"),
       apptIds.length > 0
-        ? supabase.from("appointment_services").select("appointment_id, service_id").in("appointment_id", apptIds)
+        ? supabase.from("appointment_services").select("appointment_id, service_id, price_min, duration").in("appointment_id", apptIds)
         : Promise.resolve({ data: [], error: null }),
       supabase.from("contact_messages").select("id"),
       supabase.from("waitlist").select("id, status").eq("status", "waiting"),
@@ -103,7 +103,15 @@ export async function GET() {
     type StylistRow = { id: string; name: string; color: string | null; active: boolean; sort_order: number };
     const services = (servicesRes.data || []) as ServiceRow[];
     const stylists = ((stylistsRes.data || []) as StylistRow[]).filter((s) => s.active !== false);
-    const mappings = (mappingsRes.data || []) as Array<{ appointment_id: string; service_id: string }>;
+    // price_min / duration on each mapping are the booking-time snapshot;
+    // null for pre-snapshot rows, in which case we fall back to the
+    // current services row.
+    const mappings = (mappingsRes.data || []) as Array<{
+      appointment_id: string;
+      service_id: string;
+      price_min: number | null;
+      duration: number | null;
+    }>;
     const messageCount = (messagesRes.data || []).length;
     const waitlistCount = (waitlistRes.data || []).length;
     const lowInventoryCount = (productsRes.data || []).filter(
@@ -113,11 +121,14 @@ export async function GET() {
 
     const svcById = new Map<string, ServiceRow>(services.map((s) => [s.id, s]));
     const stylistById = new Map<string, StylistRow>(stylists.map((s) => [s.id, s]));
-    const idsByAppt = new Map<string, string[]>();
+    // Group mappings per appointment — we need both the service_id list
+    // (for name display) and the per-line snapshot pricing (for revenue).
+    type SnapLine = { service_id: string; price_min: number | null; duration: number | null };
+    const linesByAppt = new Map<string, SnapLine[]>();
     for (const m of mappings) {
-      const arr = idsByAppt.get(m.appointment_id) || [];
-      arr.push(m.service_id);
-      idsByAppt.set(m.appointment_id, arr);
+      const arr = linesByAppt.get(m.appointment_id) || [];
+      arr.push({ service_id: m.service_id, price_min: m.price_min, duration: m.duration });
+      linesByAppt.set(m.appointment_id, arr);
     }
 
     // Compute price + duration per appointment using the variant-free
@@ -138,9 +149,16 @@ export async function GET() {
       requested: boolean;
     };
     const shaped: Shaped[] = allRows.map((r) => {
-      const serviceIds = idsByAppt.get(r.id) || (r.service_id ? [r.service_id] : []);
+      const lines = linesByAppt.get(r.id) || (r.service_id ? [{ service_id: r.service_id, price_min: null, duration: null }] : []);
+      const serviceIds = lines.map((l) => l.service_id);
       const serviceNames = serviceIds.map((id) => svcById.get(id)?.name).filter(Boolean);
-      const priceMin = serviceIds.reduce((sum: number, id: string) => sum + (svcById.get(id)?.price_min || 0), 0);
+      // Prefer the booking-time snapshot. Fall back to the current
+      // service's price only when the snapshot column is null (pre-
+      // migration legacy rows or an import that bypassed the POST route).
+      const priceMin = lines.reduce((sum, l) => {
+        if (l.price_min != null) return sum + l.price_min;
+        return sum + (svcById.get(l.service_id)?.price_min || 0);
+      }, 0);
       const stylist = stylistById.get(r.stylist_id);
       return {
         id: r.id,
