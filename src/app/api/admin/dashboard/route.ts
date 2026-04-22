@@ -184,6 +184,10 @@ export async function GET() {
     const confirmedToday = todays.filter((a) => a.status === "confirmed").length;
     const pendingToday = todays.filter((a) => a.status === "pending").length;
     const pendingTotal = shaped.filter((a) => a.status === "pending").length;
+    // Overdue-pending bucket (P2-2): appointments still flagged pending
+    // past their date. Non-destructive — we just surface the count so
+    // the admin can confirm / cancel manually. Never auto-cancelled.
+    const overduePending = shaped.filter((a) => a.status === "pending" && a.date < today).length;
 
     // 14-day revenue + appt sparklines so we can show the last 7 and still
     // delta vs the week before.
@@ -281,6 +285,7 @@ export async function GET() {
       workload,
       attention: {
         pending: pendingTotal,
+        overduePending,
         unreadMessages: messageCount,
         waitlist: waitlistCount,
         lowInventory: lowInventoryCount,
@@ -299,7 +304,7 @@ function emptyPayload() {
     trend: { revenueWeek: 0, revenueWeekPrev: 0, revenueMonth: 0, revenueMonthPrev: 0, apptsWeek: 0, apptsWeekPrev: 0, apptsMonth: 0, apptsMonthPrev: 0, sparkRevenue: [], sparkAppts: [] },
     timeline: [],
     workload: [],
-    attention: { pending: 0, unreadMessages: 0, waitlist: 0, lowInventory: 0 },
+    attention: { pending: 0, overduePending: 0, unreadMessages: 0, waitlist: 0, lowInventory: 0 },
     health: { noShows: 0, cancellations: 0, cancelRate: 0, totalWeek: 0 },
   };
 }

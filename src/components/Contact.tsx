@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import AnimatedSection from "./AnimatedSection";
-import TurnstileField from "./TurnstileField";
+import TurnstileField, { type TurnstileHandle } from "./TurnstileField";
 import SalonHours from "./SalonHours";
 import { track, identify } from "@/lib/analytics";
 
@@ -21,6 +21,7 @@ export default function Contact() {
     "idle" | "submitting" | "success" | "error"
   >("idle");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle | null>(null);
 
   useEffect(() => {
     fetch("/api/services")
@@ -65,11 +66,17 @@ export default function Contact() {
       } else {
         track("contact_failed", { status: res.status });
         setStatus("error");
+        // Turnstile tokens are single-use. Reset the widget so a
+        // retry gets a fresh token (P2-1).
+        turnstileRef.current?.reset();
+        setTurnstileToken(null);
         setTimeout(() => setStatus("idle"), 5000);
       }
     } catch {
       track("contact_failed", { status: 0, error: "network" });
       setStatus("error");
+      turnstileRef.current?.reset();
+      setTurnstileToken(null);
       setTimeout(() => setStatus("idle"), 5000);
     }
   };
@@ -250,6 +257,7 @@ export default function Contact() {
               {turnstileSiteKey ? (
                 <div className="pt-2">
                   <TurnstileField
+                    ref={turnstileRef}
                     siteKey={turnstileSiteKey}
                     onTokenChange={setTurnstileToken}
                   />

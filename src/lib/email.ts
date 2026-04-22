@@ -10,6 +10,37 @@ function getResend() {
 }
 
 const FROM = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+
+// Simple template-driven sender. Used by the reminders cron + manual
+// review-request action so the owner can edit copy in Settings without
+// touching the branded-email layout.
+export async function sendRawEmail(args: {
+  to: string;
+  subject: string;
+  text: string;
+  replyTo?: string;
+}): Promise<boolean> {
+  try {
+    const res = await getResend().emails.send({
+      from: FROM,
+      to: args.to,
+      subject: args.subject,
+      text: args.text,
+      replyTo: args.replyTo,
+    });
+    // Resend returns { data, error }; treat any error.message as failure.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((res as any)?.error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      console.error("sendRawEmail failed:", (res as any).error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("sendRawEmail exception:", err);
+    return false;
+  }
+}
 const SALON_EMAIL = process.env.ADMIN_EMAIL || "thelook_hairsalon@yahoo.com";
 const SITE = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
 

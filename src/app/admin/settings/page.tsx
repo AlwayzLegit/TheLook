@@ -23,6 +23,14 @@ interface Settings {
   sms_booking_cancelled_enabled?: string;
   sms_booking_reschedule_enabled?: string;
   sms_staff_new_booking_enabled?: string;
+  sms_review_request_enabled?: string;
+  reminder_sms_template?: string;
+  reminder_email_subject_template?: string;
+  reminder_email_body_template?: string;
+  review_request_sms_template?: string;
+  review_request_email_subject_template?: string;
+  review_request_email_body_template?: string;
+  google_review_url?: string;
   idle_timeout_minutes?: string;
 }
 
@@ -38,10 +46,11 @@ interface DepositRule {
 
 const truthy = (v: string | undefined, fallback = "true") => ((v ?? fallback) === "true");
 
-type Section = "general" | "booking" | "notifications" | "sms" | "security";
+type Section = "general" | "booking" | "reminders" | "notifications" | "sms" | "security";
 const SECTIONS: Array<{ id: Section; label: string; hint: string }> = [
   { id: "general",       label: "General",       hint: "Salon details used across the site." },
   { id: "booking",       label: "Booking",       hint: "Deposit rules + booking behaviour." },
+  { id: "reminders",     label: "Reminders",     hint: "Day-of reminder + review-request templates." },
   { id: "notifications", label: "Notifications", hint: "Who gets emails on new bookings." },
   { id: "sms",           label: "SMS",           hint: "Twilio toggles + per-event controls." },
   { id: "security",      label: "Security",      hint: "Session timeout, lockouts." },
@@ -173,6 +182,71 @@ export default function SettingsPage() {
             )}
 
             {section === "booking" && <DepositRulesCard />}
+
+            {section === "reminders" && (
+              <Card className="space-y-6">
+                <div>
+                  <h2 className="text-[1.0625rem] font-medium text-[var(--color-text)]">Day-of reminder</h2>
+                  <p className="text-[0.75rem] text-[var(--color-text-muted)] mt-0.5">
+                    Sent daily at 8am PT to every confirmed or completed appointment on that date.
+                    SMS goes only to clients who opted in; email goes to everyone with an address.
+                  </p>
+                  <p className="text-[0.75rem] text-[var(--color-text-subtle)] mt-1">
+                    Placeholders: <code>{"{{client_name}}"}</code> · <code>{"{{service}}"}</code> · <code>{"{{stylist}}"}</code> · <code>{"{{time}}"}</code> · <code>{"{{date}}"}</code> · <code>{"{{cancel_url}}"}</code>
+                  </p>
+                </div>
+                <Textarea
+                  label="SMS body"
+                  rows={3}
+                  value={s.reminder_sms_template ?? ""}
+                  onChange={(e) => setS({ ...s, reminder_sms_template: e.target.value })}
+                />
+                <Input
+                  label="Email subject"
+                  value={s.reminder_email_subject_template ?? ""}
+                  onChange={(e) => setS({ ...s, reminder_email_subject_template: e.target.value })}
+                />
+                <Textarea
+                  label="Email body"
+                  rows={8}
+                  value={s.reminder_email_body_template ?? ""}
+                  onChange={(e) => setS({ ...s, reminder_email_body_template: e.target.value })}
+                />
+
+                <div className="pt-4 border-t border-[var(--color-border)]">
+                  <h2 className="text-[1.0625rem] font-medium text-[var(--color-text)]">Review request</h2>
+                  <p className="text-[0.75rem] text-[var(--color-text-muted)] mt-0.5">
+                    Sent manually from a completed appointment&apos;s actions menu.
+                  </p>
+                  <p className="text-[0.75rem] text-[var(--color-text-subtle)] mt-1">
+                    Placeholders: <code>{"{{client_name}}"}</code> · <code>{"{{service}}"}</code> · <code>{"{{stylist}}"}</code> · <code>{"{{review_url}}"}</code>
+                  </p>
+                </div>
+                <Input
+                  label="Google review URL"
+                  value={s.google_review_url ?? ""}
+                  onChange={(e) => setS({ ...s, google_review_url: e.target.value })}
+                  hint="The link clients land on. Grab the short ‘write a review’ link from your Google Business Profile for best results."
+                />
+                <Textarea
+                  label="SMS body"
+                  rows={3}
+                  value={s.review_request_sms_template ?? ""}
+                  onChange={(e) => setS({ ...s, review_request_sms_template: e.target.value })}
+                />
+                <Input
+                  label="Email subject"
+                  value={s.review_request_email_subject_template ?? ""}
+                  onChange={(e) => setS({ ...s, review_request_email_subject_template: e.target.value })}
+                />
+                <Textarea
+                  label="Email body"
+                  rows={8}
+                  value={s.review_request_email_body_template ?? ""}
+                  onChange={(e) => setS({ ...s, review_request_email_body_template: e.target.value })}
+                />
+              </Card>
+            )}
 
             {section === "notifications" && (
               <Card className="space-y-5">

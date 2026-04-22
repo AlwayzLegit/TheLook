@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ReviewRequestModal from "./ReviewRequestModal";
 
 interface Appointment {
   id: string;
   client_name: string;
   client_email: string;
   client_phone: string | null;
+  sms_consent?: boolean | null;
   serviceName: string;
   stylistName: string;
   date: string;
@@ -55,6 +57,7 @@ export default function AppointmentActionsModal({
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [fields, setFields] = useState({ date: "", start_time: "", end_time: "", staff_notes: "" });
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   useEffect(() => {
     if (appointment) {
@@ -186,6 +189,16 @@ export default function AppointmentActionsModal({
                 </>
               )}
 
+              {appointment.status === "completed" && (
+                <button
+                  onClick={() => setReviewOpen(true)}
+                  className="text-xs font-body text-gold border border-gold/40 px-3 py-1.5 hover:bg-gold/5"
+                  title="Send a review request to this client"
+                >
+                  Send review request
+                </button>
+              )}
+
               {canArchive && (
                 <button
                   onClick={() => onArchive(appointment.id)}
@@ -225,6 +238,18 @@ export default function AppointmentActionsModal({
           )}
         </div>
       </div>
+
+      <ReviewRequestModal
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        appointment={{
+          id: appointment.id,
+          client_name: appointment.client_name,
+          client_email: appointment.client_email,
+          client_phone: appointment.client_phone,
+          sms_consent: appointment.sms_consent,
+        }}
+      />
     </div>
   );
 }

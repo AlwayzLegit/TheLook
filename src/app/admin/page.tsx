@@ -31,7 +31,7 @@ interface Payload {
     stylistId: string; name: string; color: string | null;
     hoursToday: number; apptsToday: number; revenueToday: number; revenueWeek: number;
   }>;
-  attention: { pending: number; unreadMessages: number; waitlist: number; lowInventory: number };
+  attention: { pending: number; overduePending: number; unreadMessages: number; waitlist: number; lowInventory: number };
   health: { noShows: number; cancellations: number; cancelRate: number; totalWeek: number };
 }
 
@@ -220,6 +220,12 @@ export default function AdminDashboard() {
               href="/admin/appointments?status=pending"
               count={payload?.attention.pending ?? 0}
               tone="warning"
+            />
+            <AttentionRow
+              label={`${payload?.attention.overduePending ?? 0} overdue pending`}
+              href="/admin/appointments?status=pending&overdue=true"
+              count={payload?.attention.overduePending ?? 0}
+              tone="danger"
             />
             <AttentionRow
               label={`${payload?.attention.unreadMessages ?? 0} message${(payload?.attention.unreadMessages ?? 0) === 1 ? "" : "s"}`}

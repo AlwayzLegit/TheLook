@@ -36,30 +36,40 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-// NextAuth v5 middleware: `auth` wraps the handler and injects `req.auth`.
-export default auth((req) => {
-  const { pathname } = req.nextUrl;
+// Routes that actually need the NextAuth session check. Public routes
+// (everything else) skip the auth() wrapper entirely so NextAuth doesn't
+// set a __Secure-authjs.callback-url cookie on public GETs — Supabase's
+// advisor flagged this as P3-5.
+function needsAuth(pathname: string): boolean {
+  if (pathname === "/admin/login") return false;
+  if (pathname.startsWith("/admin")) return true;
+  if (pathname.startsWith("/api/admin")) return true;
+  return false;
+}
 
-  const isAdminPage = pathname.startsWith("/admin") && pathname !== "/admin/login";
-  const isAdminApi = pathname.startsWith("/api/admin");
-
-  if (isAdminPage || isAdminApi) {
-    if (!req.auth) {
-      if (isAdminApi) {
-        return addSecurityHeaders(
-          new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          }),
-        );
-      }
-      const loginUrl = new URL("/admin/login", req.url);
-      return addSecurityHeaders(NextResponse.redirect(loginUrl));
+const authCheck = auth((req) => {
+  if (!req.auth) {
+    const { pathname } = req.nextUrl;
+    if (pathname.startsWith("/api/admin")) {
+      return addSecurityHeaders(
+        new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
     }
+    return addSecurityHeaders(NextResponse.redirect(new URL("/admin/login", req.url)));
   }
-
   return addSecurityHeaders(NextResponse.next());
 }) as unknown as (request: NextRequest) => Promise<NextResponse>;
+
+export default async function middleware(request: NextRequest): Promise<NextResponse> {
+  if (needsAuth(request.nextUrl.pathname)) {
+    return authCheck(request);
+  }
+  // Public path — pass through, still apply security headers.
+  return addSecurityHeaders(NextResponse.next());
+}
 
 export const config = {
   matcher: [

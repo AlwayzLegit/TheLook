@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { usePolledAppointments } from "@/hooks/usePolledAppointments";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import { downloadIcs } from "@/lib/icsExport";
 import { todayISOInLA, addDaysISOInLA } from "@/lib/datetime";
 import AppointmentCalendar from "@/components/admin/AppointmentCalendar";
+import ClearHistoryModal from "@/components/admin/ClearHistoryModal";
 import NewAppointmentSheet from "@/components/admin/NewAppointmentSheet";
 import AppointmentActionsModal from "@/components/admin/AppointmentActionsModal";
 import { Button } from "@/components/ui/Button";
@@ -31,6 +32,7 @@ interface EnrichedAppointment {
   client_name: string;
   client_email: string;
   client_phone: string | null;
+  sms_consent?: boolean | null;
   service_id: string;
   stylist_id: string;
   date: string;
@@ -60,7 +62,9 @@ function formatTime(time: string) {
 export default function AppointmentsPage() {
   const { status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [listTab, setListTab] = useState<"active" | "archived">("active");
+  const [clearArchivedOpen, setClearArchivedOpen] = useState(false);
   const { appointments: realtimeAppts, loading, error, lastUpdate, refresh } = usePolledAppointments({
     enabled: status === "authenticated",
     archived: listTab === "archived",
@@ -87,6 +91,28 @@ export default function AppointmentsPage() {
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
   }, [status, router]);
+
+  // Hydrate initial filters from URL query — so /admin/appointments
+  // links from the dashboard Needs-Attention cards land pre-filtered.
+  // Runs once on mount; subsequent filter edits stay local.
+  useEffect(() => {
+    const qStatus = searchParams.get("status");
+    const qOverdue = searchParams.get("overdue");
+    const qDateFrom = searchParams.get("dateFrom");
+    const qDateTo = searchParams.get("dateTo");
+    if (qStatus) setStatusFilter(qStatus);
+    if (qDateFrom) setDateFrom(qDateFrom);
+    if (qDateTo) setDateTo(qDateTo);
+    if (qOverdue === "true") {
+      // Overdue = status pending AND date < today. Use PT "today" to
+      // match how the dashboard counted it.
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      setDateTo(d.toISOString().split("T")[0]);
+      if (!qStatus) setStatusFilter("pending");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -440,9 +466,17 @@ export default function AppointmentsPage() {
         </div>
 
         {listTab === "archived" && (
-          <span className="text-xs font-body text-navy/50">
-            Archived bookings auto-delete 30 days after they were archived.
-          </span>
+          <>
+            <span className="text-xs font-body text-navy/50">
+              Manually clear old archived bookings using the button →
+            </span>
+            <button
+              onClick={() => setClearArchivedOpen(true)}
+              className="ml-auto px-3 py-1.5 text-xs font-body border border-red-200 text-red-600 hover:bg-red-50 uppercase tracking-widest"
+            >
+              Clear archived
+            </button>
+          </>
         )}
       </div>
 
@@ -837,6 +871,15 @@ export default function AppointmentsPage() {
           await saveEditFromModal(id, fields);
           setSelectedAppt(null);
         }}
+      />
+
+      <ClearHistoryModal
+        open={clearArchivedOpen}
+        onOpenChange={setClearArchivedOpen}
+        title="Clear archived appointments"
+        description="Permanently delete archived bookings by date range."
+        endpoint="/api/admin/appointments/archived/clear"
+        onCleared={() => refresh()}
       />
     </div>
   );

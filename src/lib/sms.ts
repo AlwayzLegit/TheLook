@@ -20,6 +20,7 @@ export type SMSEvent =
   | "booking.cancelled"
   | "booking.reschedule"
   | "staff.new_booking"
+  | "review.request"
   | "admin.test";
 
 export interface SendSMSArgs {
@@ -66,6 +67,7 @@ const EVENT_SETTING_KEY: Record<SMSEvent, import("./settings").SettingsKey | nul
   "booking.cancelled":     "sms_booking_cancelled_enabled",
   "booking.reschedule":    "sms_booking_reschedule_enabled",
   "staff.new_booking":     "sms_staff_new_booking_enabled",
+  "review.request":        "sms_review_request_enabled",
   "admin.test":            null, // always allowed
 };
 

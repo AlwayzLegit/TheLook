@@ -213,6 +213,10 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
   };
   const confirmNewClient = () => {
     if (!newClient.name.trim()) { toast.error("Name is required."); return; }
+    if (newClient.phone.replace(/\D/g, "").length < 7) {
+      toast.error("Phone is required (at least 7 digits).");
+      return;
+    }
     if (!newClient.email.trim() && !newClient.phone.trim()) {
       toast.error("Add either an email or a phone number.");
       return;

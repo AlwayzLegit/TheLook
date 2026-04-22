@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { forwardRef, useEffect, useId, useImperativeHandle, useRef } from "react";
 
 declare global {
   interface Window {
@@ -15,6 +15,7 @@ declare global {
         }
       ) => string;
       remove: (widgetId: string) => void;
+      reset: (widgetId: string) => void;
     };
   }
 }
@@ -24,7 +25,17 @@ interface Props {
   onTokenChange: (token: string | null) => void;
 }
 
-export default function TurnstileField({ siteKey, onTokenChange }: Props) {
+// Imperative handle so parents can call `ref.current?.reset()` after a
+// failed submit. Cloudflare invalidates single-use tokens; without a
+// reset the second attempt always fails with `invalid-input-response`.
+export interface TurnstileHandle {
+  reset: () => void;
+}
+
+const TurnstileField = forwardRef<TurnstileHandle, Props>(function TurnstileField(
+  { siteKey, onTokenChange },
+  ref,
+) {
   const divId = `turnstile-${useId().replace(/[:]/g, "")}`;
   const widgetIdRef = useRef<string | null>(null);
 
@@ -59,6 +70,20 @@ export default function TurnstileField({ siteKey, onTokenChange }: Props) {
     };
   }, [divId, siteKey, onTokenChange]);
 
-  return <div id={divId} />;
-}
+  useImperativeHandle(ref, () => ({
+    reset: () => {
+      if (widgetIdRef.current && window.turnstile?.reset) {
+        try {
+          window.turnstile.reset(widgetIdRef.current);
+          onTokenChange(null);
+        } catch {
+          // ignore — caller will just see a fresh challenge next mount
+        }
+      }
+    },
+  }), [onTokenChange]);
 
+  return <div id={divId} />;
+});
+
+export default TurnstileField;

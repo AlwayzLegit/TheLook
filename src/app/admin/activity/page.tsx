@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CATEGORY_COLORS, formatActivity } from "@/lib/activityFormat";
+import ClearHistoryModal from "@/components/admin/ClearHistoryModal";
 
 interface Entry {
   id: string;
@@ -74,6 +75,7 @@ export default function ActivityPage() {
   const [counts, setCounts] = useState<{ today: number; week: number; month: number }>({ today: 0, week: 0, month: 0 });
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [clearOpen, setClearOpen] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -168,6 +170,12 @@ export default function ActivityPage() {
           >
             Export CSV
           </a>
+          <button
+            onClick={() => setClearOpen(true)}
+            className="px-3 py-1.5 text-xs font-body border border-red-200 text-red-600 hover:bg-red-50 uppercase tracking-widest"
+          >
+            Clear history
+          </button>
         </div>
       </div>
 
@@ -300,6 +308,15 @@ export default function ActivityPage() {
           </button>
         </div>
       )}
+
+      <ClearHistoryModal
+        open={clearOpen}
+        onOpenChange={setClearOpen}
+        title="Clear activity log"
+        description="Permanently delete audit-log rows by date range."
+        endpoint="/api/admin/activity-log/clear"
+        onCleared={() => { setPage(1); location.reload(); }}
+      />
     </div>
   );
 }

@@ -1,12 +1,37 @@
 import { supabase } from "@/lib/supabase";
-import { sendReminderEmail } from "@/lib/email";
-import { sendReminderSMS } from "@/lib/sms";
+import { sendSMS } from "@/lib/sms";
+import { getSetting } from "@/lib/settings";
+import { sendRawEmail } from "@/lib/email";
+import { renderTemplate, DEFAULT_TEMPLATES } from "@/lib/templates";
+import { todayISOInLA } from "@/lib/datetime";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
-function formatTime(t: string) {
+// Single daily fan-out. Scheduled at 15:00 UTC = 08:00 PDT (PST drifts
+// to 07:00 — owner accepts the DST shift, see brief).
+//
+// For every appointment on today's PT date whose status is confirmed or
+// completed (and not archived), send:
+//   • SMS  — only if the client has a phone AND opted in (sms_consent)
+//            AND isn't in sms_opt_outs. Message body from
+//            salon_settings.reminder_sms_template.
+//   • Email — always when we have a client email. Subject + body from
+//            salon_settings.reminder_email_(subject|body)_template.
+//
+// reminder_sent gate prevents double-sending if the cron is retried.
+
+function formatTime(t: string): string {
+  if (!t) return "";
   const [h, m] = t.split(":").map(Number);
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+}
+
+function formatDate(d: string): string {
+  if (!d) return "";
+  const [y, mo, day] = d.split("-").map(Number);
+  return new Date(y, mo - 1, day).toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric",
+  });
 }
 
 export async function GET(request: NextRequest) {
@@ -16,15 +41,25 @@ export async function GET(request: NextRequest) {
     return apiError("Unauthorized", 401);
   }
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+  const todayStr = todayISOInLA();
+  const baseUrl = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
 
-  const { data: upcoming, error } = await supabase
+  // Load templates once — fall back to compiled-in defaults if the row
+  // is missing, so pre-migration installs still get reasonable copy.
+  const [
+    smsTpl, emailSubjectTpl, emailBodyTpl,
+  ] = await Promise.all([
+    getSetting("reminder_sms_template").then((v) => v || DEFAULT_TEMPLATES.reminder_sms_template),
+    getSetting("reminder_email_subject_template").then((v) => v || DEFAULT_TEMPLATES.reminder_email_subject_template),
+    getSetting("reminder_email_body_template").then((v) => v || DEFAULT_TEMPLATES.reminder_email_body_template),
+  ]);
+
+  const { data: todays, error } = await supabase
     .from("appointments")
     .select("*")
-    .eq("date", tomorrowStr)
-    .eq("status", "confirmed")
+    .eq("date", todayStr)
+    .in("status", ["confirmed", "completed"])
+    .is("archived_at", null)
     .eq("reminder_sent", false);
 
   if (error) {
@@ -32,66 +67,72 @@ export async function GET(request: NextRequest) {
     return apiError("Failed to fetch appointments.", 500);
   }
 
-  const { data: allServices } = await supabase.from("services").select("*");
-  const { data: allStylists } = await supabase.from("stylists").select("*");
-  const apptIds = (upcoming || []).map((a: { id: string }) => a.id);
-  const { data: mappings } = apptIds.length > 0
-    ? await supabase
-        .from("appointment_services")
-        .select("appointment_id, service_id, sort_order")
-        .in("appointment_id", apptIds)
-        .order("sort_order", { ascending: true })
-    : { data: [] };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serviceMap = Object.fromEntries((allServices || []).map((s: any) => [s.id, s]));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stylistMap = Object.fromEntries((allStylists || []).map((s: any) => [s.id, s]));
-  const apptServicesMap = new Map<string, string[]>();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const m of (mappings || []) as any[]) {
-    const arr = apptServicesMap.get(m.appointment_id) || [];
-    arr.push(m.service_id);
-    apptServicesMap.set(m.appointment_id, arr);
+  const rows = todays || [];
+  if (rows.length === 0) {
+    return apiSuccess({ date: todayStr, sent: 0, smsSent: 0, emailSent: 0, skipped: 0 });
   }
 
-  const baseUrl = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
-  let sent = 0;
+  const apptIds = rows.map((a: { id: string }) => a.id);
+  const [{ data: allServices }, { data: allStylists }, { data: mappings }] = await Promise.all([
+    supabase.from("services").select("id, name"),
+    supabase.from("stylists").select("id, name"),
+    supabase.from("appointment_services").select("appointment_id, service_id, sort_order").in("appointment_id", apptIds).order("sort_order", { ascending: true }),
+  ]);
 
-  for (const appt of upcoming || []) {
-    const ids = apptServicesMap.get(appt.id) || (appt.service_id ? [appt.service_id] : []);
-    const serviceName = ids.map((id) => serviceMap[id]?.name).filter(Boolean).join(", ") || "Your Service";
-    await sendReminderEmail({
-      clientName: appt.client_name,
-      clientEmail: appt.client_email,
-      serviceName,
-      stylistName: stylistMap[appt.stylist_id]?.name || "Your Stylist",
-      date: appt.date,
-      startTime: appt.start_time,
-      cancelUrl: appt.cancel_token
-        ? `${baseUrl}/book/cancel?token=${appt.cancel_token}`
-        : undefined,
-    });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const serviceMap = Object.fromEntries(((allServices as any[]) || []).map((s: any) => [s.id, s.name]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stylistMap = Object.fromEntries(((allStylists as any[]) || []).map((s: any) => [s.id, s.name]));
+  const serviceIdsByAppt = new Map<string, string[]>();
+  for (const m of (mappings || []) as Array<{ appointment_id: string; service_id: string }>) {
+    const arr = serviceIdsByAppt.get(m.appointment_id) || [];
+    arr.push(m.service_id);
+    serviceIdsByAppt.set(m.appointment_id, arr);
+  }
 
-    // Also send SMS if phone available. Pass raw HH:MM — sendReminderSMS
-    // formats it with its own 12h helper.
-    if (appt.client_phone) {
-      await sendReminderSMS(
-        appt.client_phone,
-        appt.client_name,
-        appt.start_time,
-        appt.id,
-        appt.client_email,
-      );
+  let smsSent = 0, emailSent = 0, skipped = 0;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const appt of rows as any[]) {
+    const ids = serviceIdsByAppt.get(appt.id) || (appt.service_id ? [appt.service_id] : []);
+    const serviceName = ids.map((id: string) => serviceMap[id]).filter(Boolean).join(", ") || "your appointment";
+    const stylistName = stylistMap[appt.stylist_id] || "your stylist";
+    const vars = {
+      client_name: appt.client_name || "there",
+      service: serviceName,
+      stylist: stylistName,
+      date: formatDate(appt.date),
+      time: formatTime(appt.start_time),
+      salon_name: "The Look Hair Salon",
+      cancel_url: appt.cancel_token ? `${baseUrl}/book/cancel?token=${appt.cancel_token}` : "",
+    };
+
+    // Email — always when we have an address. Resend handles bounces.
+    if (appt.client_email) {
+      const ok = await sendRawEmail({
+        to: appt.client_email,
+        subject: renderTemplate(emailSubjectTpl, vars),
+        text: renderTemplate(emailBodyTpl, vars),
+      }).catch((e) => { logError("reminders email", e); return false; });
+      if (ok) emailSent++;
     }
 
-    await supabase
-      .from("appointments")
-      .update({ reminder_sent: true })
-      .eq("id", appt.id);
+    // SMS — requires phone + consent. Opt-outs handled inside sendSMS.
+    if (appt.client_phone && appt.sms_consent === true) {
+      const ok = await sendSMS({
+        to: appt.client_phone,
+        event: "booking.reminder",
+        appointmentId: appt.id,
+        clientEmail: appt.client_email || null,
+        body: renderTemplate(smsTpl, vars),
+      }).catch((e) => { logError("reminders sms", e); return false; });
+      if (ok) smsSent++;
+    } else {
+      skipped++;
+    }
 
-    sent++;
+    await supabase.from("appointments").update({ reminder_sent: true }).eq("id", appt.id);
   }
 
-  return apiSuccess({ sent, date: tomorrowStr });
+  return apiSuccess({ date: todayStr, appointments: rows.length, smsSent, emailSent, skipped });
 }

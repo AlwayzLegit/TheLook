@@ -15,6 +15,14 @@ const ALLOWED_KEYS = new Set([
   "sms_booking_cancelled_enabled",
   "sms_booking_reschedule_enabled",
   "sms_staff_new_booking_enabled",
+  "sms_review_request_enabled",
+  "reminder_sms_template",
+  "reminder_email_subject_template",
+  "reminder_email_body_template",
+  "review_request_sms_template",
+  "review_request_email_subject_template",
+  "review_request_email_body_template",
+  "google_review_url",
   "idle_timeout_minutes",
 ]);
 

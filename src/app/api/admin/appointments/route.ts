@@ -138,7 +138,10 @@ const adminBookingSchema = z.object({
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   clientName: z.string().trim().min(1).max(200),
   clientEmail: z.string().trim().email().max(200),
-  clientPhone: z.string().trim().max(50).optional().nullable(),
+  // Phone is required across the booking surface — A2P 10DLC + day-of
+  // reminders both depend on reachable numbers. Admin bookings follow
+  // the same rule to keep /admin and /book consistent.
+  clientPhone: z.string().trim().min(7, "Phone is required.").max(50),
   notes: z.string().trim().max(2000).optional().nullable(),
   staffNotes: z.string().trim().max(2000).optional().nullable(),
   status: z.enum(["pending", "confirmed", "completed"]).default("confirmed"),
