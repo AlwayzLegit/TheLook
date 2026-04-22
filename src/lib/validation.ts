@@ -33,6 +33,8 @@ export const appointmentCreateSchema = z.object({
   }),
   // Optional Stripe PaymentIntent id when a deposit was collected up-front.
   depositPaymentIntentId: z.string().trim().max(255).optional(),
+  // A2P 10DLC — explicit SMS consent flag from the booking form.
+  smsConsent: z.boolean().optional(),
   turnstileToken: z.string().trim().optional(),
 }).refine((d) => !!d.serviceId || (d.serviceIds && d.serviceIds.length > 0), {
   message: "serviceId or serviceIds is required",
@@ -47,6 +49,8 @@ export const contactCreateSchema = z.object({
   // Message is required — an empty contact is just inbox noise for the
   // salon with nothing actionable.
   message: z.string().trim().min(10, "Please include a short message.").max(3000),
+  // A2P 10DLC — explicit SMS consent flag, persisted for audit purposes.
+  smsConsent: z.boolean().optional(),
   turnstileToken: z.string().trim().optional(),
 });
 

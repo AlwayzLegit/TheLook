@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "How The Look Hair Salon collects, uses, and protects your personal information.",
 };
 
-const LAST_UPDATED = "November 2025";
+const LAST_UPDATED = "April 2026";
 
 export default function PrivacyPage() {
   return (
@@ -81,10 +81,38 @@ export default function PrivacyPage() {
                 Each provider has its own privacy policy. We may also disclose information if legally required
                 (e.g., subpoena) or to protect the rights, safety, or property of The Look, our clients, or others.
               </p>
+              <p className="mt-3 font-semibold">
+                Mobile information will not be shared, sold, or conveyed to third parties or affiliates for
+                marketing or promotional purposes.
+              </p>
             </section>
 
             <section>
-              <h2 className="font-heading text-2xl text-navy mb-3">4. Data Retention</h2>
+              <h2 className="font-heading text-2xl text-navy mb-3">4. SMS / Text Messaging</h2>
+              <p>
+                When you provide your mobile number and check the SMS consent box on our contact or booking
+                forms, you are opting in to receive transactional and informational text messages from
+                The Look Hair Salon (such as appointment confirmations, reminders, and schedule-change
+                alerts). Consent is not a condition of any purchase. Message frequency varies; message
+                and data rates may apply.
+              </p>
+              <p className="mt-3">
+                You can opt out at any time by replying <strong>STOP</strong> to any message. Reply
+                <strong> HELP</strong> for assistance, or contact us using the information at the bottom
+                of this policy.
+              </p>
+              <p className="mt-3 font-semibold">
+                Mobile information will not be shared, sold, or conveyed to third parties or affiliates for
+                marketing or promotional purposes.
+              </p>
+              <p className="mt-3">
+                Mobile opt-in data and consent records are kept solely to document your subscription and
+                are never transferred to third parties for their own marketing.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">5. Data Retention</h2>
               <p>
                 We keep appointment and client records for as long as needed to provide continuity of service
                 and to comply with business records obligations. You may request deletion of your record at any
@@ -93,7 +121,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="font-heading text-2xl text-navy mb-3">5. Cookies</h2>
+              <h2 className="font-heading text-2xl text-navy mb-3">6. Cookies</h2>
               <p>
                 We use a minimal set of cookies:
               </p>
@@ -107,7 +135,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="font-heading text-2xl text-navy mb-3">6. Your Rights</h2>
+              <h2 className="font-heading text-2xl text-navy mb-3">7. Your Rights</h2>
               <p>
                 You can request to:
               </p>
@@ -123,7 +151,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="font-heading text-2xl text-navy mb-3">7. Security</h2>
+              <h2 className="font-heading text-2xl text-navy mb-3">8. Security</h2>
               <p>
                 We use HTTPS everywhere, industry-standard password hashing (bcrypt), and access controls on
                 all admin data. No system is perfectly secure, but we take reasonable measures to protect
@@ -132,7 +160,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="font-heading text-2xl text-navy mb-3">8. Children&#39;s Privacy</h2>
+              <h2 className="font-heading text-2xl text-navy mb-3">9. Children&#39;s Privacy</h2>
               <p>
                 The Site is not directed to children under 13. We do not knowingly collect information from
                 children under 13. A parent or guardian must book appointments on behalf of a minor.
@@ -140,7 +168,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="font-heading text-2xl text-navy mb-3">9. California Residents</h2>
+              <h2 className="font-heading text-2xl text-navy mb-3">10. California Residents</h2>
               <p>
                 California residents have specific rights under the CCPA, including the right to know what
                 personal information we collect, to request deletion, and not to be discriminated against for
@@ -149,7 +177,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="font-heading text-2xl text-navy mb-3">10. Changes to This Policy</h2>
+              <h2 className="font-heading text-2xl text-navy mb-3">11. Changes to This Policy</h2>
               <p>
                 We may update this policy from time to time. The &ldquo;Last updated&rdquo; date above reflects
                 the latest revision. Continued use of the Site after a change means you accept the revised policy.
@@ -157,7 +185,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="font-heading text-2xl text-navy mb-3">11. Contact</h2>
+              <h2 className="font-heading text-2xl text-navy mb-3">12. Contact</h2>
               <div className="space-y-1 text-navy">
                 <p>The Look Hair Salon</p>
                 <p>919 South Central Ave Suite #E, Glendale, CA 91204</p>

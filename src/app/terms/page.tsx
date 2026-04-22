@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "Terms of service governing use of The Look Hair Salon website and booking.",
 };
 
-const LAST_UPDATED = "November 2025";
+const LAST_UPDATED = "April 2026";
 
 export default function TermsPage() {
   return (
@@ -172,7 +172,46 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="font-heading text-2xl text-navy mb-3">14. Governing Law</h2>
+              <h2 className="font-heading text-2xl text-navy mb-3">14. SMS Terms</h2>
+              <p className="mb-3">
+                When you opt in to our text-message program by checking the SMS consent box on our contact
+                or booking forms and providing your mobile number, the following terms apply:
+              </p>
+              <ul className="list-disc pl-6 space-y-2">
+                <li><strong>Program Name:</strong> The Look Hair Salon Alerts.</li>
+                <li>
+                  <strong>What we send:</strong> appointment confirmations, reminders, schedule
+                  changes, and occasional salon updates.
+                </li>
+                <li><strong>Message frequency varies.</strong></li>
+                <li><strong>Message and data rates may apply.</strong></li>
+                <li><strong>Reply STOP to cancel.</strong> You will receive one final confirmation that
+                  you have been unsubscribed; no further messages will be sent.</li>
+                <li><strong>Reply HELP for help.</strong> You can also email
+                  {" "}<a href="mailto:thelook_hairsalon@yahoo.com" className="text-rose hover:underline">thelook_hairsalon@yahoo.com</a>
+                  {" "}or call <a href="tel:+18186625665" className="text-rose hover:underline">(818) 662-5665</a>.
+                </li>
+                <li>
+                  <strong>Supported carriers:</strong> AT&amp;T, T-Mobile, Verizon, U.S. Cellular, Sprint,
+                  Boost, Virgin Mobile, MetroPCS, Cricket, and most other U.S. carriers. Carriers are not
+                  liable for delayed or undelivered messages.
+                </li>
+                <li>
+                  <strong>Privacy:</strong> your mobile information is handled under our{" "}
+                  <a href="/privacy-policy" className="text-rose hover:underline">Privacy Policy</a>.
+                  Mobile information will not be shared, sold, or conveyed to third parties or affiliates
+                  for marketing or promotional purposes.
+                </li>
+                <li>
+                  <strong>Consent:</strong> by providing your mobile number and checking the SMS consent
+                  box, you represent that you are the subscriber of the phone number you provided or
+                  otherwise authorized to opt in. Consent is not a condition of any purchase.
+                </li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">15. Governing Law</h2>
               <p>
                 These Terms are governed by the laws of the State of California without regard to its
                 conflict of law rules. Any disputes will be resolved in the state or federal courts located
@@ -181,7 +220,7 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="font-heading text-2xl text-navy mb-3">15. Contact Us</h2>
+              <h2 className="font-heading text-2xl text-navy mb-3">16. Contact Us</h2>
               <p>
                 Questions about these Terms? Reach out:
               </p>

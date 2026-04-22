@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
     clientEmail,
     clientPhone,
     notes,
+    smsConsent,
     depositPaymentIntentId,
     turnstileToken,
   } = parsed.data;
@@ -258,6 +259,8 @@ export async function POST(request: NextRequest) {
       requested_stylist: !wantsAny,
       policy_accepted_at: new Date().toISOString(),
       deposit_required_cents: depositRequired,
+      sms_consent: !!smsConsent,
+      sms_consent_at: smsConsent ? new Date().toISOString() : null,
     });
   if (insertError) {
     logError("appointments POST", insertError);
@@ -359,16 +362,22 @@ export async function POST(request: NextRequest) {
   // already populated stripe_customer_id where applicable; this just
   // ensures name + phone are kept fresh and the row exists at all for
   // bookings without a card capture.
+  // When the client opted in, mirror that onto their profile (with the
+  // timestamp) so anywhere we consult client_profiles for marketing can
+  // honour the flag. We never clear consent from an upsert — previous
+  // opt-ins stand until the client replies STOP.
+  const profileRow: Record<string, unknown> = {
+    email: clientEmail.toLowerCase(),
+    name: clientName,
+    phone: clientPhone || null,
+  };
+  if (smsConsent) {
+    profileRow.sms_consent = true;
+    profileRow.sms_consent_at = new Date().toISOString();
+  }
   await supabase
     .from("client_profiles")
-    .upsert(
-      {
-        email: clientEmail.toLowerCase(),
-        name: clientName,
-        phone: clientPhone || null,
-      },
-      { onConflict: "email", ignoreDuplicates: false },
-    )
+    .upsert(profileRow, { onConflict: "email", ignoreDuplicates: false })
     .then(
       () => {},
       (err: unknown) => logError("appointments POST (profile upsert)", err),

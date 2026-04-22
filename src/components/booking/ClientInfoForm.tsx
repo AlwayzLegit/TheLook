@@ -7,6 +7,7 @@ interface ClientInfo {
   email: string;
   phone: string;
   notes: string;
+  smsConsent: boolean;
 }
 
 interface Props {
@@ -84,6 +85,29 @@ export default function ClientInfoForm({
           />
           <p className="text-xs text-navy/40 font-body mt-1">
             Required so we can reach you about same-day changes.
+          </p>
+        </div>
+
+        {/* A2P 10DLC compliance — explicit SMS consent, unchecked by default. */}
+        <div>
+          <label htmlFor="book-sms-consent" className="flex items-start gap-3 cursor-pointer">
+            <input
+              id="book-sms-consent"
+              type="checkbox"
+              checked={info.smsConsent}
+              onChange={(e) => onChange({ ...info, smsConsent: e.target.checked })}
+              className="mt-1 h-4 w-4 accent-rose shrink-0"
+            />
+            <span className="text-xs text-navy/70 font-body leading-relaxed">
+              By checking this box, I agree to receive SMS text messages from The Look Hair Salon.
+              Message frequency varies. Message and data rates may apply.
+            </span>
+          </label>
+          <p className="text-xs text-navy/50 font-body mt-2 ml-7">
+            For more information, please review our{" "}
+            <a href="/privacy-policy" className="underline hover:text-rose" target="_blank" rel="noreferrer">Privacy Policy</a>
+            {" "}and{" "}
+            <a href="/terms-and-conditions" className="underline hover:text-rose" target="_blank" rel="noreferrer">Terms of Service</a>.
           </p>
         </div>
         <div>

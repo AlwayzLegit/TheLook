@@ -14,6 +14,7 @@ export default function Contact() {
     phone: "",
     service: "",
     message: "",
+    smsConsent: false,
   });
   const [status, setStatus] = useState<
     "idle" | "submitting" | "success" | "error"
@@ -50,6 +51,7 @@ export default function Contact() {
           phone: "",
           service: "",
           message: "",
+          smsConsent: false,
         });
         setTimeout(() => setStatus("idle"), 5000);
       } else {
@@ -201,6 +203,30 @@ export default function Contact() {
                   placeholder="Tell us what you need so we can help — appointment question, feedback, or anything else."
                   className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors resize-none"
                 />
+              </div>
+
+              {/* A2P 10DLC compliance — explicit SMS consent, unchecked by default. */}
+              <div className="pt-2">
+                <label htmlFor="smsConsent" className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    id="smsConsent"
+                    name="smsConsent"
+                    type="checkbox"
+                    checked={formData.smsConsent}
+                    onChange={(e) => setFormData({ ...formData, smsConsent: e.target.checked })}
+                    className="mt-1 h-4 w-4 accent-rose shrink-0"
+                  />
+                  <span className="text-xs text-navy/60 font-body leading-relaxed">
+                    By checking this box, I agree to receive SMS text messages from The Look Hair Salon.
+                    Message frequency varies. Message and data rates may apply.
+                  </span>
+                </label>
+                <p className="text-xs text-navy/50 font-body mt-2 ml-7">
+                  For more information, please review our{" "}
+                  <a href="/privacy-policy" className="underline hover:text-rose">Privacy Policy</a>
+                  {" "}and{" "}
+                  <a href="/terms-and-conditions" className="underline hover:text-rose">Terms of Service</a>.
+                </p>
               </div>
 
               <button

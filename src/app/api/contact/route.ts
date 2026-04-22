@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return apiError("Invalid form data.", 400);
   }
-  const { name, email, phone, service, message, turnstileToken } = parsed.data;
+  const { name, email, phone, service, message, smsConsent, turnstileToken } = parsed.data;
 
   const turnstile = await verifyTurnstileToken(turnstileToken, ip);
   if (!turnstile.ok) {
@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
     phone,
     service,
     message,
+    sms_consent: !!smsConsent,
+    sms_consent_at: smsConsent ? new Date().toISOString() : null,
   });
 
   if (error) {

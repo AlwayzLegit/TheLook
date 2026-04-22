@@ -82,7 +82,7 @@ export default function BookPage() {
   const [selectedStylist, setSelectedStylist] = useState<Stylist | "any" | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [clientInfo, setClientInfo] = useState({ name: "", email: "", phone: "", notes: "" });
+  const [clientInfo, setClientInfo] = useState({ name: "", email: "", phone: "", notes: "", smsConsent: false });
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -330,6 +330,7 @@ export default function BookPage() {
           clientEmail: clientInfo.email,
           clientPhone: clientInfo.phone || undefined,
           notes: clientInfo.notes || undefined,
+          smsConsent: clientInfo.smsConsent,
           policyAccepted,
           depositPaymentIntentId: depositPaymentIntent || undefined,
           turnstileToken: turnstileToken || undefined,
