@@ -169,6 +169,11 @@ export async function GET() {
     const confirmedToday = todays.filter((a) => a.status === "confirmed").length;
     const pendingToday = todays.filter((a) => a.status === "pending").length;
     const pendingTotal = shaped.filter((a) => a.status === "pending").length;
+    // Split so the dashboard can surface "X upcoming pending" vs "Y overdue
+    // pending" as separate Needs-Attention rows — the two warrant different
+    // triage urgencies and different list-view filters.
+    const pendingUpcoming = shaped.filter((a) => a.status === "pending" && a.date >= today).length;
+    const pendingOverdue  = shaped.filter((a) => a.status === "pending" && a.date < today).length;
 
     // 14-day revenue + appt sparklines so we can show the last 7 and still
     // delta vs the week before.
@@ -266,6 +271,8 @@ export async function GET() {
       workload,
       attention: {
         pending: pendingTotal,
+        pendingUpcoming,
+        pendingOverdue,
         unreadMessages: messageCount,
         waitlist: waitlistCount,
         lowInventory: lowInventoryCount,
@@ -284,7 +291,7 @@ function emptyPayload() {
     trend: { revenueWeek: 0, revenueWeekPrev: 0, revenueMonth: 0, revenueMonthPrev: 0, apptsWeek: 0, apptsWeekPrev: 0, apptsMonth: 0, apptsMonthPrev: 0, sparkRevenue: [], sparkAppts: [] },
     timeline: [],
     workload: [],
-    attention: { pending: 0, unreadMessages: 0, waitlist: 0, lowInventory: 0 },
+    attention: { pending: 0, pendingUpcoming: 0, pendingOverdue: 0, unreadMessages: 0, waitlist: 0, lowInventory: 0 },
     health: { noShows: 0, cancellations: 0, cancelRate: 0, totalWeek: 0 },
   };
 }

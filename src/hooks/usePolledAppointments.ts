@@ -36,10 +36,14 @@ interface UsePolledAppointmentsOptions {
   // When true, include is_test=true rows. Defaults false so test data
   // never leaks into the regular admin view.
   includeTest?: boolean;
+  // Override the server-side `from` date. Undefined uses the default
+  // "today forward" scope. A YYYY-MM-DD string fetches from that date.
+  // An empty string fetches all time with no lower bound.
+  fromDate?: string;
 }
 
 export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}) {
-  const { enabled = true, pollMs = POLLING.APPOINTMENTS_MS, archived = false, includeTest = false } = options;
+  const { enabled = true, pollMs = POLLING.APPOINTMENTS_MS, archived = false, includeTest = false, fromDate } = options;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,8 +58,14 @@ export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}
 
     setLoading(true);
     const params = new URLSearchParams();
-    if (archived) params.set("archived", "true");
-    else params.set("from", todayISOInLA());
+    if (archived) {
+      params.set("archived", "true");
+    } else if (fromDate === undefined) {
+      // Default scope: today forward. Empty string = caller asked for all time.
+      params.set("from", todayISOInLA());
+    } else if (fromDate !== "") {
+      params.set("from", fromDate);
+    }
     if (includeTest) params.set("includeTest", "true");
     const res = await fetch(`/api/admin/appointments?${params.toString()}`);
     if (!res.ok) {
@@ -73,7 +83,7 @@ export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}
     } finally {
       setLoading(false);
     }
-  }, [enabled, archived, includeTest]);
+  }, [enabled, archived, includeTest, fromDate]);
 
   useEffect(() => {
     if (!enabled) {
