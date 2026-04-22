@@ -74,8 +74,15 @@ export async function PATCH(
 
   logAdminAction("appointment.update", JSON.stringify(payload), id);
 
-  // Send email notification on status change — list all services (multi-service safe).
-  if (payload.status && data) {
+  // Send email + SMS on meaningful status transitions only. Clients
+  // don't benefit from a "your booking was marked completed" ping —
+  // they already know they were just in the chair. Same for no_show.
+  // Keep the notifications for:
+  //   • pending → confirmed  (your booking is locked in)
+  //   • any     → cancelled  (your booking was cancelled)
+  // (QA 2026-04-22 P2-#2).
+  const newStatus = payload.status;
+  if (newStatus && data && (newStatus === "confirmed" || newStatus === "cancelled")) {
     const { data: mappings } = await supabase
       .from("appointment_services")
       .select("service_id, sort_order")
@@ -96,7 +103,7 @@ export async function PATCH(
       stylistName: stylist?.name || "Your Stylist",
       date: data.date,
       startTime: data.start_time,
-      newStatus: payload.status,
+      newStatus,
       cancelToken: data.cancel_token,
     }).catch((err) => logError("status-email", err));
 
@@ -109,7 +116,7 @@ export async function PATCH(
         serviceName,
         date: data.date,
         time: data.start_time,
-        newStatus: payload.status,
+        newStatus,
         appointmentId: id,
         clientEmail: data.client_email,
       }).catch((err) => logError("status-sms", err));

@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { sendSMS } from "@/lib/sms";
 import { getSetting } from "@/lib/settings";
-import { sendRawEmail } from "@/lib/email";
+import { sendRawEmail, brandedFromText } from "@/lib/email";
 import { renderTemplate, DEFAULT_TEMPLATES } from "@/lib/templates";
 import { todayISOInLA } from "@/lib/datetime";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
@@ -108,11 +108,23 @@ export async function GET(request: NextRequest) {
     };
 
     // Email — always when we have an address. Resend handles bounces.
+    // Branded HTML + plain-text fallback so it visually matches the
+    // submission / confirm emails (QA 2026-04-22 P2-#4).
     if (appt.client_email) {
+      const text = renderTemplate(emailBodyTpl, vars);
+      const subject = renderTemplate(emailSubjectTpl, vars);
       const ok = await sendRawEmail({
         to: appt.client_email,
-        subject: renderTemplate(emailSubjectTpl, vars),
-        text: renderTemplate(emailBodyTpl, vars),
+        subject,
+        text,
+        html: brandedFromText({
+          kicker: "Appointment reminder",
+          headline: `See you today at ${vars.time}`,
+          preheader: `Reminder: ${vars.service} with ${vars.stylist} today at ${vars.time}.`,
+          text,
+          ctaLabel: appt.cancel_token ? "Cancel or reschedule" : undefined,
+          ctaUrl: appt.cancel_token ? `${baseUrl}/book/cancel?token=${appt.cancel_token}` : undefined,
+        }),
       }).catch((e) => { logError("reminders email", e); return false; });
       if (ok) emailSent++;
     }

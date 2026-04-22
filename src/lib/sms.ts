@@ -138,22 +138,45 @@ export async function sendSMS(args: SendSMSArgs): Promise<boolean> {
     return false;
   }
 
-  try {
-    const { default: twilio } = await import("twilio");
-    const client = twilio(accountSid, authToken);
-    const msg = await client.messages.create({ body: args.body, from, to });
-    await logOutbound({
-      ...args, to, from,
-      status: msg.status === "failed" || msg.status === "undelivered" ? "failed" : "sent",
-      providerSid: msg.sid,
-    });
-    return true;
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    await logOutbound({ ...args, from, to, status: "failed", failureReason: reason });
-    console.error("SMS send failed:", err);
-    return false;
+  // Bounded retry with exponential backoff for transient network
+  // failures (socket hang up, ECONNRESET, 5xx from Twilio, etc). We
+  // already logged + retried the failure once today (QA 2026-04-22
+  // P2-#1) so the retry must log every attempt with a distinct
+  // failure_reason for forensics.
+  const { default: twilio } = await import("twilio");
+  const client = twilio(accountSid, authToken);
+  const attemptDelays = [0, 400, 1200]; // ~0ms, ~0.4s, ~1.2s — 3 attempts total
+  let lastErr: unknown = null;
+
+  for (let i = 0; i < attemptDelays.length; i++) {
+    if (attemptDelays[i] > 0) await new Promise((r) => setTimeout(r, attemptDelays[i]));
+    try {
+      const msg = await client.messages.create({ body: args.body, from, to });
+      await logOutbound({
+        ...args, to, from,
+        status: msg.status === "failed" || msg.status === "undelivered" ? "failed" : "sent",
+        providerSid: msg.sid,
+      });
+      return true;
+    } catch (err) {
+      lastErr = err;
+      const reason = err instanceof Error ? err.message : String(err);
+      // Retry on plainly-transient conditions; treat anything else as
+      // a permanent failure (invalid number, unverified trial dest, etc.)
+      // and bail early so we don't waste attempts.
+      const transient = /hang up|ECONN|ETIMEDOUT|network|socket|503|504|rate/i.test(reason);
+      if (!transient || i === attemptDelays.length - 1) {
+        await logOutbound({ ...args, from, to, status: "failed", failureReason: reason });
+        console.error("SMS send failed:", err);
+        return false;
+      }
+      console.warn(`SMS send transient error (attempt ${i + 1}): ${reason} — retrying`);
+    }
   }
+
+  // Unreachable in practice; included to satisfy the type checker.
+  console.error("SMS send exhausted retries:", lastErr);
+  return false;
 }
 
 // ────────────────────────────────────────────────────────────────────────

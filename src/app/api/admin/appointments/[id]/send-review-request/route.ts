@@ -5,7 +5,7 @@ import { getSessionUser, isAdmin } from "@/lib/roles";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { sendSMS } from "@/lib/sms";
-import { sendRawEmail } from "@/lib/email";
+import { sendRawEmail, brandedFromText } from "@/lib/email";
 import { getSetting } from "@/lib/settings";
 import { renderTemplate, DEFAULT_TEMPLATES } from "@/lib/templates";
 
@@ -96,6 +96,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       to: appt.client_email,
       subject: emailSubject,
       text: emailBodyRendered,
+      html: brandedFromText({
+        kicker: "Thanks for visiting",
+        headline: `We'd love your feedback, ${vars.client_name.split(" ")[0] || "friend"}`,
+        preheader: `Leave a review for ${vars.service} with ${vars.stylist}`,
+        text: emailBodyRendered,
+        ctaLabel: "Leave a review",
+        ctaUrl: reviewUrl,
+      }),
     }).catch((e) => { logError("send-review-request email", e); return false; });
   }
 

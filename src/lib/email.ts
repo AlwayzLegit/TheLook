@@ -9,26 +9,34 @@ function getResend() {
   return new Resend(key || "re_placeholder");
 }
 
-const FROM = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+// Always use a Name <email> From header so Gmail's list view shows the
+// salon name (QA 2026-04-22 P2-#5 — previously all emails rendered as
+// "booking" because only the local-part was used).
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+const FROM = `The Look Hair Salon <${FROM_EMAIL}>`;
 
-// Simple template-driven sender. Used by the reminders cron + manual
-// review-request action so the owner can edit copy in Settings without
-// touching the branded-email layout.
+// Template-driven sender. When `html` is provided we send the HTML
+// variant and fall back to the plain-text `text` for legacy clients.
+// Optional `cc` so the status-change path can loop the salon inbox in
+// without building one-off wiring.
 export async function sendRawEmail(args: {
-  to: string;
+  to: string | string[];
+  cc?: string | string[];
   subject: string;
   text: string;
+  html?: string;
   replyTo?: string;
 }): Promise<boolean> {
   try {
     const res = await getResend().emails.send({
       from: FROM,
       to: args.to,
+      cc: args.cc,
       subject: args.subject,
       text: args.text,
+      html: args.html,
       replyTo: args.replyTo,
     });
-    // Resend returns { data, error }; treat any error.message as failure.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((res as any)?.error) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,6 +48,49 @@ export async function sendRawEmail(args: {
     console.error("sendRawEmail exception:", err);
     return false;
   }
+}
+
+// Wrap a plain-text template body in the shared branded shell so the
+// reminder + review-request emails visually match the rest of the
+// salon's comms (QA 2026-04-22 P2-#4).
+// `text` comes in as \n-separated paragraphs; we split on blank lines
+// and preserve single-newline line breaks within each paragraph.
+export function brandedFromText(args: {
+  kicker: string;
+  headline: string;
+  preheader: string;
+  text: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  includeSupportFooter?: boolean;
+}): string {
+  const paragraphs = args.text
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => {
+      const html = escapeHtml(p).replace(/\n/g, "<br/>");
+      return `<p style="margin:0 0 12px; line-height:1.55; color:#3a3a4a;">${html}</p>`;
+    })
+    .join("");
+  return brandedEmail({
+    preheader: args.preheader,
+    kicker: args.kicker,
+    headline: args.headline,
+    bodyHtml: paragraphs,
+    ctaLabel: args.ctaLabel,
+    ctaUrl: args.ctaUrl,
+    includeSupportFooter: args.includeSupportFooter ?? true,
+  });
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 const SALON_EMAIL = process.env.ADMIN_EMAIL || "thelook_hairsalon@yahoo.com";
 const SITE = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
@@ -314,10 +365,19 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
   const t = templates[newStatus];
   if (!t) return;
 
+  // CC the salon inbox on status changes so staff have a record of
+  // what the client received — the owner asked for this during the
+  // 2026-04-22 smoke test (P2-#6). Only CC addresses we actually know
+  // about; ENV override wins over the hardcoded fallback.
+  const { getStaffNotificationEmails } = await import("./settings");
+  const staffEmails = await getStaffNotificationEmails().catch(() => []);
+  const ccList = staffEmails.length > 0 ? staffEmails : undefined;
+
   try {
     await getResend().emails.send({
       from: FROM,
       to: clientEmail,
+      cc: ccList,
       subject: t.subject,
       html: brandedEmail({
         preheader: t.headline,
