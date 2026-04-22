@@ -1,5 +1,8 @@
+import { unstable_cache } from "next/cache";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { strings } from "@/lib/strings";
+
+export const BRANDING_CACHE_TAG = "branding";
 
 export interface Branding {
   name: string;
@@ -22,9 +25,10 @@ const fallback: Branding = {
 const BRAND_KEYS = ["brand_name", "brand_tagline", "brand_address", "brand_phone", "brand_email"] as const;
 
 // Server helper: fetch branding from salon_settings KV with strings.ts
-// fallbacks. Meant for server components / route handlers / emails. A DB
-// error or missing row returns the fallback so the UI always renders.
-export async function getBranding(): Promise<Branding> {
+// fallbacks. Cached for 60s by Next's data cache (and invalidated on
+// settings save via revalidateTag(BRANDING_CACHE_TAG)) so the root
+// layout read doesn't turn every page dynamic.
+async function fetchBranding(): Promise<Branding> {
   if (!hasSupabaseConfig) return fallback;
   try {
     const { data } = await supabase
@@ -47,6 +51,11 @@ export async function getBranding(): Promise<Branding> {
   }
 }
 
+export const getBranding = unstable_cache(fetchBranding, ["branding"], {
+  revalidate: 60,
+  tags: [BRANDING_CACHE_TAG],
+});
+
 // Pure helper for code paths that already have the raw settings map in hand
 // (e.g. the admin settings page itself). No DB call; just apply fallbacks.
 export function brandingFromSettings(raw: Record<string, string | null | undefined>): Branding {
@@ -64,3 +73,25 @@ export function brandingFromSettings(raw: Record<string, string | null | undefin
 }
 
 export const brandingDefaults = fallback;
+
+// Normalize a human-entered phone ("(818) 662-5665", "818-662-5665",
+// "+1 818 662 5665", etc.) into an E.164-ish tel: href. Keeps a leading
+// "+" if present, strips everything non-digit, and prepends "+1" for
+// plain 10-digit US numbers. Returns the input unchanged if it's empty.
+export function telHref(phone: string): string {
+  if (!phone) return "";
+  const trimmed = phone.trim();
+  const hadPlus = trimmed.startsWith("+");
+  const digits = trimmed.replace(/\D/g, "");
+  if (!digits) return "";
+  if (hadPlus) return `tel:+${digits}`;
+  if (digits.length === 10) return `tel:+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `tel:+${digits}`;
+  return `tel:${digits}`;
+}
+
+// mailto: is simpler — just pass through, stripping leading/trailing space.
+export function mailtoHref(email: string): string {
+  const trimmed = (email || "").trim();
+  return trimmed ? `mailto:${trimmed}` : "";
+}

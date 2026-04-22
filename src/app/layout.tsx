@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
+import { getBranding } from "@/lib/branding";
+import { BrandingProvider } from "@/components/BrandingProvider";
 
 const siteUrl = (() => {
   const raw = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
@@ -118,12 +120,15 @@ const jsonLd = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const hasTurnstile = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+  // Fetch branding server-side once per request so Footer / Navbar / any
+  // other consumer can read it synchronously via useBranding().
+  const branding = await getBranding();
   return (
     <html lang="en">
       <head>
@@ -148,7 +153,9 @@ export default function RootLayout({
           />
         ) : null}
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <BrandingProvider branding={branding}>{children}</BrandingProvider>
+      </body>
     </html>
   );
 }
