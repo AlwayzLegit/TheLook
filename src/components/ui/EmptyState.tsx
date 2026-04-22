@@ -25,7 +25,7 @@ export function EmptyState({ icon, title, description, action, className, compac
           {icon}
         </div>
       )}
-      <h3 className="font-[var(--font-display)] text-[1.125rem] text-[var(--color-text)] mb-1.5">{title}</h3>
+      <h3 className="font-heading text-[1.125rem] text-[var(--color-text)] mb-1.5">{title}</h3>
       {description && <p className="text-[0.8125rem] text-[var(--color-text-muted)] max-w-md mx-auto leading-relaxed">{description}</p>}
       {action && <div className="mt-5 flex items-center justify-center gap-2">{action}</div>}
     </div>

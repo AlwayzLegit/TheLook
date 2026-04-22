@@ -20,6 +20,7 @@ interface Service {
 interface Stylist {
   id: string;
   name: string;
+  color?: string | null;
 }
 
 interface EnrichedAppointment {
@@ -39,6 +40,7 @@ interface EnrichedAppointment {
   requested_stylist?: boolean | null;
   serviceName: string;
   stylistName: string;
+  stylistColor?: string | null;
   archived_at?: string | null;
   // Card-on-file metadata — populated by the deposit flow.
   stripe_customer_id?: string | null;
@@ -114,6 +116,7 @@ export default function AppointmentsPage() {
     ...a,
     serviceName: a.serviceName || serviceMap[a.service_id]?.name || "Unknown Service",
     stylistName: a.stylistName || stylistMap[a.stylist_id]?.name || "Unknown Stylist",
+    stylistColor: stylistMap[a.stylist_id]?.color || null,
   }));
 
   const applyDatePreset = (preset: "today" | "tomorrow" | "thisWeek" | "clear") => {
@@ -574,7 +577,9 @@ export default function AppointmentsPage() {
               status: a.status,
               client_name: a.client_name,
               serviceName: a.serviceName,
+              stylistId: a.stylist_id,
               stylistName: a.stylistName,
+              stylistColor: a.stylistColor,
             }))}
             onSelectAppointment={(id) => {
               const appt = filteredAppts.find((a) => a.id === id);

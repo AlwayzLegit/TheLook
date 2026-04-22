@@ -21,7 +21,7 @@ export function StatCard({ label, value, delta, deltaLabel, sparkline, hint, cla
     <>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="font-[var(--font-display)] text-[2.125rem] leading-none text-[var(--color-text)] tracking-tight">
+          <div className="font-heading text-[2.125rem] leading-none text-[var(--color-text)] tracking-tight">
             {value}
           </div>
           <div className="mt-2 text-[0.75rem] uppercase tracking-[0.1em] text-[var(--color-text-subtle)]">{label}</div>

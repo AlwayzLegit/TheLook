@@ -90,7 +90,7 @@ export default function AdminDashboard() {
       <div className="flex flex-wrap items-start justify-between gap-4 mb-1">
         <div>
           <Eyebrow>Dashboard</Eyebrow>
-          <h1 className="mt-1 text-[2rem] font-[var(--font-display)] text-[var(--color-text)] leading-none">
+          <h1 className="mt-1 text-[2rem] font-heading text-[var(--color-text)] leading-none">
             {greeting}
           </h1>
           <p className="text-[0.8125rem] text-[var(--color-text-muted)] mt-1.5">
@@ -129,7 +129,7 @@ export default function AdminDashboard() {
             {loading ? (
               <Skeleton className="h-11 w-28 mt-2" />
             ) : (
-              <p className="mt-2 text-[2.25rem] font-[var(--font-display)] text-[var(--color-text)] tracking-tight leading-none">
+              <p className="mt-2 text-[2.25rem] font-heading text-[var(--color-text)] tracking-tight leading-none">
                 {formatMoney(payload?.today.revenue ?? 0, { from: "cents" })}
               </p>
             )}
