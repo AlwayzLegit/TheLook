@@ -32,7 +32,7 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             href="/book"
-            className="bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)]"
+            className="bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-rose-cta)]"
           >
             Book Now
           </Link>

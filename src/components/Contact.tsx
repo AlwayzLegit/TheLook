@@ -101,8 +101,8 @@ export default function Contact() {
             Contact Us
           </h1>
           <p className="text-navy/60 font-body font-light max-w-xl mx-auto">
-            The absolute best way to reach us is by calling the salon directly.
-            We will be glad to assist you with any questions you may have.
+            The fastest way to reach us is a phone call. We answer during
+            salon hours.
           </p>
         </AnimatedSection>
 
@@ -251,7 +251,7 @@ export default function Contact() {
               <button
                 type="submit"
                 disabled={status === "submitting" || (!!turnstileSiteKey && !turnstileToken)}
-                className="bg-rose hover:bg-rose-light disabled:opacity-60 text-white tracking-widest uppercase text-sm px-10 py-4 transition-all duration-300 font-body w-full sm:w-auto hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)] hover:-translate-y-0.5"
+                className="bg-rose hover:bg-rose-light disabled:opacity-60 text-white tracking-widest uppercase text-sm px-10 py-4 transition-all duration-300 font-body w-full sm:w-auto hover:shadow-[var(--shadow-rose-cta)] hover:-translate-y-0.5"
               >
                 {status === "submitting" ? "Sending..." : "Send Message"}
               </button>

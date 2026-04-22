@@ -95,6 +95,46 @@
   --text-xl:      1.375rem;  /* 22 */
   --text-2xl:     1.875rem;  /* 30 */
   --text-display: 2.75rem;   /* 44 */
+
+  /* ── Public-site tokens (layered on top of admin system above) ──
+     Added from the 2026-04-22 UI/UX audit. Not a full refactor — these
+     formalise the recurring patterns (rose CTA glow, hairline dividers,
+     eased motion) so they can be swapped in one place instead of
+     hardcoded across 20 components. Usage:
+       shadow-[var(--shadow-rose-cta)]     — on every primary CTA
+       border-[color:var(--border-subtle)] — for faint dividers
+       duration-[var(--duration-fast)]     — for hover colour swaps
+  */
+
+  /* Rose CTA glow (was shadow-[0_4px_20px_rgba(184,36,59,0.3)] in 4+ files) */
+  --shadow-rose-cta:        0 4px 20px rgba(184, 36, 59, 0.3);
+  --shadow-rose-cta-strong: 0 4px 20px rgba(184, 36, 59, 0.4);
+
+  /* Editorial card-lift used on service hero + gallery tiles */
+  --shadow-card-lift: 0 20px 70px rgba(17, 24, 39, 0.08);
+
+  /* Public-site border ramp — consolidates
+     border-navy/5|8|10|15|20|30 → two semantic tokens. */
+  --border-subtle:  rgba(40, 41, 54, 0.08);
+  --border-default: rgba(40, 41, 54, 0.15);
+  --border-strong:  rgba(40, 41, 54, 0.30);
+
+  /* Motion — ease-out variant sourced from the editorial house style. */
+  --duration-fast: 200ms;
+  --duration-base: 300ms;
+  --duration-slow: 600ms;
+  --ease-out:      cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Z-index scale. Re-maps the existing scattered numbers
+     (nav 100, overlay 40/90, lightbox 200, mobile-book 40) into
+     semantic tiers. Update call sites opportunistically. */
+  --z-dropdown: 10;
+  --z-sticky:   20;
+  --z-overlay:  40;
+  --z-modal:    50;
+  --z-lightbox: 60;
+  --z-toast:    70;
 }
 
 /* ── Base ── */

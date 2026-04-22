@@ -34,7 +34,7 @@ export default function GlobalError({
           </button>
           <Link
             href="/"
-            className="inline-block bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-8 py-3 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)]"
+            className="inline-block bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-8 py-3 transition-all duration-300 hover:shadow-[var(--shadow-rose-cta)]"
           >
             Go Home
           </Link>

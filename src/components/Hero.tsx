@@ -66,7 +66,7 @@ export default function Hero() {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="font-heading text-4xl md:text-5xl lg:text-6xl text-white tracking-wide mb-5 leading-[1.15]"
         >
-          <span className="text-shimmer">Book The Look</span>
+          <span className="text-shimmer">Hair Salon in Glendale</span>
         </motion.h1>
 
         {/* Ornamental divider */}
@@ -90,8 +90,8 @@ export default function Hero() {
           transition={{ duration: 0.8, delay: 1.0 }}
           className="text-white/65 text-base md:text-lg font-body font-light max-w-lg mx-auto mb-12 leading-relaxed"
         >
-          Family owned with over 25 years of experience. The highest quality
-          hair services in Glendale at unbeatable prices.
+          Family owned since 2011. Over 25 years of experience. Honest
+          prices, great hair — right in Glendale.
         </motion.p>
 
         {/* CTAs */}

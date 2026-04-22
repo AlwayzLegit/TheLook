@@ -186,7 +186,7 @@ export default function Navbar() {
                 </Link>
                 <Link
                   href="/book"
-                  className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-7 py-3 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)] hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-7 py-3 transition-all duration-300 hover:shadow-[var(--shadow-rose-cta)] hover:-translate-y-0.5"
                 >
                   Book Now
                 </Link>

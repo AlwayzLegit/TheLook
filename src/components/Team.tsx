@@ -122,7 +122,7 @@ export default function Team() {
           </Link>
           <Link
             href="/book"
-            className="inline-block bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:shadow-[0_4px_20px_rgba(184,36,59,0.3)]"
+            className="inline-block bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:shadow-[var(--shadow-rose-cta)]"
           >
             Book Your Stylist
           </Link>

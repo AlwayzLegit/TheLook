@@ -23,7 +23,7 @@ const faqs = [
   {
     question: "What is your cancellation policy?",
     answer:
-      "We ask for at least 24 hours' notice to cancel or reschedule. Cancellations made within 24 hours of the appointment forfeit the deposit. Additional cancellation or no-show fees may apply where applicable.",
+      "We ask for 24 hours notice so we can offer your slot to someone else. Inside 24 hours, there's a 25% cancellation fee, and the deposit is forfeited on any deposit-required booking. Life happens — just give us as much heads-up as you can.",
   },
   {
     question: "What happens if I'm a no-show or cancel?",
