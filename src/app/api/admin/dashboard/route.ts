@@ -97,7 +97,14 @@ export async function GET() {
       apptIds.length > 0
         ? supabase.from("appointment_services").select("appointment_id, service_id").in("appointment_id", apptIds)
         : Promise.resolve({ data: [], error: null }),
-      supabase.from("contact_messages").select("id"),
+      // Unread inbox: read_at IS NULL + not manually flagged as spam. Matches
+      // how /admin/messages and the sidebar badge count "unread". Older envs
+      // may not have read_at or is_spam yet — we fall back below.
+      supabase
+        .from("contact_messages")
+        .select("id, read_at, is_spam")
+        .is("read_at", null)
+        .not("is_spam", "is", true),
       supabase.from("waitlist").select("id, status").eq("status", "waiting"),
       supabase.from("products").select("id, stock_qty, low_stock_threshold, active").eq("active", true),
     ]);
@@ -107,7 +114,14 @@ export async function GET() {
     const services = (servicesRes.data || []) as ServiceRow[];
     const stylists = ((stylistsRes.data || []) as StylistRow[]).filter((s) => s.active !== false);
     const mappings = (mappingsRes.data || []) as Array<{ appointment_id: string; service_id: string }>;
-    const messageCount = (messagesRes.data || []).length;
+    // If read_at / is_spam columns don't exist yet (pre-migration envs),
+    // the strict query errors — fall back to a plain count so the widget
+    // stays populated even when we can't distinguish unread from read.
+    let messageCount = (messagesRes.data || []).length;
+    if (messagesRes.error && /read_at|is_spam/i.test(messagesRes.error.message || "")) {
+      const fallback = await supabase.from("contact_messages").select("id");
+      messageCount = (fallback.data || []).length;
+    }
     const waitlistCount = (waitlistRes.data || []).length;
     const lowInventoryCount = (productsRes.data || []).filter(
       (p: { stock_qty: number | null; low_stock_threshold: number | null }) =>

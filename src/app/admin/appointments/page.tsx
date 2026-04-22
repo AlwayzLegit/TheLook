@@ -61,11 +61,33 @@ export default function AppointmentsPage() {
   const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Hydrate URL-driven filters SYNCHRONOUSLY at useState init so the first
+  // (and only) fetch goes out with the correct scope. Previously the hydration
+  // ran in a useEffect after mount, which caused a first fetch with the
+  // default scope → brief empty render → second fetch with the real scope.
+  const qStatus = searchParams.get("status");
+  const qOverdue = searchParams.get("overdue") === "true";
+  const qRange = searchParams.get("range");
+  const qDateFrom = searchParams.get("dateFrom");
+  const qDateTo = searchParams.get("dateTo");
+  const qStylistId = searchParams.get("stylistId");
+  const arrivedFromLink = !!(qStatus || qRange || qDateFrom || qDateTo || qStylistId || qOverdue);
+  const yesterdayISO = (() => {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    return y.toISOString().split("T")[0];
+  })();
+
   const [listTab, setListTab] = useState<"active" | "archived">("active");
   const [showTest, setShowTest] = useState(false);
   // Server-side history window. "Upcoming" matches analytics' revenue window
   // when paired with "Last 90 days" so the two pages stop looking out of sync.
-  const [timeRange, setTimeRange] = useState<"upcoming" | "past30" | "past90" | "all">("upcoming");
+  const [timeRange, setTimeRange] = useState<"upcoming" | "past30" | "past90" | "all">(() => {
+    if (qRange === "upcoming" || qRange === "past30" || qRange === "past90" || qRange === "all") return qRange;
+    if (qOverdue) return "past90"; // overdue rows are in the past — need history pulled
+    return "upcoming";
+  });
   const fromDateForFetch = (() => {
     if (timeRange === "upcoming") return undefined; // hook default = today+
     if (timeRange === "all") return "";
@@ -83,11 +105,11 @@ export default function AppointmentsPage() {
   const [selectedAppt, setSelectedAppt] = useState<EnrichedAppointment | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [stylists, setStylists] = useState<Stylist[]>([]);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState(qDateFrom || "");
+  const [dateTo, setDateTo] = useState(() => qDateTo || (qOverdue ? yesterdayISO : ""));
+  const [statusFilter, setStatusFilter] = useState(qStatus || (qOverdue ? "pending" : ""));
   const [serviceFilter, setServiceFilter] = useState("");
-  const [stylistFilter, setStylistFilter] = useState("");
+  const [stylistFilter, setStylistFilter] = useState(qStylistId || "");
   const [search, setSearch] = useState("");
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -96,43 +118,14 @@ export default function AppointmentsPage() {
   const [clientHistoryId, setClientHistoryId] = useState<string | null>(null);
   const [clientHistory, setClientHistory] = useState<EnrichedAppointment[]>([]);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [view, setView] = useState<"calendar" | "list">("calendar");
+  // Landing from a Needs-Attention link defaults to the list view so the
+  // rows we counted on the dashboard are immediately visible.
+  const [view, setView] = useState<"calendar" | "list">(arrivedFromLink ? "list" : "calendar");
   const [showNewAppt, setShowNewAppt] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
   }, [status, router]);
-
-  // Hydrate filters from URL query — so Needs-Attention links from the
-  // dashboard land pre-filtered and the list matches the counter. Runs
-  // once on mount; subsequent filter edits stay local.
-  useEffect(() => {
-    const qStatus = searchParams.get("status");
-    const qOverdue = searchParams.get("overdue") === "true";
-    const qRange = searchParams.get("range");
-    const qDateFrom = searchParams.get("dateFrom");
-    const qDateTo = searchParams.get("dateTo");
-    const qStylistId = searchParams.get("stylistId");
-    const arrivedFromLink = !!(qStatus || qRange || qDateFrom || qDateTo || qStylistId || qOverdue);
-    if (arrivedFromLink) setView("list");
-    if (qStatus) setStatusFilter(qStatus);
-    if (qStylistId) setStylistFilter(qStylistId);
-    if (qDateFrom) setDateFrom(qDateFrom);
-    if (qDateTo) setDateTo(qDateTo);
-    if (qRange === "upcoming" || qRange === "past30" || qRange === "past90" || qRange === "all") {
-      setTimeRange(qRange);
-    }
-    if (qOverdue) {
-      // Overdue = pending AND date < today. Pull enough history so those
-      // rows are actually in the fetched set, then narrow by dateTo.
-      if (!qRange) setTimeRange("past90");
-      const y = new Date();
-      y.setDate(y.getDate() - 1);
-      setDateTo(y.toISOString().split("T")[0]);
-      if (!qStatus) setStatusFilter("pending");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     if (status !== "authenticated") return;
