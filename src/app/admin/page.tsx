@@ -31,7 +31,14 @@ interface Payload {
     stylistId: string; name: string; color: string | null;
     hoursToday: number; apptsToday: number; revenueToday: number; revenueWeek: number;
   }>;
-  attention: { pending: number; overduePending: number; unreadMessages: number; waitlist: number; lowInventory: number };
+  attention: {
+    pending: number;
+    pendingUpcoming: number;
+    pendingOverdue: number;
+    unreadMessages: number;
+    waitlist: number;
+    lowInventory: number;
+  };
   health: { noShows: number; cancellations: number; cancelRate: number; totalWeek: number };
 }
 
@@ -215,16 +222,19 @@ export default function AdminDashboard() {
         <Card className="lg:col-span-3">
           <Eyebrow>Needs attention</Eyebrow>
           <div className="mt-3 space-y-2">
+            {/* Pending split into upcoming vs overdue. Each link pre-sets
+                the appointments page's history window + filters so the
+                rows we counted here are the rows that render there. */}
             <AttentionRow
-              label={`${payload?.attention.pending ?? 0} pending confirmation${(payload?.attention.pending ?? 0) === 1 ? "" : "s"}`}
-              href="/admin/appointments?status=pending"
-              count={payload?.attention.pending ?? 0}
+              label={`${payload?.attention.pendingUpcoming ?? 0} upcoming pending`}
+              href="/admin/appointments?status=pending&range=upcoming"
+              count={payload?.attention.pendingUpcoming ?? 0}
               tone="warning"
             />
             <AttentionRow
-              label={`${payload?.attention.overduePending ?? 0} overdue pending`}
-              href="/admin/appointments?status=pending&overdue=true"
-              count={payload?.attention.overduePending ?? 0}
+              label={`${payload?.attention.pendingOverdue ?? 0} overdue pending`}
+              href="/admin/appointments?status=pending&overdue=true&range=past90"
+              count={payload?.attention.pendingOverdue ?? 0}
               tone="danger"
             />
             <AttentionRow

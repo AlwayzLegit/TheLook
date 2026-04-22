@@ -10,6 +10,7 @@ import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { createNotification } from "@/lib/notifications";
 import { getStaffNotificationEmails, getStaffNotificationSmsNumbers } from "@/lib/settings";
 import { computeRequiredDeposit } from "@/lib/depositRules";
+import { getBranding } from "@/lib/branding";
 import { NextRequest } from "next/server";
 
 function minutesToTime(mins: number): string {
@@ -84,9 +85,11 @@ export async function POST(request: NextRequest) {
     // have to parse. Everything a user can actually fix begins with one of
     // the allow-listed prefixes.
     const msg = parsed.error.issues[0]?.message || "";
-    const safe = /^(Phone|You must|Invalid booking)/i.test(msg)
-      ? msg
-      : "We couldn't confirm this booking. Please refresh and try again, or call us at (818) 662-5665.";
+    let safe = msg;
+    if (!/^(Phone|You must|Invalid booking)/i.test(msg)) {
+      const brand = await getBranding();
+      safe = `We couldn't confirm this booking. Please refresh and try again, or call us at ${brand.phone}.`;
+    }
     return apiError(safe, 400);
   }
   const {
@@ -138,8 +141,9 @@ export async function POST(request: NextRequest) {
       .eq("email", clientEmail.toLowerCase())
       .maybeSingle();
     if (profile?.banned) {
+      const brand = await getBranding();
       return apiError(
-        "We're unable to book this appointment online. Please call the salon at (818) 662-5665.",
+        `We're unable to book this appointment online. Please call the salon at ${brand.phone}.`,
         403,
       );
     }

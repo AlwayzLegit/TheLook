@@ -103,11 +103,14 @@ export async function GET() {
       apptIds.length > 0
         ? supabase.from("appointment_services").select("appointment_id, service_id, price_min, duration").in("appointment_id", apptIds)
         : Promise.resolve({ data: [], error: null }),
-      // Only unread messages count toward "Needs attention"; the admin
-      // messages page marks read_at on first open. Schema fallback: if
-      // the column doesn't exist yet (pre-20260505), retry without it
-      // and treat every row as unread.
-      supabase.from("contact_messages").select("id").is("read_at", null),
+      // Unread inbox: read_at IS NULL + not manually flagged as spam. Matches
+      // how /admin/messages and the sidebar badge count "unread". Older envs
+      // may not have read_at or is_spam yet — we fall back below.
+      supabase
+        .from("contact_messages")
+        .select("id, read_at, is_spam")
+        .is("read_at", null)
+        .not("is_spam", "is", true),
       supabase.from("waitlist").select("id, status").eq("status", "waiting"),
       supabase.from("products").select("id, stock_qty, low_stock_threshold, active").eq("active", true),
       pendingAllP,
@@ -126,14 +129,13 @@ export async function GET() {
       price_min: number | null;
       duration: number | null;
     }>;
-    // If the read_at column isn't live yet (pre-20260505), the filtered
-    // query errors. Fall back to counting every row so the dashboard
-    // still renders — the number will just be inflated until the
-    // migration runs.
+    // If read_at / is_spam columns don't exist yet (pre-migration envs),
+    // the strict query errors — fall back to a plain count so the widget
+    // stays populated even when we can't distinguish unread from read.
     let messageCount = (messagesRes.data || []).length;
-    if (messagesRes.error && /read_at/i.test(messagesRes.error.message || "")) {
-      const retry = await supabase.from("contact_messages").select("id");
-      messageCount = (retry.data || []).length;
+    if (messagesRes.error && /read_at|is_spam/i.test(messagesRes.error.message || "")) {
+      const fallback = await supabase.from("contact_messages").select("id");
+      messageCount = (fallback.data || []).length;
     }
     const waitlistCount = (waitlistRes.data || []).length;
     const lowInventoryCount = (productsRes.data || []).filter(
@@ -206,14 +208,16 @@ export async function GET() {
     const confirmedToday = todays.filter((a) => a.status === "confirmed").length;
     const pendingToday = todays.filter((a) => a.status === "pending").length;
     // Full-table pending counts (no date window) so a forgotten pending
-    // booking from 3 months ago still shows up. Falls back to the
-    // windowed slice if the full query errored for some reason.
+    // booking from 3 months ago still shows up. Falls back to the windowed
+    // slice if the full query errored for some reason. Split into upcoming
+    // vs overdue so the dashboard can surface them as separate Needs-
+    // Attention rows — different triage urgencies, different list filters.
     const pendingAll = (pendingAllRes?.data as Array<{ date: string }> | null) || null;
     const pendingTotal = pendingAll ? pendingAll.length : shaped.filter((a) => a.status === "pending").length;
-    // Overdue-pending bucket (P2-2): appointments still flagged pending
-    // past their date. Non-destructive — we just surface the count so
-    // the admin can confirm / cancel manually. Never auto-cancelled.
-    const overduePending = pendingAll
+    const pendingUpcoming = pendingAll
+      ? pendingAll.filter((a) => a.date >= today).length
+      : shaped.filter((a) => a.status === "pending" && a.date >= today).length;
+    const pendingOverdue = pendingAll
       ? pendingAll.filter((a) => a.date < today).length
       : shaped.filter((a) => a.status === "pending" && a.date < today).length;
 
@@ -313,7 +317,8 @@ export async function GET() {
       workload,
       attention: {
         pending: pendingTotal,
-        overduePending,
+        pendingUpcoming,
+        pendingOverdue,
         unreadMessages: messageCount,
         waitlist: waitlistCount,
         lowInventory: lowInventoryCount,
@@ -332,7 +337,7 @@ function emptyPayload() {
     trend: { revenueWeek: 0, revenueWeekPrev: 0, revenueMonth: 0, revenueMonthPrev: 0, apptsWeek: 0, apptsWeekPrev: 0, apptsMonth: 0, apptsMonthPrev: 0, sparkRevenue: [], sparkAppts: [] },
     timeline: [],
     workload: [],
-    attention: { pending: 0, overduePending: 0, unreadMessages: 0, waitlist: 0, lowInventory: 0 },
+    attention: { pending: 0, pendingUpcoming: 0, pendingOverdue: 0, unreadMessages: 0, waitlist: 0, lowInventory: 0 },
     health: { noShows: 0, cancellations: 0, cancelRate: 0, totalWeek: 0 },
   };
 }

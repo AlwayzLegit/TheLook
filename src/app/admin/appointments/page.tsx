@@ -64,23 +64,57 @@ export default function AppointmentsPage() {
   const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Hydrate URL-driven filters SYNCHRONOUSLY at useState init so the first
+  // (and only) fetch goes out with the correct scope. Previously the hydration
+  // ran in a useEffect after mount, which caused a first fetch with the
+  // default scope → brief empty render → second fetch with the real scope.
+  const qStatus = searchParams.get("status");
+  const qOverdue = searchParams.get("overdue") === "true";
+  const qRange = searchParams.get("range");
+  const qDateFrom = searchParams.get("dateFrom");
+  const qDateTo = searchParams.get("dateTo");
+  const qStylistId = searchParams.get("stylistId");
+  const arrivedFromLink = !!(qStatus || qRange || qDateFrom || qDateTo || qStylistId || qOverdue);
+  const yesterdayISO = (() => {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    return y.toISOString().split("T")[0];
+  })();
+
   const [listTab, setListTab] = useState<"active" | "archived">("active");
   const [clearArchivedOpen, setClearArchivedOpen] = useState(false);
   // Review-request modal lifted to the page so both the list-row
   // action button AND the appointment detail modal can trigger it.
   const [reviewForAppt, setReviewForAppt] = useState<EnrichedAppointment | null>(null);
+  // Server-side history window. "Upcoming" matches analytics' revenue window
+  // when paired with "Last 90 days" so the two pages stop looking out of sync.
+  const [timeRange, setTimeRange] = useState<"upcoming" | "past30" | "past90" | "all">(() => {
+    if (qRange === "upcoming" || qRange === "past30" || qRange === "past90" || qRange === "all") return qRange;
+    if (qOverdue) return "past90"; // overdue rows are in the past — need history pulled
+    return "upcoming";
+  });
+  const fromDateForFetch = (() => {
+    if (timeRange === "upcoming") return undefined; // hook default = today+
+    if (timeRange === "all") return "";
+    const days = timeRange === "past30" ? 30 : 90;
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    return d.toISOString().split("T")[0];
+  })();
   const { appointments: realtimeAppts, loading, error, lastUpdate, refresh } = usePolledAppointments({
     enabled: status === "authenticated",
     archived: listTab === "archived",
+    fromDate: fromDateForFetch,
   });
   const [selectedAppt, setSelectedAppt] = useState<EnrichedAppointment | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [stylists, setStylists] = useState<Stylist[]>([]);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState(qDateFrom || "");
+  const [dateTo, setDateTo] = useState(() => qDateTo || (qOverdue ? yesterdayISO : ""));
+  const [statusFilter, setStatusFilter] = useState(qStatus || (qOverdue ? "pending" : ""));
   const [serviceFilter, setServiceFilter] = useState("");
-  const [stylistFilter, setStylistFilter] = useState("");
+  const [stylistFilter, setStylistFilter] = useState(qStylistId || "");
   const [search, setSearch] = useState("");
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -89,38 +123,18 @@ export default function AppointmentsPage() {
   const [clientHistoryId, setClientHistoryId] = useState<string | null>(null);
   const [clientHistory, setClientHistory] = useState<EnrichedAppointment[]>([]);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [view, setView] = useState<"calendar" | "list">("calendar");
+  // Landing from a Needs-Attention link defaults to the list view so the
+  // rows we counted on the dashboard are immediately visible.
+  const [view, setView] = useState<"calendar" | "list">(arrivedFromLink ? "list" : "calendar");
   const [showNewAppt, setShowNewAppt] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
   }, [status, router]);
 
-  // Hydrate initial filters from URL query — so /admin/appointments
-  // links from the dashboard Needs-Attention cards land pre-filtered.
-  // Runs once on mount; subsequent filter edits stay local.
-  useEffect(() => {
-    const qStatus = searchParams.get("status");
-    const qOverdue = searchParams.get("overdue");
-    const qDateFrom = searchParams.get("dateFrom");
-    const qDateTo = searchParams.get("dateTo");
-    if (qStatus) setStatusFilter(qStatus);
-    if (qDateFrom) setDateFrom(qDateFrom);
-    if (qDateTo) setDateTo(qDateTo);
-    if (qOverdue === "true") {
-      // Overdue = status pending AND date < today. Use PT "today" to
-      // match how the dashboard counted it.
-      const d = new Date();
-      d.setDate(d.getDate() - 1);
-      setDateTo(d.toISOString().split("T")[0]);
-      if (!qStatus) setStatusFilter("pending");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   useEffect(() => {
     if (status !== "authenticated") return;
-    
+
     fetch("/api/admin/services")
       .then((r) => r.json())
       .then((data) => setServices(Array.isArray(data) ? data : []));
@@ -484,86 +498,139 @@ export default function AppointmentsPage() {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-4">
-        <button
-          onClick={() => applyDatePreset("today")}
-          className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
-        >
-          Today
-        </button>
-        <button
-          onClick={() => applyDatePreset("tomorrow")}
-          className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
-        >
-          Tomorrow
-        </button>
-        <button
-          onClick={() => applyDatePreset("thisWeek")}
-          className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
-        >
-          Next 7 Days
-        </button>
-        <button
-          onClick={() => applyDatePreset("clear")}
-          className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
-        >
-          Clear Dates
-        </button>
+      {listTab === "active" && (
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <span className="text-xs font-body uppercase tracking-widest text-navy/50">
+            History window
+          </span>
+          <div className="inline-flex border border-navy/20">
+            {([
+              { v: "upcoming", label: "Upcoming only" },
+              { v: "past30", label: "Last 30 days + upcoming" },
+              { v: "past90", label: "Last 90 days + upcoming" },
+              { v: "all", label: "All time" },
+            ] as const).map((opt, i) => (
+              <button
+                key={opt.v}
+                onClick={() => setTimeRange(opt.v)}
+                className={`px-3 py-1.5 text-xs font-body uppercase tracking-widest transition-colors ${
+                  i > 0 ? "border-l border-navy/20" : ""
+                } ${
+                  timeRange === opt.v ? "bg-navy text-white" : "text-navy hover:bg-navy/5"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs font-body text-navy/40">
+            Controls how far back the list pulls from the server.
+          </span>
+        </div>
+      )}
+
+      <div className="mb-4">
+        <span className="block text-xs font-body uppercase tracking-widest text-navy/50 mb-2">
+          Jump to date
+        </span>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => applyDatePreset("today")}
+            className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
+          >
+            Today
+          </button>
+          <button
+            onClick={() => applyDatePreset("tomorrow")}
+            className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
+          >
+            Tomorrow
+          </button>
+          <button
+            onClick={() => applyDatePreset("thisWeek")}
+            className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
+          >
+            Next 7 days
+          </button>
+          <button
+            onClick={() => applyDatePreset("clear")}
+            className="px-3 py-1.5 text-xs font-body border border-navy/20 hover:bg-navy/5"
+          >
+            Any date
+          </button>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-4 mb-6">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search client name, email, phone"
-          className="border border-navy/20 px-3 py-2 text-sm font-body min-w-[260px]"
-        />
-        <input 
-          type="date" 
-          value={dateFrom} 
-          onChange={(e) => setDateFrom(e.target.value)} 
-          className="border border-navy/20 px-3 py-2 text-sm font-body" 
-        />
-        <input 
-          type="date" 
-          value={dateTo} 
-          onChange={(e) => setDateTo(e.target.value)} 
-          className="border border-navy/20 px-3 py-2 text-sm font-body" 
-          placeholder="To" 
-        />
-        <select 
-          value={statusFilter} 
-          onChange={(e) => setStatusFilter(e.target.value)} 
-          className="border border-navy/20 px-3 py-2 text-sm font-body"
-        >
-          <option value="">All statuses</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="pending">Pending</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="completed">Completed</option>
-          <option value="no_show">No Show</option>
-        </select>
-        <select
-          value={serviceFilter}
-          onChange={(e) => setServiceFilter(e.target.value)}
-          className="border border-navy/20 px-3 py-2 text-sm font-body"
-        >
-          <option value="">All services</option>
-          {services.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
-        <select
-          value={stylistFilter}
-          onChange={(e) => setStylistFilter(e.target.value)}
-          className="border border-navy/20 px-3 py-2 text-sm font-body"
-        >
-          <option value="">All stylists</option>
-          {stylists.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+      <div className="flex flex-wrap gap-4 mb-6 items-end">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-body uppercase tracking-widest text-navy/50">Search client</label>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Name, email, or phone"
+            className="border border-navy/20 px-3 py-2 text-sm font-body min-w-[260px]"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-body uppercase tracking-widest text-navy/50">From date</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="border border-navy/20 px-3 py-2 text-sm font-body"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-body uppercase tracking-widest text-navy/50">To date</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="border border-navy/20 px-3 py-2 text-sm font-body"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-body uppercase tracking-widest text-navy/50">Status</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border border-navy/20 px-3 py-2 text-sm font-body"
+          >
+            <option value="">Any status</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="pending">Pending</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="completed">Completed</option>
+            <option value="no_show">No show</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-body uppercase tracking-widest text-navy/50">Service</label>
+          <select
+            value={serviceFilter}
+            onChange={(e) => setServiceFilter(e.target.value)}
+            className="border border-navy/20 px-3 py-2 text-sm font-body"
+          >
+            <option value="">Any service</option>
+            {services.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-body uppercase tracking-widest text-navy/50">Stylist</label>
+          <select
+            value={stylistFilter}
+            onChange={(e) => setStylistFilter(e.target.value)}
+            className="border border-navy/20 px-3 py-2 text-sm font-body"
+          >
+            <option value="">Any stylist</option>
+            {stylists.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
         
         <button
           onClick={() => {
@@ -574,13 +641,13 @@ export default function AppointmentsPage() {
             setStylistFilter("");
             setSearch("");
           }}
-          className="px-4 py-2 text-sm font-body border border-navy/20 hover:bg-navy/5"
+          className="px-4 py-2 text-sm font-body border border-navy/20 hover:bg-navy/5 h-[38px]"
         >
-          Clear All
+          Clear all filters
         </button>
         <button
           onClick={refresh}
-          className="px-4 py-2 text-sm font-body border border-navy/20 hover:bg-navy/5"
+          className="px-4 py-2 text-sm font-body border border-navy/20 hover:bg-navy/5 h-[38px]"
         >
           Refresh
         </button>

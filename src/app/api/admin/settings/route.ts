@@ -2,6 +2,8 @@ import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { getSessionUser, isAdmin } from "@/lib/roles";
 import { logAdminAction } from "@/lib/auditLog";
+import { BRANDING_CACHE_TAG } from "@/lib/branding";
+import { revalidateTag } from "next/cache";
 import { NextRequest } from "next/server";
 
 const ALLOWED_KEYS = new Set([
@@ -24,6 +26,13 @@ const ALLOWED_KEYS = new Set([
   "review_request_email_body_template",
   "google_review_url",
   "idle_timeout_minutes",
+  // Salon identity — DB-backed branding. Empty string falls back to the
+  // static defaults in src/lib/strings.ts (see lib/branding.ts).
+  "brand_name",
+  "brand_tagline",
+  "brand_address",
+  "brand_phone",
+  "brand_email",
 ]);
 
 export async function GET() {
@@ -59,6 +68,12 @@ export async function PATCH(request: NextRequest) {
   if (error) {
     logError("settings PATCH", error);
     return apiError("Failed to save settings.", 500);
+  }
+  // If any brand_* key changed, drop the cached branding so the next
+  // render on any page picks up the new values immediately instead of
+  // waiting for the 60-second revalidate.
+  if (rows.some((r) => r.key.startsWith("brand_"))) {
+    revalidateTag(BRANDING_CACHE_TAG);
   }
   await logAdminAction("settings.update", JSON.stringify(rows.map((r) => r.key)));
   return apiSuccess({ ok: true });

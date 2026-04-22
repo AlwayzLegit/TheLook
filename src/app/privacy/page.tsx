@@ -1,15 +1,20 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import { getBranding, mailtoHref } from "@/lib/branding";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy — The Look Hair Salon",
-  description: "How The Look Hair Salon collects, uses, and protects your personal information.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Privacy Policy",
+    descriptionFor: (b) => `How ${b.name} collects, uses, and protects your personal information.`,
+  });
+}
 
 const LAST_UPDATED = "April 2026";
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const brand = await getBranding();
   return (
     <>
       <Navbar />
@@ -28,7 +33,7 @@ export default function PrivacyPage() {
           <div className="bg-white border border-navy/10 p-8 md:p-10 space-y-6 font-body text-navy/75 leading-relaxed text-[15px]">
             <section>
               <p>
-                The Look Hair Salon (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) respects your
+                {brand.name} (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) respects your
                 privacy. This policy explains what information we collect, how we use it, and the choices
                 you have.
               </p>
@@ -79,7 +84,7 @@ export default function PrivacyPage() {
               </ul>
               <p className="mt-3">
                 Each provider has its own privacy policy. We may also disclose information if legally required
-                (e.g., subpoena) or to protect the rights, safety, or property of The Look, our clients, or others.
+                (e.g., subpoena) or to protect the rights, safety, or property of {brand.name}, our clients, or others.
               </p>
               <p className="mt-3 font-semibold">
                 Mobile information will not be shared, sold, or conveyed to third parties or affiliates for
@@ -146,7 +151,7 @@ export default function PrivacyPage() {
                 <li>Opt out of non-transactional marketing emails at any time via the unsubscribe link.</li>
               </ul>
               <p className="mt-3">
-                To exercise any of these, email us at <a href="mailto:thelook_hairsalon@yahoo.com" className="text-rose hover:underline">thelook_hairsalon@yahoo.com</a> or call (818) 662-5665.
+                To exercise any of these, email us at <a href={mailtoHref(brand.email)} className="text-rose hover:underline">{brand.email}</a> or call {brand.phone}.
               </p>
             </section>
 
@@ -187,10 +192,10 @@ export default function PrivacyPage() {
             <section>
               <h2 className="font-heading text-2xl text-navy mb-3">12. Contact</h2>
               <div className="space-y-1 text-navy">
-                <p>The Look Hair Salon</p>
-                <p>919 South Central Ave Suite #E, Glendale, CA 91204</p>
-                <p>(818) 662-5665</p>
-                <p>thelook_hairsalon@yahoo.com</p>
+                <p>{brand.name}</p>
+                <p>{brand.address}</p>
+                <p>{brand.phone}</p>
+                <p>{brand.email}</p>
               </div>
             </section>
           </div>

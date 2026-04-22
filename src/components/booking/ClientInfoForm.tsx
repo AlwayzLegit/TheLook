@@ -1,6 +1,7 @@
 "use client";
 
 import TurnstileField from "@/components/TurnstileField";
+import { useBranding } from "@/components/BrandingProvider";
 
 interface ClientInfo {
   name: string;
@@ -34,6 +35,7 @@ export default function ClientInfoForm({
   requiresDeposit,
   depositAmountCents,
 }: Props) {
+  const brand = useBranding();
   const depositDollars = Math.round(depositAmountCents / 100);
   return (
     <div>
@@ -152,7 +154,7 @@ export default function ClientInfoForm({
                 />
                 <span className="text-xs text-navy/70">
                   I agree to the <strong>deposit & cancellation policy</strong> above and
-                  authorize The Look Hair Salon to charge the ${depositDollars} deposit now. *
+                  authorize {brand.name} to charge the ${depositDollars} deposit now. *
                 </span>
               </label>
             </>

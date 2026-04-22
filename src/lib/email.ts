@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { brandedEmail, detailsTable, formatDate, formatTime } from "./emailTemplate";
+import { getBranding } from "./branding";
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -115,10 +116,12 @@ interface AppointmentDetails {
 
 export async function sendBookingConfirmation(details: AppointmentDetails) {
   const { clientName, clientEmail, serviceName, stylistName, date, startTime, cancelUrl, anyStylist } = details;
+  const brand = await getBranding();
   const rescheduleUrl = cancelUrl ? cancelUrl.replace("/book/cancel", "/book/reschedule") : undefined;
   const stylistDisplay = anyStylist ? "Any available stylist" : stylistName;
 
   const html = brandedEmail({
+    brand,
     preheader: `Your ${serviceName} booking request for ${formatDate(date)} is pending.`,
     kicker: "Appointment pending",
     headline: `Thanks, ${clientName.split(" ")[0]} — we got your request.`,
@@ -149,7 +152,7 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
     ctaUrl: rescheduleUrl,
     secondaryLabel: cancelUrl ? "Cancel this appointment" : undefined,
     secondaryUrl: cancelUrl,
-    signoff: "See you soon — The Look Hair Salon",
+    signoff: `See you soon — ${brand.name}`,
   });
 
   try {
@@ -166,6 +169,7 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
       to: SALON_EMAIL,
       subject: `New booking: ${clientName} — ${serviceName} with ${stylistDisplay}`,
       html: brandedEmail({
+        brand,
         preheader: `New booking for ${clientName} on ${formatDate(date)}.`,
         kicker: "New booking alert",
         headline: `${clientName} just booked`,
@@ -181,7 +185,7 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
         `,
         ctaLabel: "Review in admin",
         ctaUrl: `${SITE}/admin/appointments`,
-        signoff: "Auto-sent by The Look booking system",
+        signoff: `Auto-sent by ${brand.name} booking system`,
         includePolicyFooter: false,
       }),
     });
@@ -192,6 +196,7 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
 
 export async function sendCancellationEmail(details: Omit<AppointmentDetails, "cancelUrl">) {
   const { clientName, clientEmail, serviceName, date, startTime } = details;
+  const brand = await getBranding();
 
   try {
     await getResend().emails.send({
@@ -199,6 +204,7 @@ export async function sendCancellationEmail(details: Omit<AppointmentDetails, "c
       to: clientEmail,
       subject: `Appointment cancelled — ${formatDate(date)}`,
       html: brandedEmail({
+        brand,
         preheader: `Your ${serviceName} appointment on ${formatDate(date)} has been cancelled.`,
         kicker: "Appointment cancelled",
         headline: "Your appointment was cancelled.",
@@ -214,7 +220,7 @@ export async function sendCancellationEmail(details: Omit<AppointmentDetails, "c
         `,
         ctaLabel: "Book a new appointment",
         ctaUrl: `${SITE}/book`,
-        signoff: "— The Look Hair Salon",
+        signoff: `— ${brand.name}`,
       }),
     });
   } catch (error) {
@@ -224,6 +230,7 @@ export async function sendCancellationEmail(details: Omit<AppointmentDetails, "c
 
 export async function sendReminderEmail(details: AppointmentDetails) {
   const { clientName, clientEmail, serviceName, stylistName, date, startTime, cancelUrl } = details;
+  const brand = await getBranding();
   const rescheduleUrl = cancelUrl ? cancelUrl.replace("/book/cancel", "/book/reschedule") : undefined;
 
   try {
@@ -232,6 +239,7 @@ export async function sendReminderEmail(details: AppointmentDetails) {
       to: clientEmail,
       subject: `Reminder: your appointment tomorrow at ${formatTime(startTime)}`,
       html: brandedEmail({
+        brand,
         preheader: `See you tomorrow at ${formatTime(startTime)} for ${serviceName}.`,
         kicker: "Appointment reminder",
         headline: `See you tomorrow, ${clientName.split(" ")[0]}.`,
@@ -256,7 +264,7 @@ export async function sendReminderEmail(details: AppointmentDetails) {
         `,
         ctaLabel: cancelUrl ? "Reschedule or cancel" : undefined,
         ctaUrl: rescheduleUrl || cancelUrl,
-        signoff: "See you soon — The Look Hair Salon",
+        signoff: `See you soon — ${brand.name}`,
       }),
     });
   } catch (error) {
@@ -277,6 +285,7 @@ interface StatusChangeDetails {
 
 export async function sendStatusChangeEmail(details: StatusChangeDetails) {
   const { clientName, clientEmail, serviceName, stylistName, date, startTime, newStatus, cancelToken } = details;
+  const brand = await getBranding();
 
   const detailRows = detailsTable([
     ["Service", serviceName],
@@ -314,7 +323,7 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
         <p style="margin: 0 0 14px;">Hi ${clientName}, the following appointment has been cancelled:</p>
         ${detailRows}
         <p style="margin: 18px 0 0;">
-          If this was a mistake, please call us at (818) 662-5665. Otherwise we&#39;d love to
+          If this was a mistake, please call us at ${brand.phone}. Otherwise we&#39;d love to
           see you again whenever works for you.
         </p>
       `,
@@ -322,13 +331,13 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
       ctaUrl: `${SITE}/book`,
     },
     completed: {
-      subject: "We loved having you at The Look!",
+      subject: `We loved having you at ${brand.name}!`,
       kicker: "Hope you loved it",
       headline: "We hope you're loving your new look.",
       body: `
         <p style="margin: 0 0 14px;">Hi ${clientName},</p>
         <p style="margin: 0 0 14px;">
-          Thank you for choosing The Look Hair Salon — it was wonderful having you in. We hope
+          Thank you for choosing ${brand.name} — it was wonderful having you in. We hope
           you&#39;re loving the result.
         </p>
         <p style="margin: 0 0 14px;">
@@ -353,7 +362,7 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
           cancellation fee may be applied to the card on file.
         </p>
         <p style="margin: 0 0 0;">
-          If something came up we&#39;d love to rebook you. Call us at (818) 662-5665 and we&#39;ll
+          If something came up we&#39;d love to rebook you. Call us at ${brand.phone} and we&#39;ll
           find another time.
         </p>
       `,
@@ -380,6 +389,7 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
       cc: ccList,
       subject: t.subject,
       html: brandedEmail({
+        brand,
         preheader: t.headline,
         kicker: t.kicker,
         headline: t.headline,
@@ -388,7 +398,7 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
         ctaUrl: t.ctaUrl,
         secondaryLabel: t.secondaryLabel,
         secondaryUrl: t.secondaryUrl,
-        signoff: "— The Look Hair Salon",
+        signoff: `— ${brand.name}`,
         // Policy footer only shows on no-show / cancellation where it's
         // the most relevant. Confirmed + completed skip it to keep the
         // cadence warm.
@@ -429,6 +439,7 @@ export async function sendStaffNewBookingEmail(details: StaffNewBookingDetails) 
     requestedStylist, depositRequiredCents, depositPaid, approveUrl,
   } = details;
   if (recipients.length === 0) return;
+  const brand = await getBranding();
 
   const stylistBadge = requestedStylist
     ? `<span style="background:#c2274b; color:#fff; padding:2px 8px; font-size:10px; letter-spacing:1px;">REQUESTED</span>`
@@ -446,6 +457,7 @@ export async function sendStaffNewBookingEmail(details: StaffNewBookingDetails) 
       to: recipients,
       subject: `[ACTION REQUIRED] New booking: ${clientName} — ${serviceName}`,
       html: brandedEmail({
+        brand,
         preheader: `${clientName} booked ${serviceName} for ${formatDate(date)}.`,
         kicker: "New booking — needs approval",
         headline: `${clientName} just booked online`,
@@ -462,7 +474,7 @@ export async function sendStaffNewBookingEmail(details: StaffNewBookingDetails) 
         `,
         ctaLabel: "Review & approve",
         ctaUrl: approveUrl,
-        signoff: "Auto-sent by The Look booking system",
+        signoff: `Auto-sent by ${brand.name} booking system`,
         includeSupportFooter: false,
         includePolicyFooter: false,
       }),
@@ -487,12 +499,14 @@ interface StaffNewMessageDetails {
 export async function sendStaffNewMessageEmail(details: StaffNewMessageDetails) {
   const { recipients, name, email, phone, service, message, adminUrl } = details;
   if (recipients.length === 0) return;
+  const brand = await getBranding();
   try {
     await getResend().emails.send({
       from: FROM,
       to: recipients,
       subject: `[Inbox] New contact message from ${name}`,
       html: brandedEmail({
+        brand,
         preheader: `${name} sent a message${service ? ` about ${service}` : ""}.`,
         kicker: "New contact form submission",
         headline: `${name} reached out`,
@@ -505,7 +519,7 @@ export async function sendStaffNewMessageEmail(details: StaffNewMessageDetails) 
         `,
         ctaLabel: "Open in admin",
         ctaUrl: adminUrl,
-        signoff: "Auto-sent by The Look",
+        signoff: `Auto-sent by ${brand.name}`,
         includeSupportFooter: false,
         includePolicyFooter: false,
       }),
@@ -532,6 +546,7 @@ interface ReviewRequestDetails {
 
 export async function sendReviewRequestEmail(details: ReviewRequestDetails) {
   const { clientName, clientEmail, stylistName, serviceName, date, reviewUrl, googleUrl, yelpUrl } = details;
+  const brand = await getBranding();
 
   try {
     await getResend().emails.send({
@@ -539,6 +554,7 @@ export async function sendReviewRequestEmail(details: ReviewRequestDetails) {
       to: clientEmail,
       subject: "How was your visit?",
       html: brandedEmail({
+        brand,
         preheader: `We hope you loved your ${serviceName}.`,
         kicker: "How was it?",
         headline: "How was your visit?",
@@ -562,11 +578,11 @@ export async function sendReviewRequestEmail(details: ReviewRequestDetails) {
             Or use <a href="${reviewUrl}" style="color:#c2274b;">this page</a> to pick either one.
           </p>
           <p style="margin: 12px 0 0; font-size: 13px; color: #767182;">
-            Had an issue? Reply to this email or call (818) 662-5665 — we&#39;d rather hear about
+            Had an issue? Reply to this email or call ${brand.phone} — we&#39;d rather hear about
             it first so we can make it right.
           </p>
         `,
-        signoff: "— The Look Hair Salon",
+        signoff: `— ${brand.name}`,
         includePolicyFooter: false,
       }),
     });
@@ -586,6 +602,7 @@ interface ReviewDigestItem {
 
 export async function sendReviewDigestEmail(items: ReviewDigestItem[], ratingSnapshot: { google: string; yelp: string }) {
   if (items.length === 0) return;
+  const brand = await getBranding();
 
   const row = (r: ReviewDigestItem) => `
     <tr>
@@ -603,6 +620,7 @@ export async function sendReviewDigestEmail(items: ReviewDigestItem[], ratingSna
       to: SALON_EMAIL,
       subject: `${items.length} new review${items.length === 1 ? "" : "s"} this week`,
       html: brandedEmail({
+        brand,
         preheader: `${items.length} new review${items.length === 1 ? "" : "s"} this week.`,
         kicker: "Weekly review digest",
         headline: `${items.length} new review${items.length === 1 ? "" : "s"}`,
@@ -612,7 +630,7 @@ export async function sendReviewDigestEmail(items: ReviewDigestItem[], ratingSna
           </p>
           <table width="100%" cellpadding="0" cellspacing="0">${items.map(row).join("")}</table>
         `,
-        signoff: "Auto-sent by The Look review digest",
+        signoff: `Auto-sent by ${brand.name} review digest`,
         includeSupportFooter: false,
         includePolicyFooter: false,
       }),
@@ -639,6 +657,7 @@ interface CancellationFeeReceipt {
 }
 
 export async function sendCancellationFeeReceipt(r: CancellationFeeReceipt) {
+  const brand = await getBranding();
   const amount = `$${(r.amountCents / 100).toFixed(2)}`;
   const cardLine = r.cardBrand && r.cardLast4
     ? `${r.cardBrand.toUpperCase()} ending in ${r.cardLast4}`
@@ -649,6 +668,7 @@ export async function sendCancellationFeeReceipt(r: CancellationFeeReceipt) {
       to: r.clientEmail,
       subject: `Cancellation fee charged — ${amount}`,
       html: brandedEmail({
+        brand,
         preheader: `${amount} was charged to your ${cardLine}.`,
         kicker: "Cancellation fee receipt",
         headline: `${amount} charged to your ${cardLine}.`,
@@ -667,12 +687,12 @@ export async function sendCancellationFeeReceipt(r: CancellationFeeReceipt) {
             ["Card", cardLine],
           ])}
           <p style="margin: 18px 0 0; font-size: 13px; color: #767182;">
-            Questions about this charge? Reply to this email or call (818) 662-5665 and
+            Questions about this charge? Reply to this email or call ${brand.phone} and
             we&#39;ll review it with you. We&#39;d rather have you back in the chair than charge
             a fee — hope to see you again soon.
           </p>
         `,
-        signoff: "— The Look Hair Salon",
+        signoff: `— ${brand.name}`,
       }),
     });
   } catch (error) {

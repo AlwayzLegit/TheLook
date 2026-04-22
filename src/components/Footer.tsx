@@ -1,8 +1,28 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import SalonHours from "./SalonHours";
+import { telHref, mailtoHref } from "@/lib/branding";
+import { useBranding } from "./BrandingProvider";
 
+// Client component: reads branding from <BrandingProvider> in the root
+// layout. Keeping it client-side (vs async server) so it can be rendered
+// from client pages like /book or /my/login without a server boundary.
 export default function Footer() {
+  const brand = useBranding();
+  const phoneTel = telHref(brand.phone);
+  const emailHref = mailtoHref(brand.email);
+  // Split the address on the first comma so the footer keeps its
+  // two-line street / city-state-zip layout regardless of what the
+  // owner types. "919 South Central Ave Suite #E, Glendale, CA 91204"
+  // -> ["919 South Central Ave Suite #E", "Glendale, CA 91204"].
+  const [addrLine1, addrLine2] = (() => {
+    const idx = brand.address.indexOf(",");
+    return idx === -1
+      ? [brand.address, ""]
+      : [brand.address.slice(0, idx).trim(), brand.address.slice(idx + 1).trim()];
+  })();
   return (
     <footer className="bg-charcoal relative overflow-hidden">
       <div className="absolute inset-0">
@@ -37,10 +57,10 @@ export default function Footer() {
             Book Now
           </Link>
           <a
-            href="tel:+18186625665"
+            href={phoneTel}
             className="border border-white/20 hover:border-gold/60 bg-white/5 hover:bg-white/10 text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:-translate-y-0.5 backdrop-blur-sm"
           >
-            Call (818) 662-5665
+            Call {brand.phone}
           </a>
         </div>
       </div>
@@ -136,16 +156,16 @@ export default function Footer() {
               Contact
             </h4>
             <div className="text-sm font-body font-light space-y-2.5 text-white/75">
-              <p>919 South Central Ave Suite #E</p>
-              <p>Glendale, CA 91204</p>
+              <p>{addrLine1}</p>
+              {addrLine2 && <p>{addrLine2}</p>}
               <p className="pt-3">
-                <a href="tel:+18186625665" className="hover:text-gold transition-colors duration-300 text-white/85">
-                  (818) 662-5665
+                <a href={phoneTel} className="hover:text-gold transition-colors duration-300 text-white/85">
+                  {brand.phone}
                 </a>
               </p>
               <p>
-                <a href="mailto:thelook_hairsalon@yahoo.com" className="hover:text-gold transition-colors duration-300">
-                  thelook_hairsalon@yahoo.com
+                <a href={emailHref} className="hover:text-gold transition-colors duration-300">
+                  {brand.email}
                 </a>
               </p>
             </div>
@@ -155,7 +175,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-white/8 mt-14 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-white/55 text-xs font-body">
-            &copy; {new Date().getFullYear()} The Look Hair Salon. All rights reserved.
+            &copy; {new Date().getFullYear()} {brand.name}. All rights reserved.
           </p>
           <div className="flex items-center gap-5 text-[11px] font-body">
             <Link href="/terms" className="text-white/55 hover:text-gold transition-colors">

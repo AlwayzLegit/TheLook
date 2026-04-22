@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
+import { getBranding } from "@/lib/branding";
 
 export const revalidate = 60;
 
@@ -55,14 +56,14 @@ export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> },
 ): Promise<Metadata> {
   const { slug } = await params;
-  const result = await fetchService(slug);
+  const [result, brand] = await Promise.all([fetchService(slug), getBranding()]);
   if (!result) {
-    return { title: "Service | The Look Hair Salon" };
+    return { title: `Service | ${brand.name}` };
   }
   return {
-    title: `${result.service.name} | The Look Hair Salon`,
+    title: `${result.service.name} | ${brand.name}`,
     description: result.service.description
-      || `Book ${result.service.name} at The Look Hair Salon in Glendale, CA.`,
+      || `Book ${result.service.name} at ${brand.name} in Glendale, CA.`,
   };
 }
 
@@ -81,7 +82,7 @@ export default async function ServiceDetailPage(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
-  const result = await fetchService(slug);
+  const [result, brand] = await Promise.all([fetchService(slug), getBranding()]);
   if (!result) notFound();
   const { service, variants } = result;
 
@@ -147,7 +148,7 @@ export default async function ServiceDetailPage(
               <p className="text-navy/50 font-body font-light leading-relaxed mb-6">
                 Treat yourself to our {service.name.toLowerCase()} service. Our team takes the
                 time to understand your hair goals and delivers a personalized experience every
-                time. Book online or call us at (818) 662-5665 and we&apos;ll pair you with the
+                time. Book online or call us at {brand.phone} and we&apos;ll pair you with the
                 right stylist.
               </p>
             )}
@@ -200,7 +201,7 @@ export default async function ServiceDetailPage(
             </div>
 
             <p className="text-navy/60 text-[11px] font-body mt-6">
-              919 South Central Ave Suite #E, Glendale, CA 91204 · (818) 662-5665
+              {brand.address} · {brand.phone}
             </p>
           </div>
         </section>

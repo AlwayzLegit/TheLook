@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useBranding } from "@/components/BrandingProvider";
 
 interface Props {
   result: {
@@ -33,6 +34,7 @@ function formatTime(time: string): string {
 }
 
 export default function BookingConfirmation({ result }: Props) {
+  const brand = useBranding();
   return (
     <div className="text-center max-w-lg mx-auto relative">
       {/* Confetti burst */}
@@ -151,10 +153,8 @@ export default function BookingConfirmation({ result }: Props) {
           </span>
         </div>
         <div className="border-t border-navy/10 pt-4 mt-4">
-          <p className="text-navy/50 text-xs font-body">
-            919 South Central Ave Suite #E, Glendale, CA 91204
-          </p>
-          <p className="text-navy/50 text-xs font-body">(818) 662-5665</p>
+          <p className="text-navy/50 text-xs font-body">{brand.address}</p>
+          <p className="text-navy/50 text-xs font-body">{brand.phone}</p>
         </div>
       </motion.div>
 

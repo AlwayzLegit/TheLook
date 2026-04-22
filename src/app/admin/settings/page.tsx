@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toaster";
 import { cn } from "@/components/ui/cn";
 import { formatMoney } from "@/lib/format";
+import { brandingDefaults } from "@/lib/branding";
 
 interface Settings {
   staff_notification_emails?: string;
@@ -32,6 +33,11 @@ interface Settings {
   review_request_email_body_template?: string;
   google_review_url?: string;
   idle_timeout_minutes?: string;
+  brand_name?: string;
+  brand_tagline?: string;
+  brand_address?: string;
+  brand_phone?: string;
+  brand_email?: string;
 }
 
 interface DepositRule {
@@ -170,14 +176,50 @@ export default function SettingsPage() {
               <Card className="space-y-5">
                 <div>
                   <h2 className="text-[1.0625rem] font-medium text-[var(--color-text)]">Salon identity</h2>
-                  <p className="text-[0.75rem] text-[var(--color-text-muted)] mt-0.5">Some of these live in env vars + code — edit here once we wire up DB-backed branding.</p>
+                  <p className="text-[0.75rem] text-[var(--color-text-muted)] mt-0.5">
+                    Name, contact info, and tagline. Leave a field blank to fall back to the built-in default.
+                    Used in emails, SMS signatures, and (as we roll it out) across the public site.
+                  </p>
                 </div>
-                <div className="text-[0.8125rem] text-[var(--color-text-muted)] space-y-2">
-                  <p>Name · <span className="text-[var(--color-text)]">The Look Hair Salon</span></p>
-                  <p>Address · <span className="text-[var(--color-text)]">919 S Central Ave Suite #E, Glendale, CA 91204</span></p>
-                  <p>Phone · <span className="text-[var(--color-text)]">(818) 662-5665</span></p>
-                  <p>Timezone · <span className="text-[var(--color-text)]">America/Los_Angeles</span></p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Salon name"
+                    value={s.brand_name ?? ""}
+                    placeholder={brandingDefaults.name}
+                    onChange={(e) => setS({ ...s, brand_name: e.target.value })}
+                  />
+                  <Input
+                    label="Contact phone"
+                    type="tel"
+                    value={s.brand_phone ?? ""}
+                    placeholder={brandingDefaults.phone}
+                    onChange={(e) => setS({ ...s, brand_phone: e.target.value })}
+                  />
+                  <Input
+                    label="Contact email"
+                    type="email"
+                    value={s.brand_email ?? ""}
+                    placeholder={brandingDefaults.email}
+                    onChange={(e) => setS({ ...s, brand_email: e.target.value })}
+                  />
+                  <Input
+                    label="Street address"
+                    value={s.brand_address ?? ""}
+                    placeholder={brandingDefaults.address}
+                    onChange={(e) => setS({ ...s, brand_address: e.target.value })}
+                  />
                 </div>
+                <Textarea
+                  label="Tagline"
+                  rows={2}
+                  value={s.brand_tagline ?? ""}
+                  placeholder={brandingDefaults.tagline}
+                  hint="Short one-liner shown under the salon name on public pages."
+                  onChange={(e) => setS({ ...s, brand_tagline: e.target.value })}
+                />
+                <p className="text-[0.6875rem] text-[var(--color-text-subtle)] pt-1 border-t border-[var(--color-border)]">
+                  Timezone · <span className="text-[var(--color-text-muted)]">America/Los_Angeles</span> (tied to server + cron schedules, not editable here).
+                </p>
               </Card>
             )}
 

@@ -4,8 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
+import { useBranding } from "./BrandingProvider";
+import { telHref } from "@/lib/branding";
 
 export default function Hero() {
+  const brand = useBranding();
   const ref = useRef(null);
   const prefersReducedMotion = useReducedMotion();
   const { scrollYProgress } = useScroll({
@@ -30,7 +33,7 @@ export default function Hero() {
       <motion.div className="absolute inset-0" style={{ y }}>
         <Image
           src="/images/hero/salon-main.jpg"
-          alt="The Look Hair Salon"
+          alt={brand.name}
           fill
           className="object-cover scale-105"
           priority
@@ -108,10 +111,10 @@ export default function Hero() {
             View Our Services
           </Link>
           <a
-            href="tel:+18186625665"
+            href={telHref(brand.phone)}
             className="border border-white/20 hover:border-gold/60 text-white/75 hover:text-gold text-[11px] tracking-[0.2em] uppercase px-11 py-4 rounded-sm transition-all duration-300 hover:-translate-y-0.5"
           >
-            Call (818) 662-5665
+            Call {brand.phone}
           </a>
         </motion.div>
       </motion.div>

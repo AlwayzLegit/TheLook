@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import StylistImage from "@/components/StylistImage";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { BOOKING } from "@/lib/constants";
+import { getBranding, telHref } from "@/lib/branding";
 import type { Metadata } from "next";
 
 export const revalidate = 60;
@@ -42,18 +43,18 @@ async function getStylist(slug: string) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function generateMetadata({ params }: any): Promise<Metadata> {
   const { slug } = await params;
-  const stylist = await getStylist(slug);
+  const [stylist, brand] = await Promise.all([getStylist(slug), getBranding()]);
   if (!stylist) return { title: "Stylist Not Found" };
   return {
-    title: `${stylist.name} — The Look Hair Salon`,
-    description: stylist.bio || `Book with ${stylist.name} at The Look Hair Salon in Glendale, CA.`,
+    title: `${stylist.name} — ${brand.name}`,
+    description: stylist.bio || `Book with ${stylist.name} at ${brand.name} in Glendale, CA.`,
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function StylistPage({ params }: any) {
   const { slug } = await params;
-  const stylist = await getStylist(slug);
+  const [stylist, brand] = await Promise.all([getStylist(slug), getBranding()]);
   if (!stylist) notFound();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,7 +101,7 @@ export default async function StylistPage({ params }: any) {
                 <Link href={`/book?stylist=${stylist.id}`} className="bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-8 py-3 font-body transition-all">
                   Book with {stylist.name.split(" ")[0]}
                 </Link>
-                <a href="tel:+18186625665" className="border border-navy/20 hover:border-navy text-navy/70 hover:text-navy text-[11px] tracking-[0.2em] uppercase px-8 py-3 font-body transition-all">
+                <a href={telHref(brand.phone)} className="border border-navy/20 hover:border-navy text-navy/70 hover:text-navy text-[11px] tracking-[0.2em] uppercase px-8 py-3 font-body transition-all">
                   Call Us
                 </a>
               </div>

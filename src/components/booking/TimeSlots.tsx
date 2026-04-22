@@ -1,3 +1,7 @@
+"use client";
+
+import { useBranding } from "@/components/BrandingProvider";
+
 interface Props {
   slots: string[];
   loading: boolean;
@@ -15,6 +19,7 @@ function formatTime(time: string): string {
 }
 
 export default function TimeSlots({ slots, loading, selectedDate, selectedTime, onSelectTime, error }: Props) {
+  const brand = useBranding();
   if (!selectedDate) {
     return (
       <div className="flex items-center justify-center text-navy/50 font-body text-sm">
@@ -34,7 +39,7 @@ export default function TimeSlots({ slots, loading, selectedDate, selectedTime, 
   if (error) {
     return (
       <div className="flex items-center justify-center text-red-600 font-body text-sm text-center">
-        Unable to load available times. Please try again or call us at (818) 662-5665.
+        Unable to load available times. Please try again or call us at {brand.phone}.
       </div>
     );
   }

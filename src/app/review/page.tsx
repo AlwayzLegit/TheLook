@@ -3,13 +3,18 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import LeaveReviewCTA from "@/components/LeaveReviewCTA";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import { getBranding, telHref } from "@/lib/branding";
 
-export const metadata: Metadata = {
-  title: "Leave a Review — The Look Hair Salon",
-  description: "Share your experience at The Look Hair Salon on Google or Yelp.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Leave a Review",
+    descriptionFor: (b) => `Share your experience at ${b.name} on Google or Yelp.`,
+  });
+}
 
-export default function ReviewPage() {
+export default async function ReviewPage() {
+  const brand = await getBranding();
   return (
     <>
       <Navbar />
@@ -45,7 +50,7 @@ export default function ReviewPage() {
                 Send us a message
               </Link>
               <a
-                href="tel:+18186625665"
+                href={telHref(brand.phone)}
                 className="border border-navy/20 hover:border-navy text-navy/70 hover:text-navy text-[11px] tracking-[0.2em] uppercase px-6 py-3 font-body transition-all"
               >
                 Call the salon

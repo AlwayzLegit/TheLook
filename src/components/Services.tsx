@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
 import { getSlugForCategory } from "@/lib/service-categories";
+import { useBranding } from "./BrandingProvider";
 
 interface ApiVariant {
   id: string;
@@ -51,6 +52,7 @@ const CATEGORY_ICON: Record<string, ReactNode> = {
 };
 
 export default function Services() {
+  const brand = useBranding();
   const [servicesByCategory, setServicesByCategory] = useState<GroupedServices>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,7 +134,7 @@ export default function Services() {
             <div className="relative aspect-[16/6] md:aspect-[16/5]">
               <Image
                 src="/images/hero/salon-main.jpg"
-                alt="The Look Hair Salon interior"
+                alt={`${brand.name} interior`}
                 fill
                 className={`object-cover ${heroImageFailed ? "hidden" : ""}`}
                 sizes="(min-width: 1024px) 1200px, 100vw"

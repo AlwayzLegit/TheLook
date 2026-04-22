@@ -3,14 +3,18 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
+import { pageMetadata } from "@/lib/seo";
+import { getBranding } from "@/lib/branding";
 
-export const metadata: Metadata = {
-  title: "Shop | The Look Hair Salon",
-  description:
-    "The Look Hair Salon's product shop — curated professional haircare coming soon.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Shop",
+    descriptionFor: (b) => `${b.name}'s product shop — curated professional haircare coming soon.`,
+  });
+}
 
-export default function ShopPage() {
+export default async function ShopPage() {
+  const brand = await getBranding();
   return (
     <>
       <Navbar />
@@ -50,7 +54,7 @@ export default function ShopPage() {
           </div>
 
           <div className="mt-16 pt-10 border-t border-navy/10 text-navy/60 font-body text-xs tracking-wider">
-            919 South Central Ave Suite #E, Glendale, CA 91204 · (818) 662-5665
+            {brand.address} · {brand.phone}
           </div>
         </div>
       </main>

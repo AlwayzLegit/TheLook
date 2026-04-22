@@ -1,15 +1,20 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import { getBranding } from "@/lib/branding";
 
-export const metadata: Metadata = {
-  title: "Terms of Service — The Look Hair Salon",
-  description: "Terms of service governing use of The Look Hair Salon website and booking.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Terms of Service",
+    descriptionFor: (b) => `Terms of service governing use of ${b.name} website and booking.`,
+  });
+}
 
 const LAST_UPDATED = "April 2026";
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const brand = await getBranding();
   return (
     <>
       <Navbar />
@@ -30,8 +35,8 @@ export default function TermsPage() {
               <h2 className="font-heading text-2xl text-navy mb-3">1. Agreement to Terms</h2>
               <p>
                 By accessing or using the website at thelookhairsalonla.com (the &ldquo;Site&rdquo;), booking
-                an appointment, or using any services provided by The Look Hair Salon (&ldquo;The Look,&rdquo;
-                &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), you agree to be bound by these Terms of Service.
+                an appointment, or using any services provided by {brand.name}{" "}
+                (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), you agree to be bound by these Terms of Service.
                 If you do not agree, please do not use the Site.
               </p>
             </section>
@@ -127,7 +132,7 @@ export default function TermsPage() {
               <h2 className="font-heading text-2xl text-navy mb-3">9. Intellectual Property</h2>
               <p>
                 All content on the Site — including text, logos, photographs of our team and salon, stylist
-                bios, and design — is the property of The Look Hair Salon or its licensors and is protected
+                bios, and design — is the property of {brand.name} or its licensors and is protected
                 by copyright and trademark laws. You may not reproduce, distribute, or create derivative
                 works without our written permission.
               </p>
@@ -145,7 +150,7 @@ export default function TermsPage() {
             <section>
               <h2 className="font-heading text-2xl text-navy mb-3">11. Limitation of Liability</h2>
               <p>
-                To the maximum extent permitted by law, The Look Hair Salon, its owners, employees, and
+                To the maximum extent permitted by law, {brand.name}, its owners, employees, and
                 contractors will not be liable for any indirect, incidental, special, consequential, or
                 punitive damages arising out of or related to your use of the Site or our services. Our
                 total liability for any claim related to a service shall not exceed the amount you paid for
@@ -225,10 +230,10 @@ export default function TermsPage() {
                 Questions about these Terms? Reach out:
               </p>
               <div className="mt-3 space-y-1 text-navy">
-                <p>The Look Hair Salon</p>
-                <p>919 South Central Ave Suite #E, Glendale, CA 91204</p>
-                <p>(818) 662-5665</p>
-                <p>thelook_hairsalon@yahoo.com</p>
+                <p>{brand.name}</p>
+                <p>{brand.address}</p>
+                <p>{brand.phone}</p>
+                <p>{brand.email}</p>
               </div>
             </section>
           </div>

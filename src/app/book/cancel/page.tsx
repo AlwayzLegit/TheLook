@@ -4,12 +4,14 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useBranding } from "@/components/BrandingProvider";
 
 function CancelContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
+  const brand = useBranding();
 
   useEffect(() => {
     if (!token) {
@@ -49,7 +51,7 @@ function CancelContent() {
         </div>
         <h2 className="font-heading text-3xl mb-4">Appointment Cancelled</h2>
         <p className="text-navy/70 font-body">
-          {message} We&apos;d love to see you again — call us at (818) 662-5665 or visit our website to rebook.
+          {message} We&apos;d love to see you again — call us at {brand.phone} or visit our website to rebook.
         </p>
         <p className="text-navy/50 text-xs font-body mt-5 leading-relaxed">
           <strong className="text-navy/70">Deposit &amp; cancellation policy:</strong> Cancellations

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "./Logo";
+import { useBranding } from "./BrandingProvider";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -28,6 +29,7 @@ export default function Navbar() {
   const overlayRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const isHome = pathname === "/";
+  const brand = useBranding();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -323,7 +325,7 @@ export default function Navbar() {
               className="text-white/30 text-xs font-body tracking-wider"
               style={{ position: "absolute", bottom: 40 }}
             >
-              (818) 662-5665
+              {brand.phone}
             </p>
           </div>
 

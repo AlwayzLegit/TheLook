@@ -3,12 +3,15 @@ import Navbar from "@/components/Navbar";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Contact | The Look Hair Salon",
-  description:
-    "Contact The Look Hair Salon — call (818) 662-5665, email thelook_hairsalon@yahoo.com, or visit us at 919 S Central Ave Suite #E, Glendale, CA 91204.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Contact",
+    descriptionFor: (b) =>
+      `Contact ${b.name} — call ${b.phone}, email ${b.email}, or visit us at ${b.address}.`,
+  });
+}
 
 export default function ContactPage() {
   return (

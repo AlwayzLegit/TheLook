@@ -1,13 +1,18 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import { getBranding, mailtoHref } from "@/lib/branding";
 
-export const metadata: Metadata = {
-  title: "Accessibility — The Look Hair Salon",
-  description: "Our commitment to an accessible website and salon experience.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Accessibility",
+    description: "Our commitment to an accessible website and salon experience.",
+  });
+}
 
-export default function AccessibilityPage() {
+export default async function AccessibilityPage() {
+  const brand = await getBranding();
   return (
     <>
       <Navbar />
@@ -25,7 +30,7 @@ export default function AccessibilityPage() {
           <div className="bg-white border border-navy/10 p-8 md:p-10 space-y-6 font-body text-navy/75 leading-relaxed text-[15px]">
             <section>
               <p>
-                The Look Hair Salon is committed to making our website and salon welcoming to everyone,
+                {brand.name} is committed to making our website and salon welcoming to everyone,
                 including people with disabilities.
               </p>
             </section>
@@ -51,7 +56,7 @@ export default function AccessibilityPage() {
               <ul className="list-disc pl-6 space-y-2">
                 <li>Our Glendale location is on the ground floor with a street-level entrance.</li>
                 <li>We&#39;re happy to accommodate mobility devices, service animals, and specific sensory needs.</li>
-                <li>If you need any accommodation or have a preference we should know about, please call ahead at (818) 662-5665 and we&#39;ll do our best.</li>
+                <li>If you need any accommodation or have a preference we should know about, please call ahead at {brand.phone} and we&#39;ll do our best.</li>
               </ul>
             </section>
 
@@ -59,8 +64,8 @@ export default function AccessibilityPage() {
               <h2 className="font-heading text-2xl text-navy mb-3">Report an Issue</h2>
               <p>
                 If you encounter an accessibility barrier on our website, please let us know so we can fix it.
-                Email <a href="mailto:thelook_hairsalon@yahoo.com" className="text-rose hover:underline">thelook_hairsalon@yahoo.com</a> or
-                call (818) 662-5665 and we&#39;ll respond as soon as possible.
+                Email <a href={mailtoHref(brand.email)} className="text-rose hover:underline">{brand.email}</a> or
+                call {brand.phone} and we&#39;ll respond as soon as possible.
               </p>
             </section>
           </div>

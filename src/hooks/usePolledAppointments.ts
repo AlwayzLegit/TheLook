@@ -33,10 +33,14 @@ interface UsePolledAppointmentsOptions {
   // archive view wants to see *all* past archived bookings so we also skip
   // the default `from=today` filter.
   archived?: boolean;
+  // Override the server-side `from` date. Undefined uses the default
+  // "today forward" scope. A YYYY-MM-DD string fetches from that date.
+  // An empty string fetches all time with no lower bound.
+  fromDate?: string;
 }
 
 export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}) {
-  const { enabled = true, pollMs = POLLING.APPOINTMENTS_MS, archived = false } = options;
+  const { enabled = true, pollMs = POLLING.APPOINTMENTS_MS, archived = false, fromDate } = options;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,8 +55,14 @@ export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}
 
     setLoading(true);
     const params = new URLSearchParams();
-    if (archived) params.set("archived", "true");
-    else params.set("from", todayISOInLA());
+    if (archived) {
+      params.set("archived", "true");
+    } else if (fromDate === undefined) {
+      // Default scope: today forward. Empty string = caller asked for all time.
+      params.set("from", todayISOInLA());
+    } else if (fromDate !== "") {
+      params.set("from", fromDate);
+    }
     const res = await fetch(`/api/admin/appointments?${params.toString()}`);
     if (!res.ok) {
       setError("Failed to fetch appointments.");
@@ -69,7 +79,7 @@ export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}
     } finally {
       setLoading(false);
     }
-  }, [enabled, archived]);
+  }, [enabled, archived, fromDate]);
 
   useEffect(() => {
     if (!enabled) {
