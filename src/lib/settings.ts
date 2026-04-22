@@ -4,8 +4,6 @@ export type SettingsKey =
   | "staff_notification_emails"
   | "staff_notification_sms_numbers"
   | "booking_email_enabled"
-  | "long_appointment_deposit_cents"
-  | "long_appointment_min_minutes"
   | "sms_enabled"
   | "sms_booking_confirm_enabled"
   | "sms_booking_reminder_enabled"

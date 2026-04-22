@@ -9,6 +9,7 @@ import { BOOKING, RATE_LIMITS } from "@/lib/constants";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { createNotification } from "@/lib/notifications";
 import { getStaffNotificationEmails, getStaffNotificationSmsNumbers } from "@/lib/settings";
+import { computeRequiredDeposit } from "@/lib/depositRules";
 import { NextRequest } from "next/server";
 
 function minutesToTime(mins: number): string {
@@ -226,13 +227,17 @@ export async function POST(request: NextRequest) {
     return apiError("This time slot is no longer available. Please choose another.", 409);
   }
 
-  const requiresDeposit = totalPriceMin > BOOKING.DEPOSIT_TRIGGER_PRICE_CENTS;
-  const depositRequired = requiresDeposit ? BOOKING.DEPOSIT_AMOUNT_CENTS : 0;
+  const depositCalc = await computeRequiredDeposit({
+    totalPriceCents: totalPriceMin,
+    totalDurationMinutes: totalDuration,
+  });
+  const requiresDeposit = depositCalc.requiresDeposit;
+  const depositRequired = depositCalc.depositCents;
   const depositPaid = !!depositPaymentIntentId;
 
   if (requiresDeposit && !depositPaymentIntentId) {
     return apiError(
-      `This appointment requires a $${BOOKING.DEPOSIT_AMOUNT_CENTS / 100} deposit before booking.`,
+      `This appointment requires a $${(depositRequired / 100).toFixed(0)} deposit before booking.`,
       402,
     );
   }

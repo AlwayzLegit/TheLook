@@ -16,8 +16,6 @@ interface Settings {
   staff_notification_emails?: string;
   staff_notification_sms_numbers?: string;
   booking_email_enabled?: string;
-  long_appointment_deposit_cents?: string;
-  long_appointment_min_minutes?: string;
   sms_enabled?: string;
   sms_booking_confirm_enabled?: string;
   sms_booking_reminder_enabled?: string;
@@ -26,6 +24,16 @@ interface Settings {
   sms_booking_reschedule_enabled?: string;
   sms_staff_new_booking_enabled?: string;
   idle_timeout_minutes?: string;
+}
+
+interface DepositRule {
+  id: string;
+  name: string;
+  trigger_type: "min_price_cents" | "min_duration_minutes";
+  trigger_value: number;
+  deposit_cents: number;
+  active: boolean;
+  sort_order: number;
 }
 
 const truthy = (v: string | undefined, fallback = "true") => ((v ?? fallback) === "true");
@@ -113,11 +121,6 @@ export default function SettingsPage() {
     return <p className="p-8 font-body text-navy/60">Settings are admins-only.</p>;
   }
 
-  const depositDollars = (() => {
-    const cents = parseInt(s.long_appointment_deposit_cents || "5000", 10);
-    return Number.isFinite(cents) ? cents / 100 : 50;
-  })();
-
   return (
     <div className="p-4 sm:p-8 max-w-[1100px] mx-auto">
       <div className="mb-8">
@@ -169,39 +172,7 @@ export default function SettingsPage() {
               </Card>
             )}
 
-            {section === "booking" && (
-              <Card className="space-y-5">
-                <div>
-                  <h2 className="text-[1.0625rem] font-medium text-[var(--color-text)]">Deposit policy</h2>
-                  <p className="text-[0.75rem] text-[var(--color-text-muted)] mt-0.5">
-                    Bookings at or above this duration require a deposit at checkout.
-                  </p>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Trigger duration (minutes)"
-                    type="number"
-                    min={0}
-                    value={s.long_appointment_min_minutes ?? "100"}
-                    onChange={(e) => setS({ ...s, long_appointment_min_minutes: e.target.value })}
-                  />
-                  <Input
-                    label="Deposit amount"
-                    type="number"
-                    min={0}
-                    step={5}
-                    value={depositDollars}
-                    onChange={(e) => {
-                      const dollars = parseFloat(e.target.value);
-                      const cents = Number.isFinite(dollars) ? Math.round(dollars * 100) : 0;
-                      setS({ ...s, long_appointment_deposit_cents: String(cents) });
-                    }}
-                    prefix="$"
-                    hint={`Stored as ${s.long_appointment_deposit_cents || "5000"}¢ (${formatMoney(parseInt(s.long_appointment_deposit_cents || "5000", 10), { from: "cents" })}).`}
-                  />
-                </div>
-              </Card>
-            )}
+            {section === "booking" && <DepositRulesCard />}
 
             {section === "notifications" && (
               <Card className="space-y-5">
@@ -331,5 +302,213 @@ export default function SettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Deposit rules card ────────────────────────────────────────────
+// Stand-alone section with its own load / save so the existing Settings
+// dirty-check doesn't have to track a rules array. Every change hits the
+// server immediately and refreshes the local copy.
+
+const TRIGGER_LABELS: Record<DepositRule["trigger_type"], string> = {
+  min_price_cents: "Booking total ≥",
+  min_duration_minutes: "Duration ≥",
+};
+
+function formatTrigger(r: DepositRule): string {
+  if (r.trigger_type === "min_price_cents") return `$${(r.trigger_value / 100).toFixed(0)}`;
+  return `${r.trigger_value} min`;
+}
+
+function DepositRulesCard() {
+  const [rules, setRules] = useState<DepositRule[]>([]);
+  const [loadingRules, setLoadingRules] = useState(true);
+  const [editing, setEditing] = useState<DepositRule | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState<{
+    name: string;
+    trigger_type: DepositRule["trigger_type"];
+    trigger_value: string;
+    deposit_dollars: string;
+    active: boolean;
+  }>({ name: "", trigger_type: "min_price_cents", trigger_value: "100", deposit_dollars: "50", active: true });
+
+  const load = () => {
+    setLoadingRules(true);
+    fetch("/api/admin/deposit-rules")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setRules(Array.isArray(data) ? data : []))
+      .finally(() => setLoadingRules(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const openNew = () => {
+    setEditing(null);
+    setForm({ name: "", trigger_type: "min_price_cents", trigger_value: "100", deposit_dollars: "50", active: true });
+    setShowForm(true);
+  };
+
+  const openEdit = (r: DepositRule) => {
+    setEditing(r);
+    setForm({
+      name: r.name,
+      trigger_type: r.trigger_type,
+      trigger_value: r.trigger_type === "min_price_cents"
+        ? String(Math.round(r.trigger_value / 100))
+        : String(r.trigger_value),
+      deposit_dollars: String(Math.round(r.deposit_cents / 100)),
+      active: r.active,
+    });
+    setShowForm(true);
+  };
+
+  const save = async () => {
+    const triggerNum = parseInt(form.trigger_value, 10);
+    const depositNum = parseInt(form.deposit_dollars, 10);
+    if (!form.name.trim()) { toast.error("Give the rule a name."); return; }
+    if (!Number.isFinite(triggerNum) || triggerNum < 0) { toast.error("Trigger value must be a positive number."); return; }
+    if (!Number.isFinite(depositNum) || depositNum < 0) { toast.error("Deposit amount must be a positive number."); return; }
+
+    const payload = {
+      name: form.name.trim(),
+      trigger_type: form.trigger_type,
+      trigger_value: form.trigger_type === "min_price_cents" ? triggerNum * 100 : triggerNum,
+      deposit_cents: depositNum * 100,
+      active: form.active,
+    };
+
+    const url = editing ? `/api/admin/deposit-rules/${editing.id}` : "/api/admin/deposit-rules";
+    const method = editing ? "PATCH" : "POST";
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      toast.success(editing ? "Rule updated." : "Rule added.");
+      setShowForm(false);
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error || "Failed to save rule.");
+    }
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("Delete this deposit rule?")) return;
+    const res = await fetch(`/api/admin/deposit-rules/${id}`, { method: "DELETE" });
+    if (res.ok) { toast.success("Rule deleted."); load(); }
+    else toast.error("Failed to delete rule.");
+  };
+
+  const toggle = async (r: DepositRule) => {
+    const res = await fetch(`/api/admin/deposit-rules/${r.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: !r.active }),
+    });
+    if (res.ok) load();
+    else toast.error("Failed to toggle rule.");
+  };
+
+  return (
+    <Card className="space-y-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-[1.0625rem] font-medium text-[var(--color-text)]">Deposit rules</h2>
+          <p className="text-[0.75rem] text-[var(--color-text-muted)] mt-0.5">
+            Any active rule that matches a booking forces a deposit. If several rules match, the
+            highest deposit wins. No rules = no deposit ever required.
+          </p>
+        </div>
+        <Button variant="primary" size="sm" onClick={openNew}>+ Add Rule</Button>
+      </div>
+
+      {loadingRules ? (
+        <Skeleton className="h-20 w-full" />
+      ) : rules.length === 0 ? (
+        <p className="text-[0.8125rem] text-[var(--color-text-muted)] italic">
+          No deposit rules configured. Clients can book any service without paying up-front.
+        </p>
+      ) : (
+        <div className="border border-[var(--color-border)] rounded-md divide-y divide-[var(--color-border)]">
+          {rules.map((r) => (
+            <div key={r.id} className={cn("px-4 py-3 flex items-center justify-between gap-4", !r.active && "opacity-60")}>
+              <div className="min-w-0">
+                <p className="text-[0.875rem] font-medium text-[var(--color-text)] truncate">{r.name}</p>
+                <p className="text-[0.75rem] text-[var(--color-text-muted)] mt-0.5">
+                  {TRIGGER_LABELS[r.trigger_type]} <strong>{formatTrigger(r)}</strong>
+                  {" → "}
+                  Deposit <strong>{formatMoney(r.deposit_cents, { from: "cents" })}</strong>
+                  {!r.active && " · inactive"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Switch checked={r.active} onCheckedChange={() => toggle(r)} />
+                <Button variant="secondary" size="sm" onClick={() => openEdit(r)}>Edit</Button>
+                <Button variant="danger" size="sm" onClick={() => remove(r.id)}>Delete</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showForm && (
+        <div className="border border-[var(--color-border)] rounded-md p-4 space-y-4 bg-[var(--color-cream-50)]">
+          <Eyebrow>{editing ? "Edit rule" : "New rule"}</Eyebrow>
+          <Input
+            label="Rule name"
+            placeholder="e.g. Bookings priced over $100"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-[0.75rem] uppercase tracking-[0.1em] text-[var(--color-text-subtle)] mb-1.5">
+                Trigger type
+              </label>
+              <select
+                value={form.trigger_type}
+                onChange={(e) => setForm({ ...form, trigger_type: e.target.value as DepositRule["trigger_type"] })}
+                className="w-full h-10 px-3 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[0.8125rem]"
+              >
+                <option value="min_price_cents">Total price ≥</option>
+                <option value="min_duration_minutes">Total duration ≥</option>
+              </select>
+            </div>
+            <Input
+              label={form.trigger_type === "min_price_cents" ? "Trigger ($)" : "Trigger (min)"}
+              type="number"
+              min={0}
+              value={form.trigger_value}
+              onChange={(e) => setForm({ ...form, trigger_value: e.target.value })}
+              prefix={form.trigger_type === "min_price_cents" ? "$" : undefined}
+            />
+            <Input
+              label="Deposit amount"
+              type="number"
+              min={0}
+              step={5}
+              value={form.deposit_dollars}
+              onChange={(e) => setForm({ ...form, deposit_dollars: e.target.value })}
+              prefix="$"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox checked={form.active} onCheckedChange={(v) => setForm({ ...form, active: !!v })} id="rule-active" />
+            <label htmlFor="rule-active" className="text-[0.8125rem] text-[var(--color-text)] cursor-pointer">
+              Active
+            </label>
+          </div>
+          <div className="flex items-center gap-2 justify-end">
+            <Button variant="secondary" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
+            <Button variant="primary" size="sm" onClick={save}>
+              {editing ? "Save changes" : "Create rule"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }

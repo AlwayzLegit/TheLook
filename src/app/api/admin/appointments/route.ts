@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { getAvailableSlots } from "@/lib/availability";
-import { BOOKING } from "@/lib/constants";
+import { computeRequiredDeposit } from "@/lib/depositRules";
 import { createNotification } from "@/lib/notifications";
 import { z } from "zod";
 import { NextRequest } from "next/server";
@@ -203,6 +203,11 @@ export async function POST(request: NextRequest) {
   const appointmentId = crypto.randomUUID();
   const cancelToken = crypto.randomUUID().replace(/-/g, "");
 
+  const adminDepositCalc = await computeRequiredDeposit({
+    totalPriceCents: totalPriceMin,
+    totalDurationMinutes: totalDuration,
+  });
+
   const insertPayload: Record<string, unknown> = {
     id: appointmentId,
     service_id: p.serviceIds[0],
@@ -219,7 +224,7 @@ export async function POST(request: NextRequest) {
     cancel_token: cancelToken,
     requested_stylist: true,
     policy_accepted_at: new Date().toISOString(),
-    deposit_required_cents: totalPriceMin > BOOKING.DEPOSIT_TRIGGER_PRICE_CENTS ? BOOKING.DEPOSIT_AMOUNT_CENTS : 0,
+    deposit_required_cents: adminDepositCalc.depositCents,
     approved_at: p.status === "confirmed" ? new Date().toISOString() : null,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     approved_by: p.status === "confirmed" ? ((session.user as any)?.email || "admin") : null,

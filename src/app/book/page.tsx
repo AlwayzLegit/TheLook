@@ -107,9 +107,42 @@ export default function BookPage() {
   const totalPriceMin = selectedServices.reduce((sum, s) => sum + (s.priceMin || 0), 0);
   const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration || 0), 0);
   const anyPricePlus = selectedServices.some((s) => s.priceText.includes("+"));
-  // Deposit is now triggered by total price, not duration. Bookings <= $100
-  // skip card collection entirely.
-  const requiresDeposit = totalPriceMin > BOOKING.DEPOSIT_TRIGGER_PRICE_CENTS;
+
+  // Deposit rules are DB-driven (admin → Settings → Booking). Fetch once
+  // on mount and recompute the required deposit whenever the client's
+  // cart changes. Falls back to "no deposit" if the endpoint is down so
+  // bookings don't block on the rules fetch — the server runs the same
+  // check authoritatively before the appointment is created.
+  type DepositRuleLite = {
+    id: string;
+    trigger_type: "min_price_cents" | "min_duration_minutes";
+    trigger_value: number;
+    deposit_cents: number;
+  };
+  const [depositRules, setDepositRules] = useState<DepositRuleLite[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/deposits/rules")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (cancelled) return;
+        setDepositRules(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const { requiresDeposit, depositAmountCents } = (() => {
+    let max = 0;
+    for (const r of depositRules) {
+      const matches =
+        r.trigger_type === "min_price_cents"
+          ? totalPriceMin >= r.trigger_value
+          : totalDuration >= r.trigger_value;
+      if (matches && r.deposit_cents > max) max = r.deposit_cents;
+    }
+    return { requiresDeposit: max > 0, depositAmountCents: max };
+  })();
 
   const serviceKey = (s: Service) => (s.variantId ? `${s.id}:${s.variantId}` : s.id);
 
@@ -433,7 +466,7 @@ export default function BookPage() {
               policyAccepted={policyAccepted}
               onPolicyChange={setPolicyAccepted}
               requiresDeposit={requiresDeposit}
-              depositAmountCents={BOOKING.DEPOSIT_AMOUNT_CENTS}
+              depositAmountCents={depositAmountCents}
             />
           )}
 
@@ -485,21 +518,21 @@ export default function BookPage() {
                 {requiresDeposit && (
                   <div className="border-t border-navy/10 pt-4">
                     <p className="text-navy/60 text-sm font-body mb-1">
-                      Required deposit — ${BOOKING.DEPOSIT_AMOUNT_CENTS / 100}
+                      Required deposit — ${depositAmountCents / 100}
                     </p>
                     <p className="text-navy/50 text-xs font-body mb-3 leading-relaxed">
-                      A <strong>${BOOKING.DEPOSIT_AMOUNT_CENTS / 100}</strong> deposit is required
+                      A <strong>${depositAmountCents / 100}</strong> deposit is required
                       for this booking. It&apos;s <strong>applied to your service total</strong>
                       at the appointment. If you no-show or cancel within 24&nbsp;hours, the
                       deposit is forfeited.
                     </p>
                     {depositPaymentIntent ? (
                       <p className="text-green-700 text-sm font-body">
-                        ✓ ${BOOKING.DEPOSIT_AMOUNT_CENTS / 100} deposit collected.
+                        ✓ ${depositAmountCents / 100} deposit collected.
                       </p>
                     ) : clientInfo.email ? (
                       <DepositForm
-                        amountCents={BOOKING.DEPOSIT_AMOUNT_CENTS}
+                        amountCents={depositAmountCents}
                         clientEmail={clientInfo.email}
                         clientName={clientInfo.name}
                         description={selectedServices.map((s) => s.name).join(", ")}
@@ -548,7 +581,7 @@ export default function BookPage() {
                 <div className="mt-5 bg-rose/5 border border-rose/30 p-3 text-xs font-body text-navy/70 leading-relaxed">
                   <p className="font-bold text-navy mb-1">Cancellation Policy</p>
                   <p>
-                    Your <strong>${BOOKING.DEPOSIT_AMOUNT_CENTS / 100} deposit</strong> is
+                    Your <strong>${depositAmountCents / 100} deposit</strong> is
                     refundable if you cancel at least 24&nbsp;hours in advance. Cancellations
                     within 24&nbsp;hours of the appointment forfeit the deposit. Additional
                     cancellation or no-show fees may apply where applicable.

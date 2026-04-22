@@ -101,6 +101,15 @@ export const adminScheduleSchema = z.object({
   note: z.string().max(255).optional().nullable(),
 });
 
+export const depositRuleSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  trigger_type: z.enum(["min_price_cents", "min_duration_minutes"]),
+  trigger_value: z.number().int().min(0).max(10_000_000),
+  deposit_cents: z.number().int().min(0).max(10_000_000),
+  active: z.boolean().optional(),
+  sort_order: z.number().int().min(0).max(10_000).optional(),
+});
+
 export const adminAppointmentPatchSchema = z.object({
   status: z.string().trim().min(1).max(20).optional(),
   staff_notes: z.string().max(2000).nullable().optional(),
