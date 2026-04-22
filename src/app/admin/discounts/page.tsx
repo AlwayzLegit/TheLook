@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Discount {
   id: string;
@@ -213,7 +214,10 @@ export default function DiscountsPage() {
       {loading ? (
         <p className="text-navy/40 font-body text-sm">Loading...</p>
       ) : discounts.length === 0 ? (
-        <p className="text-navy/40 font-body text-sm">No discounts yet. Create your first one.</p>
+        <EmptyState
+          title="No discounts yet"
+          description="Create your first promo code to share with clients."
+        />
       ) : (
         <div className="space-y-6">
           {activeDiscounts.length > 0 && (

@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Product {
   id: string;
@@ -203,7 +205,10 @@ export default function ProductsPage() {
       {loading ? (
         <p className="text-navy/40 font-body text-sm">Loading...</p>
       ) : products.length === 0 ? (
-        <p className="text-navy/40 font-body text-sm">No products yet.</p>
+        <EmptyState
+          title="No products yet"
+          description="Add retail inventory or back-bar supplies to track stock levels."
+        />
       ) : (
         <div className="bg-white border border-navy/10 divide-y divide-navy/5">
           {products.map((p) => (
@@ -212,8 +217,8 @@ export default function ProductsPage() {
                 <div className="flex items-center gap-2">
                   <p className="font-body font-bold text-sm">{p.name}</p>
                   {p.brand && <span className="text-xs font-body text-navy/40">by {p.brand}</span>}
-                  {p.category && <span className="text-[10px] font-body bg-navy/5 text-navy/60 px-2 py-0.5 rounded">{p.category}</span>}
-                  {p.stock_qty <= p.low_stock_threshold && <span className="text-[10px] font-body bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Low stock</span>}
+                  {p.category && <Badge tone="neutral" size="sm">{p.category}</Badge>}
+                  {p.stock_qty <= p.low_stock_threshold && <Badge tone="warning" size="sm">Low stock</Badge>}
                 </div>
                 <p className="text-navy/40 text-xs font-body mt-0.5">
                   {p.sku && `SKU: ${p.sku} · `}

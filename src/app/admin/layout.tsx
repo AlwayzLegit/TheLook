@@ -220,6 +220,23 @@ function CommandButton() {
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "";
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { status } = useSession();
+
+  // Fetch idle_timeout_minutes once + write it to the <html> element so
+  // the IdleTimeout component picks up the admin's override.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/admin/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const v = data?.idle_timeout_minutes;
+        const parsed = v ? parseInt(v, 10) : NaN;
+        if (Number.isFinite(parsed) && parsed > 0) {
+          document.documentElement.setAttribute("data-idle-timeout-min", String(parsed));
+        }
+      })
+      .catch(() => {});
+  }, [status]);
 
   if (pathname === "/admin/login") return <>{children}</>;
 

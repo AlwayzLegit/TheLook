@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 
  
 interface WaitlistEntry {
@@ -81,7 +83,10 @@ export default function WaitlistPage() {
       {loading ? (
         <p className="text-navy/40 font-body text-sm">Loading...</p>
       ) : entries.length === 0 ? (
-        <p className="text-navy/40 font-body text-sm">No one on the waitlist right now.</p>
+        <EmptyState
+          title="No one on the waitlist"
+          description="Clients who opt into the waitlist when their preferred slot is full will show up here."
+        />
       ) : (
         <div className="bg-white border border-navy/10 divide-y divide-navy/5">
           {entries.map((e) => (
@@ -106,9 +111,13 @@ export default function WaitlistPage() {
                 </p>
               </div>
               <div className="flex gap-2 shrink-0">
-                <a href={`mailto:${e.client_email}?subject=Appointment opening at The Look&body=Hi ${e.client_name}, we have an opening that matches what you're looking for!`} className="text-xs font-body text-blue-600 border border-blue-200 px-3 py-1 hover:bg-blue-50">Notify</a>
-                <button onClick={() => markBooked(e.id)} className="text-xs font-body text-green-600 border border-green-200 px-3 py-1 hover:bg-green-50">Booked</button>
-                <button onClick={() => setDeleteId(e.id)} className="text-xs font-body text-red-600 border border-red-200 px-3 py-1 hover:bg-red-50">Remove</button>
+                <Button variant="secondary" size="sm" asChild>
+                  <a href={`mailto:${e.client_email}?subject=Appointment opening at The Look&body=Hi ${e.client_name}, we have an opening that matches what you're looking for!`}>
+                    Notify
+                  </a>
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => markBooked(e.id)}>Booked</Button>
+                <Button variant="danger" size="sm" onClick={() => setDeleteId(e.id)}>Remove</Button>
               </div>
             </div>
           ))}

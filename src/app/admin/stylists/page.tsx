@@ -7,7 +7,9 @@ import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import ImageUpload from "@/components/admin/ImageUpload";
 import StylistImage from "@/components/StylistImage";
-import { parseSpecialties } from "@/components/ui/Tag";
+import { Tag, parseSpecialties } from "@/components/ui/Tag";
+
+const STYLIST_PALETTE = ["#1d1f2e", "#c43353", "#b48a3c", "#7c9a7a", "#c98a9a", "#8b8577"];
 
 interface Stylist {
   id: string;
@@ -18,6 +20,7 @@ interface Stylist {
   specialties: string;
   active: boolean;
   sort_order: number;
+  color?: string | null;
 }
 
 interface Service {
@@ -46,6 +49,7 @@ export default function StylistsPage() {
     specialties: "",
     active: true,
     sort_order: 0,
+    color: "",
   });
 
   // Service mapping state
@@ -99,7 +103,7 @@ export default function StylistsPage() {
       if (res.ok) {
         setShowForm(false);
         setEditing(null);
-        setFormData({ name: "", bio: "", image_url: "", specialties: "", active: true, sort_order: 0 });
+        setFormData({ name: "", bio: "", image_url: "", specialties: "", active: true, sort_order: 0, color: "" });
         setToast({ type: "success", message: editing ? "Stylist updated." : "Stylist created." });
         fetchStylists();
       } else {
@@ -122,6 +126,7 @@ export default function StylistsPage() {
       specialties: stylist.specialties,
       active: stylist.active,
       sort_order: stylist.sort_order,
+      color: stylist.color || "",
     });
     setShowForm(true);
   };
@@ -143,7 +148,7 @@ export default function StylistsPage() {
 
   const handleAddNew = () => {
     setEditing(null);
-    setFormData({ name: "", bio: "", image_url: "", specialties: "", active: true, sort_order: 0 });
+    setFormData({ name: "", bio: "", image_url: "", specialties: "", active: true, sort_order: 0, color: "" });
     setShowForm(true);
   };
 
@@ -228,10 +233,25 @@ export default function StylistsPage() {
             />
           </div>
           <div>
-            <p className="font-body font-bold text-sm">{stylist.name}</p>
-            <p className="text-navy/50 text-xs font-body">
-              {parseSpecialties(stylist.specialties).join(" · ") || "—"}
+            <p className="font-body font-bold text-sm flex items-center gap-2">
+              {stylist.color && (
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: stylist.color }}
+                  aria-hidden
+                />
+              )}
+              {stylist.name}
             </p>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {parseSpecialties(stylist.specialties).length > 0 ? (
+                parseSpecialties(stylist.specialties).map((spec) => (
+                  <Tag key={spec}>{spec}</Tag>
+                ))
+              ) : (
+                <span className="text-navy/40 text-xs font-body">—</span>
+              )}
+            </div>
             {inactive && (
               <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5">Inactive</span>
             )}
@@ -356,6 +376,34 @@ export default function StylistsPage() {
               <div>
                 <label className="block text-sm font-body text-navy/60 mb-1">Bio</label>
                 <textarea value={formData.bio} onChange={(e) => setFormData({ ...formData, bio: e.target.value })} className="w-full border border-navy/20 px-3 py-2 text-sm font-body h-24" placeholder="Short bio about the stylist..." />
+              </div>
+              <div>
+                <label className="block text-sm font-body text-navy/60 mb-1">Calendar Color</label>
+                <div className="flex flex-wrap gap-2">
+                  {STYLIST_PALETTE.map((c) => {
+                    const selected = formData.color.toLowerCase() === c.toLowerCase();
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, color: c })}
+                        className={`w-8 h-8 rounded-full border-2 transition-all ${selected ? "border-navy scale-110" : "border-white hover:scale-105"}`}
+                        style={{ backgroundColor: c, boxShadow: selected ? "0 0 0 2px var(--color-cream-50)" : undefined }}
+                        aria-label={`Select color ${c}`}
+                      />
+                    );
+                  })}
+                  {formData.color && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, color: "" })}
+                      className="text-xs font-body text-navy/40 underline self-center ml-2"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-navy/40 mt-1">Shown in the appointments calendar</p>
               </div>
               <ImageUpload
                 value={formData.image_url}

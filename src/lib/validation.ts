@@ -74,6 +74,7 @@ export const adminStylistSchema = z.object({
   specialties: z.union([z.array(z.string()), z.string()]).optional(),
   active: z.boolean().optional(),
   sort_order: z.number().int().min(0).max(10_000).optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional().or(z.literal("")),
 });
 
 // Self-service schema for stylists editing their own profile.

@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { formatDate } from "@/lib/format";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Segmented, SegmentedList, SegmentedItem } from "@/components/ui/Tabs";
 
 interface Message {
   id: string;
@@ -14,14 +19,14 @@ interface Message {
   created_at: string;
 }
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+// Heuristics adapted from the community-standard "contact form spam" signals.
+const SPAM_KEYWORDS = /(seo|backlinks?|ranking|crypto|bitcoin|loan|casino|viagra|escort|porn|http:\/\/|https:\/\/|www\.)/i;
+function looksLikeSpam(m: Message): boolean {
+  const txt = `${m.name} ${m.message || ""}`;
+  if (SPAM_KEYWORDS.test(txt)) return true;
+  if ((m.message || "").length > 1500) return true;
+  if (/^[A-Z ]{4,}$/.test(m.name)) return true;
+  return false;
 }
 
 export default function MessagesPage() {
@@ -31,6 +36,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "spam">("all");
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this message? This cannot be undone.")) return;
@@ -60,6 +66,12 @@ export default function MessagesPage() {
       .finally(() => setLoading(false));
   }, [status]);
 
+  const spamCount = useMemo(() => messages.filter(looksLikeSpam).length, [messages]);
+  const visible = useMemo(() => {
+    if (filter === "spam") return messages.filter(looksLikeSpam);
+    return messages.filter((m) => !looksLikeSpam(m));
+  }, [filter, messages]);
+
   if (status !== "authenticated") return null;
 
   return (
@@ -72,80 +84,100 @@ export default function MessagesPage() {
         <span className="text-sm font-body text-navy/40 shrink-0">{messages.length} total</span>
       </div>
 
+      <div className="mb-4">
+        <Segmented value={filter} onValueChange={(v) => setFilter(v as "all" | "spam")}>
+          <SegmentedList>
+            <SegmentedItem value="all">Inbox ({messages.length - spamCount})</SegmentedItem>
+            <SegmentedItem value="spam">Spam ({spamCount})</SegmentedItem>
+          </SegmentedList>
+        </Segmented>
+      </div>
+
       {loading ? (
         <p className="text-navy/40 font-body text-sm">Loading messages...</p>
-      ) : messages.length === 0 ? (
-        <p className="text-navy/40 font-body text-sm">No messages yet.</p>
+      ) : visible.length === 0 ? (
+        <EmptyState
+          title={filter === "spam" ? "No spam detected" : "No messages yet"}
+          description={
+            filter === "spam"
+              ? "Messages flagged by spam heuristics will appear here."
+              : "New contact-form submissions will show up here."
+          }
+        />
       ) : (
         <div className="bg-white border border-navy/10 divide-y divide-navy/5">
-          {messages.map((msg) => (
-            <div key={msg.id} className="px-3 sm:px-6 py-4">
-              <button
-                onClick={() => setExpandedId(expandedId === msg.id ? null : msg.id)}
-                className="w-full text-left"
-              >
-                <div className="flex items-start justify-between gap-3 sm:gap-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-body font-bold text-sm truncate">{msg.name}</p>
-                    <p className="text-navy/50 text-xs font-body break-words">
-                      <span className="break-all">{msg.email}</span>
-                      {msg.phone ? (
-                        <>
-                          <span className="hidden sm:inline"> | </span>
-                          <span className="block sm:inline">{msg.phone}</span>
-                        </>
-                      ) : null}
-                    </p>
-                    {msg.service && (
-                      <span className="inline-block mt-1 text-[11px] bg-navy/5 text-navy/60 px-2 py-0.5 font-body max-w-full truncate">
-                        {msg.service}
-                      </span>
-                    )}
+          {visible.map((msg) => {
+            const isSpam = looksLikeSpam(msg);
+            return (
+              <div key={msg.id} className="px-3 sm:px-6 py-4">
+                <button
+                  onClick={() => setExpandedId(expandedId === msg.id ? null : msg.id)}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-start justify-between gap-3 sm:gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-body font-bold text-sm truncate">{msg.name}</p>
+                        {isSpam && <Badge tone="warning" size="sm">Spam?</Badge>}
+                      </div>
+                      <p className="text-navy/50 text-xs font-body break-words">
+                        <span className="break-all">{msg.email}</span>
+                        {msg.phone ? (
+                          <>
+                            <span className="hidden sm:inline"> | </span>
+                            <span className="block sm:inline">{msg.phone}</span>
+                          </>
+                        ) : null}
+                      </p>
+                      {msg.service && (
+                        <div className="mt-1">
+                          <Badge tone="neutral" size="sm">{msg.service}</Badge>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[11px] text-navy/40 font-body whitespace-nowrap">
+                        {formatDate(msg.created_at, "long")}
+                      </p>
+                      <span className="text-navy/30 text-xs">{expandedId === msg.id ? "▲" : "▼"}</span>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-[11px] text-navy/40 font-body whitespace-nowrap">
-                      {formatDate(msg.created_at)}
-                    </p>
-                    <span className="text-navy/30 text-xs">{expandedId === msg.id ? "▲" : "▼"}</span>
-                  </div>
-                </div>
-                {msg.message && expandedId !== msg.id && (
-                  <p className="text-navy/40 text-xs font-body mt-2 truncate">{msg.message}</p>
-                )}
-              </button>
+                  {msg.message && expandedId !== msg.id && (
+                    <p className="text-navy/40 text-xs font-body mt-2 truncate">{msg.message}</p>
+                  )}
+                </button>
 
-              {expandedId === msg.id && msg.message && (
-                <div className="mt-3 p-3 sm:p-4 bg-cream/50 border border-navy/5 rounded overflow-hidden">
-                  <p className="text-sm font-body text-navy/70 whitespace-pre-wrap [overflow-wrap:anywhere]">
-                    {msg.message}
-                  </p>
-                  <div className="flex flex-wrap gap-2 sm:gap-3 mt-4">
-                    <a
-                      href={`mailto:${msg.email}?subject=Re: Your inquiry at The Look Hair Salon`}
-                      className="text-xs font-body text-blue-600 border border-blue-200 px-3 py-1.5 hover:bg-blue-50"
-                    >
-                      Reply by email
-                    </a>
-                    {msg.phone && (
-                      <a
-                        href={`tel:${msg.phone}`}
-                        className="text-xs font-body text-green-600 border border-green-200 px-3 py-1.5 hover:bg-green-50 whitespace-nowrap"
+                {expandedId === msg.id && msg.message && (
+                  <div className="mt-3 p-3 sm:p-4 bg-cream/50 border border-navy/5 rounded overflow-hidden">
+                    <p className="text-sm font-body text-navy/70 whitespace-pre-wrap [overflow-wrap:anywhere]">
+                      {msg.message}
+                    </p>
+                    <div className="flex flex-wrap gap-2 sm:gap-3 mt-4">
+                      <Button variant="secondary" size="sm" asChild>
+                        <a href={`mailto:${msg.email}?subject=Re: Your inquiry at The Look Hair Salon`}>
+                          Reply by email
+                        </a>
+                      </Button>
+                      {msg.phone && (
+                        <Button variant="secondary" size="sm" asChild>
+                          <a href={`tel:${msg.phone}`}>Call {msg.phone}</a>
+                        </Button>
+                      )}
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        className="sm:ml-auto"
+                        onClick={() => handleDelete(msg.id)}
+                        loading={deletingId === msg.id}
                       >
-                        Call {msg.phone}
-                      </a>
-                    )}
-                    <button
-                      onClick={() => handleDelete(msg.id)}
-                      disabled={deletingId === msg.id}
-                      className="sm:ml-auto text-xs font-body text-red-600 border border-red-200 px-3 py-1.5 hover:bg-red-50 disabled:opacity-60"
-                    >
-                      {deletingId === msg.id ? "Deleting..." : "Delete"}
-                    </button>
+                        Delete
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

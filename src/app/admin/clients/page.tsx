@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { displayEmail } from "@/lib/format";
+import { displayEmail, formatMoney } from "@/lib/format";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 
 interface ClientRow {
   email: string;
@@ -27,9 +29,7 @@ interface SearchHit {
   banned: boolean;
 }
 
-function formatCents(c: number) {
-  return `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
-}
+const formatCents = (c: number) => formatMoney(c, { from: "cents" });
 
 function useDebounced<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -171,19 +171,13 @@ export default function ClientsPage() {
           <p className="text-navy/40 text-sm font-body mt-1">{total.toLocaleString()} total</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setImportOpen(true)}
-            className="px-3 py-2 text-xs font-body border border-navy/20 hover:bg-navy/5 uppercase tracking-widest"
-          >
+          <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
             Import CSV
-          </button>
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- this is a server route, not a page */}
-          <a
-            href="/api/admin/clients/export/"
-            className="px-3 py-2 text-xs font-body border border-navy/20 hover:bg-navy/5 uppercase tracking-widest"
-          >
-            Export CSV
-          </a>
+          </Button>
+          <Button variant="secondary" size="sm" asChild>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- this is a server route, not a page */}
+            <a href="/api/admin/clients/export/">Export CSV</a>
+          </Button>
         </div>
       </div>
 
@@ -212,9 +206,7 @@ export default function ClientsPage() {
                     <p className="text-sm font-body font-bold truncate">{hit.name}</p>
                     <p className="text-xs font-body text-navy/50 truncate">{hit.email}{hit.phone ? ` · ${hit.phone}` : ""}</p>
                   </div>
-                  {hit.banned && (
-                    <span className="text-[10px] uppercase tracking-widest bg-red-100 text-red-700 px-1.5 py-0.5 font-body shrink-0">Banned</span>
-                  )}
+                  {hit.banned && <Badge tone="danger" size="sm">Banned</Badge>}
                 </button>
               ))}
               <button
@@ -272,14 +264,10 @@ export default function ClientsPage() {
                   <Link href={`/admin/clients/${encodeURIComponent(c.email)}`} className="font-body font-bold text-sm text-navy hover:text-rose truncate">
                     {c.name}
                   </Link>
-                  {c.banned && (
-                    <span className="text-[10px] uppercase tracking-widest bg-red-100 text-red-700 px-1.5 py-0.5 font-body">Banned</span>
-                  )}
-                  {c.visits > 1 && !c.banned && (
-                    <span className="text-[10px] font-body bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{c.visits}x</span>
-                  )}
+                  {c.banned && <Badge tone="danger" size="sm">Banned</Badge>}
+                  {c.visits > 1 && !c.banned && <Badge tone="info" size="sm">{c.visits}x</Badge>}
                   {c.noShows > 0 && (
-                    <span className="text-[10px] font-body bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">{c.noShows} no-show{c.noShows > 1 ? "s" : ""}</span>
+                    <Badge tone="warning" size="sm">{c.noShows} no-show{c.noShows > 1 ? "s" : ""}</Badge>
                   )}
                 </div>
                 {(() => {

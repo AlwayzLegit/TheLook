@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface ApiReview {
   author: string;
@@ -104,12 +107,9 @@ export default function AdminReviewsPage() {
     <div className="p-4 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 className="font-heading text-3xl">Reviews</h1>
-        <button
-          onClick={copyLink}
-          className="px-4 py-2 border border-navy/20 text-sm font-body hover:bg-navy/5 transition-colors"
-        >
+        <Button variant="secondary" size="sm" onClick={copyLink}>
           {copied ? "Copied!" : `Copy review link (${reviewLink || "/review"})`}
-        </button>
+        </Button>
       </div>
 
       {/* Stats */}
@@ -179,7 +179,7 @@ export default function AdminReviewsPage() {
           </p>
         </div>
       ) : filtered.length === 0 ? (
-        <p className="text-navy/40 font-body text-sm">No reviews match this filter.</p>
+        <EmptyState title="No reviews match this filter" />
       ) : (
         <div className="space-y-4">
           {filtered.map((r, i) => (
@@ -205,11 +205,7 @@ export default function AdminReviewsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-body tracking-wider uppercase px-2.5 py-1 ${
-                    r.source === "Yelp" ? "bg-rose/10 text-rose" : "bg-navy/5 text-navy/60"
-                  }`}>
-                    {r.source}
-                  </span>
+                  <Badge tone={r.source === "Yelp" ? "danger" : "neutral"} size="sm">{r.source}</Badge>
                   <Stars rating={r.rating} />
                 </div>
               </div>

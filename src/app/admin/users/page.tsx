@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 
 interface User {
   id: string;
@@ -125,9 +127,9 @@ export default function UsersPage() {
           <h1 className="font-heading text-3xl">User Management</h1>
           <p className="text-navy/40 text-sm font-body mt-1">Manage admin and stylist accounts</p>
         </div>
-        <button onClick={() => { resetForm(); setShowForm(true); }} className="px-4 py-2 bg-navy text-white text-sm font-body hover:bg-navy/90">
+        <Button variant="primary" size="sm" onClick={() => { resetForm(); setShowForm(true); }}>
           + Add User
-        </button>
+        </Button>
       </div>
 
       {/* Form Modal */}
@@ -179,22 +181,16 @@ export default function UsersPage() {
       {loading ? (
         <p className="text-navy/40 font-body text-sm">Loading...</p>
       ) : users.length === 0 ? (
-        <div className="bg-white p-8 border border-amber-200 bg-amber-50 text-left">
-          <p className="font-heading text-base mb-2 text-amber-900">⚠ No database users yet</p>
-          <p className="text-amber-900/80 font-body text-sm mb-2">
-            You&apos;re currently signed in via the shared <code>ADMIN_PASSWORD</code> env var.
-            That&apos;s fine for the very first login, but anyone with that password has full
-            access to the salon&apos;s data.
-          </p>
-          <p className="text-amber-900/80 font-body text-sm">
-            Create at least one admin account here. As soon as a database user exists, the
-            shared env-var password is automatically disabled and every login is per-person.
+        <div className="p-4 border border-amber-200 bg-amber-50 rounded-md">
+          <p className="font-body font-bold text-sm text-amber-900">No database users yet</p>
+          <p className="text-amber-900/80 font-body text-xs mt-1">
+            Signed in via the shared <code>ADMIN_PASSWORD</code> env var. Create at least one admin
+            account so every login is per-person.
           </p>
         </div>
       ) : (
-        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-body rounded">
-          ✓ Database authentication active — the shared env-var password is disabled. Each
-          admin signs in with their own email + password.
+        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-body rounded-md">
+          Database auth active — the shared env-var password is disabled.
         </div>
       )}
       {users.length > 0 && (
@@ -202,12 +198,10 @@ export default function UsersPage() {
           {users.map((u) => (
             <div key={u.id} className={`px-6 py-4 flex items-center justify-between ${!u.active ? "opacity-50" : ""}`}>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-body font-bold text-sm">{u.name}</p>
-                  <span className={`text-[10px] font-body px-2 py-0.5 rounded ${
-                    u.role === "admin" ? "bg-rose/10 text-rose" : "bg-blue-100 text-blue-700"
-                  }`}>{u.role}</span>
-                  {!u.active && <span className="text-[10px] font-body bg-gray-100 text-gray-600 px-2 py-0.5 rounded">Inactive</span>}
+                  <Badge tone={u.role === "admin" ? "accent" : "info"} size="sm">{u.role}</Badge>
+                  {!u.active && <Badge tone="neutral" size="sm">Inactive</Badge>}
                 </div>
                 <p className="text-navy/50 text-xs font-body">{u.email}</p>
                 {u.role === "stylist" && u.stylist_id && (
@@ -215,8 +209,8 @@ export default function UsersPage() {
                 )}
               </div>
               <div className="flex gap-2">
-                <button onClick={() => handleEdit(u)} className="text-xs font-body text-blue-600 border border-blue-200 px-3 py-1 hover:bg-blue-50">Edit</button>
-                <button onClick={() => setConfirmDeleteId(u.id)} className="text-xs font-body text-red-600 border border-red-200 px-3 py-1 hover:bg-red-50">Delete</button>
+                <Button variant="secondary" size="sm" onClick={() => handleEdit(u)}>Edit</Button>
+                <Button variant="danger" size="sm" onClick={() => setConfirmDeleteId(u.id)}>Delete</Button>
               </div>
             </div>
           ))}

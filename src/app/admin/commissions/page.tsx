@@ -4,17 +4,17 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminToast from "@/components/admin/AdminToast";
+import { formatMoney } from "@/lib/format";
 
-interface Stylist { id: string; name: string; }
+interface Stylist { id: string; name: string; color?: string | null; }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface Commission { stylist_id: string; commission_percent: number; hourly_rate: number | null; stylists?: any; }
- 
+
 interface Appointment { id: string; stylist_id: string; service_id: string; date: string; status: string; }
 interface Service { id: string; price_min: number; }
 
-function formatCents(c: number) {
-  return `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
-}
+// Always-two-decimal money via the shared helper (plan bug #4).
+const formatCents = (c: number) => formatMoney(c, { from: "cents" });
 
 export default function CommissionsPage() {
   const { data: session, status } = useSession();

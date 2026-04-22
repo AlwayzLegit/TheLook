@@ -44,6 +44,7 @@ export async function PATCH(
     specialties: specialtiesJson,
     active: payload.active,
     sort_order: payload.sort_order,
+    color: payload.color || null,
     updated_at: new Date().toISOString(),
   };
 

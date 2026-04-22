@@ -7,6 +7,10 @@ import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import ImageUpload from "@/components/admin/ImageUpload";
 import ServiceVariantsEditor from "@/components/admin/ServiceVariantsEditor";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { formatDuration } from "@/lib/format";
+import Image from "next/image";
 
 interface Service {
   id: string;
@@ -399,7 +403,10 @@ export default function ServicesPage() {
       {loading ? (
         <p className="text-navy/40 font-body">Loading services...</p>
       ) : services.length === 0 ? (
-        <p className="text-navy/40 font-body">No services found.</p>
+        <EmptyState
+          title="No services yet"
+          description="Add your first service to let clients book online."
+        />
       ) : (
         <div className="space-y-6">
           {groupedServices.map(({ category, items }) => (
@@ -409,22 +416,26 @@ export default function ServicesPage() {
               </div>
               <div className="divide-y divide-navy/5">
                 {items.map((service) => (
-                  <div key={service.id} className="px-6 py-4 flex items-center justify-between">
-                    <div>
-                      <p className="font-body font-bold text-sm">{service.name}</p>
-                      <p className="text-navy/50 text-xs font-body">
-                        {service.price_text} • {service.duration} min
-                      </p>
+                  <div key={service.id} className="px-6 py-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
                       {service.image_url ? (
-                        <p className="text-navy/40 text-[11px] font-body mt-1 break-all">
-                          {service.image_url}
-                        </p>
-                      ) : null}
-                      {!service.active && (
-                        <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5">
-                          Inactive
-                        </span>
+                        <div className="w-12 h-12 rounded overflow-hidden shrink-0 bg-cream/40 relative">
+                          <Image src={service.image_url} alt={service.name} fill sizes="48px" className="object-cover" unoptimized />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded shrink-0 bg-cream flex items-center justify-center text-navy/30 text-xs font-body">
+                          —
+                        </div>
                       )}
+                      <div className="min-w-0">
+                        <p className="font-body font-bold text-sm flex items-center gap-2">
+                          {service.name}
+                          {!service.active && <Badge tone="neutral" size="sm">Inactive</Badge>}
+                        </p>
+                        <p className="text-navy/50 text-xs font-body">
+                          {service.price_text} · {formatDuration(service.duration)}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <button

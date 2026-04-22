@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
       specialties: specialtiesJson,
       active: payload.active ?? true,
       sort_order: payload.sort_order ?? 0,
+      color: payload.color || null,
     })
     .select()
     .single();

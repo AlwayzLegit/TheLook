@@ -17,6 +17,7 @@ const ALLOWED_KEYS = new Set([
   "sms_booking_cancelled_enabled",
   "sms_booking_reschedule_enabled",
   "sms_staff_new_booking_enabled",
+  "idle_timeout_minutes",
 ]);
 
 export async function GET() {

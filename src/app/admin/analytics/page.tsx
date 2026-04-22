@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { StatCard } from "@/components/ui/StatCard";
+import { Chart, Sparkline, CHART_COLORS } from "@/components/ui/Chart";
+import { formatMoney } from "@/lib/format";
 
 interface Appointment {
   id: string;
@@ -23,9 +26,7 @@ interface Service {
   price_min: number;
 }
 
-function formatCents(c: number) {
-  return `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
-}
+const formatCents = (c: number) => formatMoney(c, { from: "cents" });
 
 function timeToMin(t: string) {
   const [h, m] = t.split(":").map(Number);
@@ -64,8 +65,19 @@ export default function AnalyticsPage() {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - range);
   const cutoffStr = cutoff.toISOString().split("T")[0];
+  const priorCutoff = new Date();
+  priorCutoff.setDate(priorCutoff.getDate() - range * 2);
+  const priorCutoffStr = priorCutoff.toISOString().split("T")[0];
   const rangeAppts = appointments.filter((a) => a.date >= cutoffStr);
   const billable = rangeAppts.filter((a) => a.status === "confirmed" || a.status === "completed");
+  const priorBillable = appointments.filter(
+    (a) => a.date >= priorCutoffStr && a.date < cutoffStr && (a.status === "confirmed" || a.status === "completed"),
+  );
+  const priorRevenue = priorBillable.reduce((s, a) => s + (svcMap[a.service_id]?.price_min || 0), 0);
+  const pctDelta = (curr: number, prev: number): number | null => {
+    if (prev === 0) return null;
+    return ((curr - prev) / prev) * 100;
+  };
 
   // Revenue by day
   const revenueByDay: Record<string, number> = {};
@@ -73,7 +85,6 @@ export default function AnalyticsPage() {
     revenueByDay[a.date] = (revenueByDay[a.date] || 0) + (svcMap[a.service_id]?.price_min || 0);
   });
   const dailyRevenue = Object.entries(revenueByDay).sort(([a], [b]) => a.localeCompare(b));
-  const maxRevenue = Math.max(...dailyRevenue.map(([, v]) => v), 1);
 
   // Busiest day of week
   const dayOfWeekCounts = [0, 0, 0, 0, 0, 0, 0];
@@ -126,7 +137,11 @@ export default function AnalyticsPage() {
   // Summary stats
   const totalRevenue = billable.reduce((s, a) => s + (svcMap[a.service_id]?.price_min || 0), 0);
   const avgTransaction = billable.length > 0 ? Math.round(totalRevenue / billable.length) : 0;
+  const priorAvg = priorBillable.length > 0 ? Math.round(priorRevenue / priorBillable.length) : 0;
   const totalHours = billable.reduce((s, a) => s + (timeToMin(a.end_time) - timeToMin(a.start_time)), 0) / 60;
+  const priorHours = priorBillable.reduce((s, a) => s + (timeToMin(a.end_time) - timeToMin(a.start_time)), 0) / 60;
+  const revenueSeries = dailyRevenue.map(([date, rev]) => ({ date: date.slice(5), revenue: rev }));
+  const revenueSparkline = dailyRevenue.map(([, v]) => v);
 
   return (
     <div className="p-4 sm:p-8">
@@ -150,43 +165,47 @@ export default function AnalyticsPage() {
         <>
           {/* Summary cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white p-5 border border-navy/10">
-              <p className="text-navy/40 text-xs font-body">Total Revenue</p>
-              <p className="font-heading text-2xl mt-1 text-green-600">{formatCents(totalRevenue)}</p>
-            </div>
-            <div className="bg-white p-5 border border-navy/10">
-              <p className="text-navy/40 text-xs font-body">Appointments</p>
-              <p className="font-heading text-2xl mt-1">{billable.length}</p>
-            </div>
-            <div className="bg-white p-5 border border-navy/10">
-              <p className="text-navy/40 text-xs font-body">Avg Transaction</p>
-              <p className="font-heading text-2xl mt-1">{formatCents(avgTransaction)}</p>
-            </div>
-            <div className="bg-white p-5 border border-navy/10">
-              <p className="text-navy/40 text-xs font-body">Hours Booked</p>
-              <p className="font-heading text-2xl mt-1">{Math.round(totalHours)}</p>
-            </div>
+            <StatCard
+              label="Total Revenue"
+              value={formatCents(totalRevenue)}
+              delta={pctDelta(totalRevenue, priorRevenue)}
+              deltaLabel={`vs previous ${range}d`}
+              sparkline={revenueSparkline.length > 1 ? <Sparkline values={revenueSparkline} color={CHART_COLORS[3]} /> : undefined}
+            />
+            <StatCard
+              label="Appointments"
+              value={billable.length.toString()}
+              delta={pctDelta(billable.length, priorBillable.length)}
+              deltaLabel={`vs previous ${range}d`}
+            />
+            <StatCard
+              label="Avg Transaction"
+              value={formatCents(avgTransaction)}
+              delta={pctDelta(avgTransaction, priorAvg)}
+              deltaLabel={`vs previous ${range}d`}
+            />
+            <StatCard
+              label="Hours Booked"
+              value={Math.round(totalHours).toString()}
+              delta={pctDelta(totalHours, priorHours)}
+              deltaLabel={`vs previous ${range}d`}
+            />
           </div>
 
           {/* Revenue chart */}
-          <div className="bg-white p-5 border border-navy/10 mb-8">
+          <div className="bg-white p-5 border border-navy/10 mb-8 rounded-lg">
             <h3 className="font-heading text-sm mb-4">Daily Revenue</h3>
             {dailyRevenue.length === 0 ? (
               <p className="text-navy/30 text-xs font-body">No revenue data for this period</p>
             ) : (
-              <div className="flex items-end gap-1 h-32">
-                {dailyRevenue.map(([date, rev]) => (
-                  <div key={date} className="flex-1 flex flex-col items-center justify-end h-full group relative">
-                    <div
-                      className="w-full bg-green-400 hover:bg-green-500 rounded-t-sm transition-colors min-h-[2px]"
-                      style={{ height: `${(rev / maxRevenue) * 100}%` }}
-                    />
-                    <div className="hidden group-hover:block absolute -top-8 bg-navy text-white text-[10px] font-body px-2 py-1 rounded whitespace-nowrap z-10">
-                      {date.slice(5)}: {formatCents(rev)}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <Chart
+                data={revenueSeries}
+                dataKey="date"
+                series={[{ key: "revenue", label: "Revenue", color: CHART_COLORS[3] }]}
+                kind="bar"
+                height={200}
+                yFormatter={(v) => formatCents(v)}
+              />
             )}
           </div>
 

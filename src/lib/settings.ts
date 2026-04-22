@@ -12,7 +12,9 @@ export type SettingsKey =
   | "sms_booking_status_change_enabled"
   | "sms_booking_cancelled_enabled"
   | "sms_booking_reschedule_enabled"
-  | "sms_staff_new_booking_enabled";
+  | "sms_staff_new_booking_enabled"
+  // Admin UX
+  | "idle_timeout_minutes";
 
 const cache = new Map<string, { value: string | null; ts: number }>();
 const TTL_MS = 30_000;

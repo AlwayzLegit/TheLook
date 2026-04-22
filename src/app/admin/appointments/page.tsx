@@ -9,8 +9,11 @@ import ConfirmModal from "@/components/admin/ConfirmModal";
 import { downloadIcs } from "@/lib/icsExport";
 import { todayISOInLA, addDaysISOInLA } from "@/lib/datetime";
 import AppointmentCalendar from "@/components/admin/AppointmentCalendar";
-import NewAppointmentModal from "@/components/admin/NewAppointmentModal";
+import NewAppointmentSheet from "@/components/admin/NewAppointmentSheet";
 import AppointmentActionsModal from "@/components/admin/AppointmentActionsModal";
+import { Button } from "@/components/ui/Button";
+import { Badge, badgeToneForStatus } from "@/components/ui/Badge";
+import { formatTime as fmtTime, formatDate as fmtDate } from "@/lib/format";
 
 interface Service {
   id: string;
@@ -52,12 +55,6 @@ interface EnrichedAppointment {
 function formatTime(time: string) {
   const [h, m] = time.split(":").map(Number);
   return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
-}
-
-function formatDate(date: string) {
-  return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
-    weekday: "short", month: "short", day: "numeric",
-  });
 }
 
 export default function AppointmentsPage() {
@@ -358,12 +355,9 @@ export default function AppointmentsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-6">
         <h1 className="font-heading text-2xl sm:text-3xl">Appointments</h1>
         <div className="flex items-center flex-wrap gap-2 sm:gap-3">
-          <button
-            onClick={() => setShowNewAppt(true)}
-            className="px-4 py-2 text-xs font-body bg-rose text-white hover:bg-rose-light uppercase tracking-widest"
-          >
+          <Button variant="primary" size="sm" onClick={() => setShowNewAppt(true)}>
             + New Appointment
-          </button>
+          </Button>
           <button
             onClick={() => {
               const events = filteredAppts.filter((a) => a.status !== "cancelled").map((a) => ({
@@ -638,17 +632,13 @@ export default function AppointmentsPage() {
                   {appt.notes && <p className="text-navy/40 text-xs font-body mt-1 italic">&ldquo;{appt.notes}&rdquo;</p>}
                 </div>
                 <div className="text-right shrink-0 ml-4">
-                  <p className="font-body text-sm">{formatDate(appt.date)}</p>
-                  <p className="font-body text-sm">{formatTime(appt.start_time)} – {formatTime(appt.end_time)}</p>
-                  <span className={`inline-block mt-1 text-xs font-body px-2 py-0.5 ${
-                    appt.status === "confirmed" ? "bg-green-100 text-green-700" :
-                    appt.status === "cancelled" ? "bg-red-100 text-red-700" :
-                    appt.status === "completed" ? "bg-blue-100 text-blue-700" :
-                    appt.status === "no_show" ? "bg-gray-100 text-gray-700" :
-                    "bg-gold/20 text-gold"
-                  }`}>
-                    {appt.status}
-                  </span>
+                  <p className="font-body text-sm">{fmtDate(appt.date, "withDay")}</p>
+                  <p className="font-body text-sm">{fmtTime(appt.start_time)} – {fmtTime(appt.end_time)}</p>
+                  <div className="mt-1 inline-block">
+                    <Badge tone={badgeToneForStatus(appt.status)} size="sm">
+                      {appt.status.replace("_", " ")}
+                    </Badge>
+                  </div>
                 </div>
               </div>
 
@@ -802,15 +792,11 @@ export default function AppointmentsPage() {
                     <p className="text-sm font-body">{h.serviceName}</p>
                     <p className="text-xs font-body text-navy/40">{h.date} &middot; {formatTime(h.start_time)}</p>
                   </div>
-                  <span className={`text-xs font-body px-2 py-0.5 self-start ${
-                    h.status === "confirmed" ? "bg-green-100 text-green-700" :
-                    h.status === "completed" ? "bg-blue-100 text-blue-700" :
-                    h.status === "cancelled" ? "bg-red-100 text-red-700" :
-                    h.status === "no_show" ? "bg-gray-100 text-gray-700" :
-                    "bg-amber-100 text-amber-700"
-                  }`}>
-                    {h.status}
-                  </span>
+                  <div className="self-start">
+                    <Badge tone={badgeToneForStatus(h.status)} size="sm">
+                      {h.status.replace("_", " ")}
+                    </Badge>
+                  </div>
                 </div>
               ))}
             </div>
@@ -836,7 +822,7 @@ export default function AppointmentsPage() {
         <AdminToast type={toast.type} message={toast.message} onClose={() => setToast(null)} />
       ) : null}
 
-      <NewAppointmentModal
+      <NewAppointmentSheet
         open={showNewAppt}
         onClose={() => setShowNewAppt(false)}
         onCreated={() => {
