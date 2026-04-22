@@ -17,6 +17,7 @@ interface Message {
   service: string | null;
   message: string | null;
   created_at: string;
+  read_at: string | null;
 }
 
 // Heuristics adapted from the community-standard "contact form spam" signals.
@@ -67,10 +68,35 @@ export default function MessagesPage() {
   }, [status]);
 
   const spamCount = useMemo(() => messages.filter(looksLikeSpam).length, [messages]);
+  const unreadCount = useMemo(
+    () => messages.filter((m) => !looksLikeSpam(m) && !m.read_at).length,
+    [messages],
+  );
   const visible = useMemo(() => {
     if (filter === "spam") return messages.filter(looksLikeSpam);
     return messages.filter((m) => !looksLikeSpam(m));
   }, [filter, messages]);
+
+  // Auto-mark read the first time an admin opens a message. Optimistic
+  // update so the UI doesn't blink while the PATCH flies.
+  const markRead = async (id: string) => {
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, read_at: m.read_at ?? new Date().toISOString() } : m)));
+    try {
+      await fetch(`/api/admin/messages/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ read: true }),
+      });
+    } catch {
+      // If the PATCH fails, the next full load will reconcile.
+    }
+  };
+
+  const openMessage = (msg: Message) => {
+    const nextId = expandedId === msg.id ? null : msg.id;
+    setExpandedId(nextId);
+    if (nextId && !msg.read_at) markRead(msg.id);
+  };
 
   if (status !== "authenticated") return null;
 
@@ -87,7 +113,12 @@ export default function MessagesPage() {
       <div className="mb-4">
         <Segmented value={filter} onValueChange={(v) => setFilter(v as "all" | "spam")}>
           <SegmentedList>
-            <SegmentedItem value="all">Inbox ({messages.length - spamCount})</SegmentedItem>
+            <SegmentedItem value="all">
+              Inbox ({messages.length - spamCount})
+              {unreadCount > 0 && (
+                <span className="ml-1.5 text-[var(--color-crimson-600)] font-medium">· {unreadCount} unread</span>
+              )}
+            </SegmentedItem>
             <SegmentedItem value="spam">Spam ({spamCount})</SegmentedItem>
           </SegmentedList>
         </Segmented>
@@ -108,16 +139,23 @@ export default function MessagesPage() {
         <div className="bg-white border border-navy/10 divide-y divide-navy/5">
           {visible.map((msg) => {
             const isSpam = looksLikeSpam(msg);
+            const isUnread = !msg.read_at;
             return (
-              <div key={msg.id} className="px-3 sm:px-6 py-4">
+              <div key={msg.id} className={"px-3 sm:px-6 py-4 " + (isUnread ? "bg-[var(--color-crimson-600)]/5" : "")}>
                 <button
-                  onClick={() => setExpandedId(expandedId === msg.id ? null : msg.id)}
+                  onClick={() => openMessage(msg)}
                   className="w-full text-left"
                 >
                   <div className="flex items-start justify-between gap-3 sm:gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-body font-bold text-sm truncate">{msg.name}</p>
+                        {isUnread && (
+                          <span
+                            className="h-2 w-2 rounded-full bg-[var(--color-crimson-600)] shrink-0"
+                            aria-label="Unread"
+                          />
+                        )}
+                        <p className={"font-body text-sm truncate " + (isUnread ? "font-bold" : "font-medium text-navy/70")}>{msg.name}</p>
                         {isSpam && <Badge tone="warning" size="sm">Spam?</Badge>}
                       </div>
                       <p className="text-navy/50 text-xs font-body break-words">

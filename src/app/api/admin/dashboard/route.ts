@@ -88,15 +88,29 @@ export async function GET() {
     };
     const allRows = (rows || []) as Row[];
     const apptIds = allRows.map((a) => a.id);
-    const [servicesRes, stylistsRes, mappingsRes, messagesRes, waitlistRes, productsRes] = await Promise.all([
+    // Pending counts run against the FULL table (no date range) so a
+    // pending booking older than the 30-day trend window still counts.
+    // Cheap: one row per pending appointment, no joins.
+    const pendingAllP = supabase
+      .from("appointments")
+      .select("id, date")
+      .eq("status", "pending")
+      .is("archived_at", null);
+
+    const [servicesRes, stylistsRes, mappingsRes, messagesRes, waitlistRes, productsRes, pendingAllRes] = await Promise.all([
       supabase.from("services").select("id, name, price_min, duration"),
       supabase.from("stylists").select("id, name, color, active, sort_order"),
       apptIds.length > 0
         ? supabase.from("appointment_services").select("appointment_id, service_id, price_min, duration").in("appointment_id", apptIds)
         : Promise.resolve({ data: [], error: null }),
-      supabase.from("contact_messages").select("id"),
+      // Only unread messages count toward "Needs attention"; the admin
+      // messages page marks read_at on first open. Schema fallback: if
+      // the column doesn't exist yet (pre-20260505), retry without it
+      // and treat every row as unread.
+      supabase.from("contact_messages").select("id").is("read_at", null),
       supabase.from("waitlist").select("id, status").eq("status", "waiting"),
       supabase.from("products").select("id, stock_qty, low_stock_threshold, active").eq("active", true),
+      pendingAllP,
     ]);
 
     type ServiceRow = { id: string; name: string; price_min: number; duration: number };
@@ -112,7 +126,15 @@ export async function GET() {
       price_min: number | null;
       duration: number | null;
     }>;
-    const messageCount = (messagesRes.data || []).length;
+    // If the read_at column isn't live yet (pre-20260505), the filtered
+    // query errors. Fall back to counting every row so the dashboard
+    // still renders — the number will just be inflated until the
+    // migration runs.
+    let messageCount = (messagesRes.data || []).length;
+    if (messagesRes.error && /read_at/i.test(messagesRes.error.message || "")) {
+      const retry = await supabase.from("contact_messages").select("id");
+      messageCount = (retry.data || []).length;
+    }
     const waitlistCount = (waitlistRes.data || []).length;
     const lowInventoryCount = (productsRes.data || []).filter(
       (p: { stock_qty: number | null; low_stock_threshold: number | null }) =>
@@ -183,11 +205,17 @@ export async function GET() {
     const revenueToday = todays.filter(billable).reduce((s, a) => s + a.priceMin, 0);
     const confirmedToday = todays.filter((a) => a.status === "confirmed").length;
     const pendingToday = todays.filter((a) => a.status === "pending").length;
-    const pendingTotal = shaped.filter((a) => a.status === "pending").length;
+    // Full-table pending counts (no date window) so a forgotten pending
+    // booking from 3 months ago still shows up. Falls back to the
+    // windowed slice if the full query errored for some reason.
+    const pendingAll = (pendingAllRes?.data as Array<{ date: string }> | null) || null;
+    const pendingTotal = pendingAll ? pendingAll.length : shaped.filter((a) => a.status === "pending").length;
     // Overdue-pending bucket (P2-2): appointments still flagged pending
     // past their date. Non-destructive — we just surface the count so
     // the admin can confirm / cancel manually. Never auto-cancelled.
-    const overduePending = shaped.filter((a) => a.status === "pending" && a.date < today).length;
+    const overduePending = pendingAll
+      ? pendingAll.filter((a) => a.date < today).length
+      : shaped.filter((a) => a.status === "pending" && a.date < today).length;
 
     // 14-day revenue + appt sparklines so we can show the last 7 and still
     // delta vs the week before.
