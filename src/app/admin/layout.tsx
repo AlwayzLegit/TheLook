@@ -86,11 +86,23 @@ function useBadgeCounts() {
   useEffect(() => {
     if (status !== "authenticated") return;
     const load = () => {
-      fetch("/api/admin/appointments?status=pending")
+      // Appointments badge matches what the admin sees when they click
+      // through to /admin/appointments (default `from=today`). Pending
+      // rows with a past date are stale and shouldn't nag forever;
+      // they're surfaced separately on the dashboard as "overdue
+      // pending" with a deep-link filter.
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      const fromDate = `${y}-${m}-${d}`;
+      fetch(`/api/admin/appointments?status=pending&from=${fromDate}`)
         .then((r) => r.json())
         .then((data) => setPending(Array.isArray(data) ? data.length : 0))
         .catch(() => {});
-      fetch("/api/admin/messages")
+      // Messages badge counts unread only (matches the dashboard's
+      // "Needs attention" card, post-PR C + migration 20260505).
+      fetch("/api/admin/messages?unreadOnly=true")
         .then((r) => r.json())
         .then((data) => setMessages(Array.isArray(data) ? data.length : 0))
         .catch(() => {});
