@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Segmented, SegmentedList, SegmentedItem } from "@/components/ui/Tabs";
+import { toast } from "@/components/ui/Toaster";
 
 interface Message {
   id: string;
@@ -18,16 +19,27 @@ interface Message {
   message: string | null;
   created_at: string;
   read_at: string | null;
+  // Manual spam flag (migration 20260507). null = use heuristic.
+  is_spam: boolean | null;
 }
 
-// Heuristics adapted from the community-standard "contact form spam" signals.
+// Client-side spam heuristic (used when is_spam is null). Matches
+// community-standard contact-form spam signals: obvious payload
+// keywords, URLs, length, all-caps names.
 const SPAM_KEYWORDS = /(seo|backlinks?|ranking|crypto|bitcoin|loan|casino|viagra|escort|porn|http:\/\/|https:\/\/|www\.)/i;
-function looksLikeSpam(m: Message): boolean {
+function heuristicSpam(m: Message): boolean {
   const txt = `${m.name} ${m.message || ""}`;
   if (SPAM_KEYWORDS.test(txt)) return true;
   if ((m.message || "").length > 1500) return true;
   if (/^[A-Z ]{4,}$/.test(m.name)) return true;
   return false;
+}
+
+// Manual flag wins over heuristic when set.
+function isSpam(m: Message): boolean {
+  if (m.is_spam === true) return true;
+  if (m.is_spam === false) return false;
+  return heuristicSpam(m);
 }
 
 export default function MessagesPage() {
@@ -67,14 +79,14 @@ export default function MessagesPage() {
       .finally(() => setLoading(false));
   }, [status]);
 
-  const spamCount = useMemo(() => messages.filter(looksLikeSpam).length, [messages]);
+  const spamCount = useMemo(() => messages.filter(isSpam).length, [messages]);
   const unreadCount = useMemo(
-    () => messages.filter((m) => !looksLikeSpam(m) && !m.read_at).length,
+    () => messages.filter((m) => !isSpam(m) && !m.read_at).length,
     [messages],
   );
   const visible = useMemo(() => {
-    if (filter === "spam") return messages.filter(looksLikeSpam);
-    return messages.filter((m) => !looksLikeSpam(m));
+    if (filter === "spam") return messages.filter(isSpam);
+    return messages.filter((m) => !isSpam(m));
   }, [filter, messages]);
 
   // Auto-mark read the first time an admin opens a message. Optimistic
@@ -96,6 +108,34 @@ export default function MessagesPage() {
     const nextId = expandedId === msg.id ? null : msg.id;
     setExpandedId(nextId);
     if (nextId && !msg.read_at) markRead(msg.id);
+  };
+
+  // Optimistic manual-spam toggle. Sends `is_spam: true|false|null`
+  // (null clears the override and falls back to the heuristic).
+  const setSpam = async (id: string, value: boolean | null) => {
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, is_spam: value } : m)));
+    try {
+      const res = await fetch(`/api/admin/messages/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_spam: value }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to update message.");
+        // Best-effort rollback — reload the full list so we don't drift.
+        const fresh = await fetch("/api/admin/messages").then((r) => r.json()).catch(() => null);
+        if (Array.isArray(fresh)) setMessages(fresh);
+        return;
+      }
+      toast.success(
+        value === true ? "Marked as spam." :
+        value === false ? "Moved back to inbox." :
+        "Cleared manual flag.",
+      );
+    } catch {
+      toast.error("Network error updating message.");
+    }
   };
 
   if (status !== "authenticated") return null;
@@ -128,17 +168,19 @@ export default function MessagesPage() {
         <p className="text-navy/40 font-body text-sm">Loading messages...</p>
       ) : visible.length === 0 ? (
         <EmptyState
-          title={filter === "spam" ? "No spam detected" : "No messages yet"}
+          title={filter === "spam" ? "No spam" : "No messages yet"}
           description={
             filter === "spam"
-              ? "Messages flagged by spam heuristics will appear here."
+              ? "Manually flagged messages and anything the spam heuristic catches will appear here."
               : "New contact-form submissions will show up here."
           }
         />
       ) : (
         <div className="bg-white border border-navy/10 divide-y divide-navy/5">
           {visible.map((msg) => {
-            const isSpam = looksLikeSpam(msg);
+            const spam = isSpam(msg);
+            const manuallyFlagged = msg.is_spam === true;
+            const heuristicOnly = spam && msg.is_spam !== true && msg.is_spam !== false;
             const isUnread = !msg.read_at;
             return (
               <div key={msg.id} className={"px-3 sm:px-6 py-4 " + (isUnread ? "bg-[var(--color-crimson-600)]/5" : "")}>
@@ -156,7 +198,8 @@ export default function MessagesPage() {
                           />
                         )}
                         <p className={"font-body text-sm truncate " + (isUnread ? "font-bold" : "font-medium text-navy/70")}>{msg.name}</p>
-                        {isSpam && <Badge tone="warning" size="sm">Spam?</Badge>}
+                        {manuallyFlagged && <Badge tone="danger" size="sm">Spam</Badge>}
+                        {heuristicOnly && <Badge tone="warning" size="sm">Spam?</Badge>}
                       </div>
                       <p className="text-navy/50 text-xs font-body break-words">
                         <span className="break-all">{msg.email}</span>
@@ -204,6 +247,23 @@ export default function MessagesPage() {
                         >
                           Call {msg.phone}
                         </a>
+                      )}
+                      {spam ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setSpam(msg.id, false)}
+                        >
+                          Not spam
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setSpam(msg.id, true)}
+                        >
+                          Mark as spam
+                        </Button>
                       )}
                       <Button
                         variant="danger"

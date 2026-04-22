@@ -4,10 +4,11 @@ import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { NextRequest } from "next/server";
 
-// Admin marks a contact message as read. Body: { read: true } flips
-// read_at to now(); { read: false } clears it (lets a staffer unmark
-// if they want the notification back). Idempotent — no-op if the
-// state is already what they asked for.
+// Admin updates a contact message. Body:
+//   { read: true|false }    — stamps or clears read_at
+//   { is_spam: true|false|null } — manual spam flag (null = use heuristic)
+// Both can be sent in the same PATCH. Idempotent — sending the current
+// state is a no-op.
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -18,16 +19,31 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
-  const markRead = body?.read !== false; // default true
+
+  const update: Record<string, unknown> = {};
+  if (Object.prototype.hasOwnProperty.call(body, "read")) {
+    update.read_at = body.read === false ? null : new Date().toISOString();
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "is_spam")) {
+    // Accept true / false / null. Anything else ignored.
+    if (body.is_spam === true || body.is_spam === false || body.is_spam === null) {
+      update.is_spam = body.is_spam;
+    }
+  }
+
+  if (Object.keys(update).length === 0) {
+    return apiError("Nothing to update. Send { read } or { is_spam }.", 400);
+  }
 
   const { error } = await supabase
     .from("contact_messages")
-    .update({ read_at: markRead ? new Date().toISOString() : null })
+    .update(update)
     .eq("id", id);
   if (error) {
     logError("admin/messages PATCH", error);
     return apiError(`Failed to update message: ${error.message || "unknown"}`, 500);
   }
+  await logAdminAction("message.update", JSON.stringify({ id, ...update }));
   return apiSuccess({ ok: true });
 }
 
