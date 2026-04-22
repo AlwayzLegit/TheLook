@@ -35,6 +35,21 @@ interface Payload {
   health: { noShows: number; cancellations: number; cancelRate: number; totalWeek: number };
 }
 
+interface AudiencePayload {
+  configured: boolean;
+  visitorsWeek: number;
+  visitorsWeekPrev: number;
+  pageviewsWeek: number;
+  pageviewsWeekPrev: number;
+  pageviewsToday: number;
+  pageviewsYesterday: number;
+  sparkPageviews: number[];
+  sparkVisitors: number[];
+  topPages: Array<{ path: string; pageviews: number; visitors: number }>;
+  topReferrers: Array<{ domain: string; visits: number }>;
+  topDevices: Array<{ device: string; visits: number }>;
+}
+
 function deltaPct(curr: number, prev: number): number | null {
   if (prev === 0) return curr === 0 ? 0 : null;
   return ((curr - prev) / prev) * 100;
@@ -44,6 +59,7 @@ export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [payload, setPayload] = useState<Payload | null>(null);
+  const [audience, setAudience] = useState<AudiencePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [staffEmailsConfigured, setStaffEmailsConfigured] = useState<boolean | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -76,6 +92,23 @@ export default function AdminDashboard() {
     };
     load();
     const t = setInterval(load, 30_000);
+
+    // Audience (PostHog) — separate poll, slower cadence since the upstream
+    // route caches for 5 min anyway.
+    const loadAudience = () => {
+      fetch("/api/admin/analytics/posthog")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (!active || !data) return;
+          if (typeof data === "object" && "configured" in data) {
+            setAudience(data as AudiencePayload);
+          }
+        })
+        .catch(() => {});
+    };
+    loadAudience();
+    const t2 = setInterval(loadAudience, 120_000);
+
     // Banner for missing staff emails.
     fetch("/api/admin/settings")
       .then((r) => r.json())
@@ -84,7 +117,7 @@ export default function AdminDashboard() {
         setStaffEmailsConfigured(val.length > 0);
       })
       .catch(() => setStaffEmailsConfigured(null));
-    return () => { active = false; clearInterval(t); };
+    return () => { active = false; clearInterval(t); clearInterval(t2); };
   }, [status]);
 
   if (status !== "authenticated") return null;
@@ -241,6 +274,93 @@ export default function AdminDashboard() {
           sparkline={payload ? <Sparkline values={payload.trend.sparkAppts} color={CHART_COLORS[0]} /> : undefined}
         />
       </div>
+
+      {/* ─────── Audience row (PostHog) ─────── */}
+      {audience && audience.configured && (
+        <>
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Visitors · week"
+              value={audience.visitorsWeek.toLocaleString()}
+              delta={deltaPct(audience.visitorsWeek, audience.visitorsWeekPrev)}
+              deltaLabel="vs previous week"
+              sparkline={<Sparkline values={audience.sparkVisitors} color={CHART_COLORS[1]} />}
+            />
+            <StatCard
+              label="Pageviews · week"
+              value={audience.pageviewsWeek.toLocaleString()}
+              delta={deltaPct(audience.pageviewsWeek, audience.pageviewsWeekPrev)}
+              deltaLabel="vs previous week"
+              sparkline={<Sparkline values={audience.sparkPageviews} color={CHART_COLORS[2]} />}
+            />
+            <StatCard
+              label="Pageviews · today"
+              value={audience.pageviewsToday.toLocaleString()}
+              delta={deltaPct(audience.pageviewsToday, audience.pageviewsYesterday)}
+              deltaLabel="vs yesterday"
+            />
+            <StatCard
+              label="Pageviews / visitor"
+              value={(audience.visitorsWeek > 0
+                ? (audience.pageviewsWeek / audience.visitorsWeek)
+                : 0
+              ).toFixed(1)}
+              hint="Last 7 days"
+            />
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card>
+              <Eyebrow>Top pages · 7d</Eyebrow>
+              {audience.topPages.length === 0 ? (
+                <EmptyState compact title="No pageviews yet" />
+              ) : (
+                <ul className="mt-3 space-y-2 text-[0.8125rem]">
+                  {audience.topPages.map((p) => (
+                    <li key={p.path} className="flex items-baseline justify-between gap-3">
+                      <span className="truncate text-[var(--color-text)]" title={p.path}>{p.path}</span>
+                      <span className="text-[var(--color-text-muted)] tabular-nums shrink-0">
+                        {p.pageviews.toLocaleString()}
+                        <span className="text-[var(--color-text-subtle)] ml-1">· {p.visitors.toLocaleString()}u</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+            <Card>
+              <Eyebrow>Top referrers · 7d</Eyebrow>
+              {audience.topReferrers.length === 0 ? (
+                <EmptyState compact title="No referrers yet" description="Most visits still coming direct." />
+              ) : (
+                <ul className="mt-3 space-y-2 text-[0.8125rem]">
+                  {audience.topReferrers.map((r) => (
+                    <li key={r.domain} className="flex items-baseline justify-between gap-3">
+                      <span className="truncate text-[var(--color-text)]" title={r.domain}>{r.domain}</span>
+                      <span className="text-[var(--color-text-muted)] tabular-nums shrink-0">{r.visits.toLocaleString()}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+            <Card>
+              <Eyebrow>Devices · 7d</Eyebrow>
+              {audience.topDevices.length === 0 ? (
+                <EmptyState compact title="No device data yet" />
+              ) : (
+                <ul className="mt-3 space-y-2 text-[0.8125rem]">
+                  {audience.topDevices.map((d) => (
+                    <li key={d.device} className="flex items-baseline justify-between gap-3">
+                      <span className="capitalize text-[var(--color-text)]">{d.device}</span>
+                      <span className="text-[var(--color-text-muted)] tabular-nums shrink-0">{d.visits.toLocaleString()}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          </div>
+        </>
+      )}
 
       {/* ─────── Operational row ─────── */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
