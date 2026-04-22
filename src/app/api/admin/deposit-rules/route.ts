@@ -20,7 +20,11 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}));
   const parsed = depositRuleSchema.safeParse(body);
-  if (!parsed.success) return apiError("Invalid rule payload.", 400);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    const field = first?.path?.join(".") || "payload";
+    return apiError(`${field}: ${first?.message || "invalid"}`, 400);
+  }
 
   const { data, error } = await supabase
     .from("deposit_rules")
@@ -37,7 +41,9 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     logError("deposit-rules POST", error);
-    return apiError("Failed to create rule.", 500);
+    // Surface the Postgres message so the admin can self-diagnose
+    // (missing migration → "relation ... does not exist", etc.).
+    return apiError(`Failed to create rule: ${error.message}`, 500);
   }
 
   await logAdminAction("deposit_rule.create", JSON.stringify({ id: data.id, name: data.name }));

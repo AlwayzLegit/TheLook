@@ -16,7 +16,11 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
   const parsed = depositRuleSchema.partial().safeParse(body);
-  if (!parsed.success) return apiError("Invalid rule payload.", 400);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    const field = first?.path?.join(".") || "payload";
+    return apiError(`${field}: ${first?.message || "invalid"}`, 400);
+  }
 
   const update: Record<string, unknown> = { ...parsed.data, updated_at: new Date().toISOString() };
   const { data, error } = await supabase
@@ -28,7 +32,7 @@ export async function PATCH(
 
   if (error) {
     logError("deposit-rules PATCH", error);
-    return apiError("Failed to update rule.", 500);
+    return apiError(`Failed to update rule: ${error.message}`, 500);
   }
 
   await logAdminAction("deposit_rule.update", JSON.stringify({ id }));
