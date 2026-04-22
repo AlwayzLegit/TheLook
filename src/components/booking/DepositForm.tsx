@@ -9,6 +9,8 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 import { getStripeBrowser } from "@/lib/stripeBrowser";
+import { useBranding } from "@/components/BrandingProvider";
+import { telHref } from "@/lib/branding";
 
 interface Props {
   amountCents: number;
@@ -81,6 +83,7 @@ function CardForm({
 export default function DepositForm({
   amountCents, clientEmail, clientName, description, onSuccess,
 }: Props) {
+  const brand = useBranding();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -132,7 +135,8 @@ export default function DepositForm({
     return (
       <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 font-body text-sm">
         Card payments aren&apos;t configured on this site. Please call
-        (818) 662-5665 to pay the deposit by phone.
+        {" "}<a href={telHref(brand.phone)} className="underline">{brand.phone}</a>{" "}
+        to pay the deposit by phone.
       </div>
     );
   }
@@ -143,7 +147,7 @@ export default function DepositForm({
         <p className="font-bold">We&apos;re having trouble loading our payment system.</p>
         <p>
           Please try again in a moment, or call{" "}
-          <a href="tel:18186625665" className="underline">(818)&nbsp;662-5665</a>{" "}
+          <a href={telHref(brand.phone)} className="underline">{brand.phone}</a>{" "}
           to pay the deposit by phone.
         </p>
       </div>

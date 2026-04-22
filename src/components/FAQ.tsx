@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedSection from "./AnimatedSection";
+import { useBranding } from "./BrandingProvider";
 
-const faqs = [
+function buildFaqs(phone: string) {
+  return [
   {
     question: "Do I need an appointment, or do you accept walk-ins?",
     answer:
-      "Walk-ins are always welcome! However, we recommend booking an appointment to ensure your preferred stylist and time slot. You can book online through our website or call us directly at (818) 662-5665.",
+      `Walk-ins are always welcome! However, we recommend booking an appointment to ensure your preferred stylist and time slot. You can book online through our website or call us directly at ${phone}.`,
   },
   {
     question: "Will I be charged before the service?",
@@ -55,14 +57,17 @@ const faqs = [
     answer:
       "Absolutely! Gift cards are available in any denomination and can be purchased in-salon or by calling us. They make a perfect gift for any occasion.",
   },
-];
+  ];
+}
+
+type Faq = ReturnType<typeof buildFaqs>[number];
 
 function FAQItem({
   faq,
   isOpen,
   onToggle,
 }: {
-  faq: (typeof faqs)[0];
+  faq: Faq;
   isOpen: boolean;
   onToggle: () => void;
 }) {
@@ -106,6 +111,8 @@ function FAQItem({
 
 export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const brand = useBranding();
+  const faqs = buildFaqs(brand.phone);
 
   return (
     <section className="py-24 md:py-32 bg-warm-white">

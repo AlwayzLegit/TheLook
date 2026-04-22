@@ -4,9 +4,18 @@ import { useState, useEffect, FormEvent } from "react";
 import AnimatedSection from "./AnimatedSection";
 import TurnstileField from "./TurnstileField";
 import SalonHours from "./SalonHours";
+import { useBranding } from "./BrandingProvider";
+import { telHref, mailtoHref } from "@/lib/branding";
 
 export default function Contact() {
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const brand = useBranding();
+  const [addrLine1, addrLine2] = (() => {
+    const idx = brand.address.indexOf(",");
+    return idx === -1
+      ? [brand.address, ""]
+      : [brand.address.slice(0, idx).trim(), brand.address.slice(idx + 1).trim()];
+  })();
   const [serviceCategories, setServiceCategories] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: "",
@@ -239,8 +248,8 @@ export default function Contact() {
               <div>
                 <h3 className="font-heading text-2xl mb-4">Visit Us</h3>
                 <div className="text-navy/60 font-body font-light space-y-2">
-                  <p>919 South Central Ave Suite #E</p>
-                  <p>Glendale, CA 91204</p>
+                  <p>{addrLine1}</p>
+                  {addrLine2 && <p>{addrLine2}</p>}
                   <p className="text-navy/50 text-sm mt-2">
                     Free parking lot &amp; free street parking available.
                   </p>
@@ -254,18 +263,18 @@ export default function Contact() {
                 <div className="text-navy/60 font-body font-light space-y-2">
                   <p>
                     <a
-                      href="tel:+18186625665"
+                      href={telHref(brand.phone)}
                       className="hover:text-rose transition-colors text-lg"
                     >
-                      (818) 662-5665
+                      {brand.phone}
                     </a>
                   </p>
                   <p>
                     <a
-                      href="mailto:thelook_hairsalon@yahoo.com"
+                      href={mailtoHref(brand.email)}
                       className="hover:text-rose transition-colors"
                     >
-                      thelook_hairsalon@yahoo.com
+                      {brand.email}
                     </a>
                   </p>
                 </div>
@@ -281,14 +290,14 @@ export default function Contact() {
               {/* Google Maps Embed */}
               <div className="aspect-video overflow-hidden rounded-sm">
                 <iframe
-                  src="https://www.google.com/maps?q=919+S+Central+Ave+Suite+E,+Glendale,+CA+91204&output=embed"
+                  src={`https://www.google.com/maps?q=${encodeURIComponent(brand.address)}&output=embed`}
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}
                   allowFullScreen
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
-                  title="The Look Hair Salon location"
+                  title={`${brand.name} location`}
                 />
               </div>
             </div>

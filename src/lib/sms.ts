@@ -12,6 +12,7 @@
 
 import { hasSupabaseConfig, supabase } from "./supabase";
 import { getSetting } from "./settings";
+import { getBranding } from "./branding";
 
 export type SMSEvent =
   | "booking.confirm"
@@ -169,7 +170,16 @@ function pretty12h(time: string) {
   return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${ampm}`;
 }
 
-export function sendBookingConfirmationSMS(
+// Short-form brand for SMS. Keeps character count down — falls back to
+// the first two words of the full name if the owner hasn't saved a
+// short label explicitly (future brand_short_name field).
+function smsShortName(name: string): string {
+  const words = name.trim().split(/\s+/);
+  if (words.length <= 2) return name;
+  return words.slice(0, 2).join(" ");
+}
+
+export async function sendBookingConfirmationSMS(
   phone: string,
   clientName: string,
   serviceName: string,
@@ -178,32 +188,40 @@ export function sendBookingConfirmationSMS(
   appointmentId?: string,
   clientEmail?: string,
 ) {
+  const brand = await getBranding();
+  const shortName = smsShortName(brand.name);
   return sendSMS({
     to: phone,
     event: "booking.confirm",
     appointmentId: appointmentId || null,
     clientEmail: clientEmail || null,
-    body: `Hi ${clientName}! Your ${serviceName} at The Look is confirmed for ${shortDate(date)} at ${pretty12h(time)}. Reply STOP to opt out.`,
+    body: `Hi ${clientName}! Your ${serviceName} at ${shortName} is confirmed for ${shortDate(date)} at ${pretty12h(time)}. Reply STOP to opt out.`,
   });
 }
 
-export function sendReminderSMS(
+export async function sendReminderSMS(
   phone: string,
   clientName: string,
   time: string,
   appointmentId?: string,
   clientEmail?: string,
 ) {
+  const brand = await getBranding();
+  const shortName = smsShortName(brand.name);
+  // Shorten the address for the SMS — drop the "Suite #…" / ZIP tail so
+  // we fit in a single 160-char segment. Owner can override by saving a
+  // cleaner brand_address.
+  const shortAddr = brand.address.split(",").slice(0, 2).join(",").trim();
   return sendSMS({
     to: phone,
     event: "booking.reminder",
     appointmentId: appointmentId || null,
     clientEmail: clientEmail || null,
-    body: `Hi ${clientName}! Reminder: your appointment at The Look is tomorrow at ${pretty12h(time)}. 919 S Central Ave, Glendale. Reply STOP to opt out.`,
+    body: `Hi ${clientName}! Reminder: your appointment at ${shortName} is tomorrow at ${pretty12h(time)}. ${shortAddr}. Reply STOP to opt out.`,
   });
 }
 
-export function sendStatusChangeSMS(args: {
+export async function sendStatusChangeSMS(args: {
   phone: string;
   clientName: string;
   serviceName: string;
@@ -214,19 +232,21 @@ export function sendStatusChangeSMS(args: {
   clientEmail?: string;
 }) {
   const { phone, clientName, serviceName, date, time, newStatus, appointmentId, clientEmail } = args;
+  const brand = await getBranding();
+  const shortName = smsShortName(brand.name);
   let body: string;
   switch (newStatus) {
     case "confirmed":
-      body = `Hi ${clientName}, your ${serviceName} at The Look on ${shortDate(date)} at ${pretty12h(time)} is confirmed. See you then!`;
+      body = `Hi ${clientName}, your ${serviceName} at ${shortName} on ${shortDate(date)} at ${pretty12h(time)} is confirmed. See you then!`;
       break;
     case "cancelled":
-      body = `Hi ${clientName}, your ${serviceName} at The Look on ${shortDate(date)} has been cancelled. Call (818) 662-5665 to rebook.`;
+      body = `Hi ${clientName}, your ${serviceName} at ${shortName} on ${shortDate(date)} has been cancelled. Call ${brand.phone} to rebook.`;
       break;
     case "completed":
-      body = `Thanks for visiting The Look, ${clientName}! We hope you loved your ${serviceName}. Leave us a review when you get a chance 💛`;
+      body = `Thanks for visiting ${shortName}, ${clientName}! We hope you loved your ${serviceName}. Leave us a review when you get a chance 💛`;
       break;
     case "no_show":
-      body = `Hi ${clientName}, we missed you at The Look today. Call (818) 662-5665 to reschedule.`;
+      body = `Hi ${clientName}, we missed you at ${shortName} today. Call ${brand.phone} to reschedule.`;
       break;
     default:
       return Promise.resolve(false);
@@ -240,7 +260,7 @@ export function sendStatusChangeSMS(args: {
   });
 }
 
-export function sendCancellationSMS(args: {
+export async function sendCancellationSMS(args: {
   phone: string;
   clientName: string;
   serviceName: string;
@@ -250,16 +270,18 @@ export function sendCancellationSMS(args: {
   clientEmail?: string;
 }) {
   const { phone, clientName, serviceName, date, time, appointmentId, clientEmail } = args;
+  const brand = await getBranding();
+  const shortName = smsShortName(brand.name);
   return sendSMS({
     to: phone,
     event: "booking.cancelled",
     appointmentId: appointmentId || null,
     clientEmail: clientEmail || null,
-    body: `Hi ${clientName}, your ${serviceName} on ${shortDate(date)} at ${pretty12h(time)} at The Look has been cancelled. Call (818) 662-5665 to rebook.`,
+    body: `Hi ${clientName}, your ${serviceName} on ${shortDate(date)} at ${pretty12h(time)} at ${shortName} has been cancelled. Call ${brand.phone} to rebook.`,
   });
 }
 
-export function sendRescheduleSMS(args: {
+export async function sendRescheduleSMS(args: {
   phone: string;
   clientName: string;
   serviceName: string;
@@ -269,16 +291,18 @@ export function sendRescheduleSMS(args: {
   clientEmail?: string;
 }) {
   const { phone, clientName, serviceName, date, time, appointmentId, clientEmail } = args;
+  const brand = await getBranding();
+  const shortName = smsShortName(brand.name);
   return sendSMS({
     to: phone,
     event: "booking.reschedule",
     appointmentId: appointmentId || null,
     clientEmail: clientEmail || null,
-    body: `Hi ${clientName}, your ${serviceName} at The Look has been rescheduled to ${shortDate(date)} at ${pretty12h(time)}.`,
+    body: `Hi ${clientName}, your ${serviceName} at ${shortName} has been rescheduled to ${shortDate(date)} at ${pretty12h(time)}.`,
   });
 }
 
-export function sendStaffNewBookingSMS(args: {
+export async function sendStaffNewBookingSMS(args: {
   phone: string;
   clientName: string;
   serviceName: string;
@@ -287,18 +311,22 @@ export function sendStaffNewBookingSMS(args: {
   appointmentId?: string;
 }) {
   const { phone, clientName, serviceName, date, time, appointmentId } = args;
+  const brand = await getBranding();
+  const shortName = smsShortName(brand.name);
   return sendSMS({
     to: phone,
     event: "staff.new_booking",
     appointmentId: appointmentId || null,
-    body: `[The Look] New booking: ${clientName} · ${serviceName} · ${shortDate(date)} ${pretty12h(time)}`,
+    body: `[${shortName}] New booking: ${clientName} · ${serviceName} · ${shortDate(date)} ${pretty12h(time)}`,
   });
 }
 
-export function sendAdminTestSMS(phone: string) {
+export async function sendAdminTestSMS(phone: string) {
+  const brand = await getBranding();
+  const shortName = smsShortName(brand.name);
   return sendSMS({
     to: phone,
     event: "admin.test",
-    body: "[The Look] Test SMS — if you can read this, Twilio is configured correctly.",
+    body: `[${shortName}] Test SMS — if you can read this, Twilio is configured correctly.`,
   });
 }

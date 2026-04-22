@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useBranding } from "@/components/BrandingProvider";
+import { telHref } from "@/lib/branding";
 
 export default function BookingError({
   reset,
@@ -8,6 +10,7 @@ export default function BookingError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const brand = useBranding();
   return (
     <main className="min-h-screen bg-cream flex items-center justify-center px-6">
       <div className="text-center max-w-md">
@@ -26,8 +29,8 @@ export default function BookingError({
         </p>
         <p className="text-navy/60 font-body font-light mb-10">
           Please call us directly at{" "}
-          <a href="tel:+18186625665" className="text-rose underline">
-            (818) 662-5665
+          <a href={telHref(brand.phone)} className="text-rose underline">
+            {brand.phone}
           </a>{" "}
           to schedule your appointment.
         </p>

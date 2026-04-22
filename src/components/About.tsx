@@ -2,8 +2,10 @@
 
 import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
+import { useBranding } from "./BrandingProvider";
 
 export default function About() {
+  const brand = useBranding();
   return (
     <section id="about" className="py-24 md:py-32 bg-cream relative overflow-hidden">
       {/* Subtle background texture */}
@@ -18,7 +20,7 @@ export default function About() {
               <div className="aspect-[4/5] relative overflow-hidden rounded-sm shadow-[0_20px_60px_rgba(40,41,54,0.15)]">
                 <Image
                   src="/images/our-story.png"
-                  alt="Balayage hair styling at The Look Hair Salon"
+                  alt={`Balayage hair styling at ${brand.name}`}
                   fill
                   className="object-cover"
                 />
@@ -53,7 +55,7 @@ export default function About() {
             </h2>
 
             <p className="text-navy/75 font-body leading-relaxed mb-5">
-              Since opening our doors on 11.11.11, The Look Hair Salon has grown
+              Since opening our doors on 11.11.11, {brand.name} has grown
               to be one of the most loved spots in Glendale. We&apos;re a
               family-owned salon that believes everyone deserves to look and feel
               their best — without breaking the bank.
