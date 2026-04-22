@@ -254,6 +254,8 @@ export async function POST(request: NextRequest) {
     sort_order: i,
     price_min: e.priceMin,
     duration: e.duration,
+    // Defensive — see /api/appointments for the duration_minutes story.
+    duration_minutes: e.duration,
   }));
   const { error: mErr } = await supabase.from("appointment_services").insert(mappingRows);
   if (mErr) {

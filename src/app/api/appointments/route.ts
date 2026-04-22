@@ -290,6 +290,11 @@ export async function POST(request: NextRequest) {
     sort_order: i,
     price_min: e.priceMin,
     duration: e.duration,
+    // duration_minutes is a legacy NOT NULL column on prod that isn't
+    // referenced anywhere in this repo (migration 20260506 drops the
+    // NOT NULL). Populate it defensively so bookings work even before
+    // that migration runs.
+    duration_minutes: e.duration,
   }));
   const { error: mappingError } = await supabase
     .from("appointment_services")

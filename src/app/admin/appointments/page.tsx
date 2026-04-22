@@ -15,6 +15,7 @@ import AppointmentActionsModal from "@/components/admin/AppointmentActionsModal"
 import { Button } from "@/components/ui/Button";
 import { Badge, badgeToneForStatus } from "@/components/ui/Badge";
 import { formatTime as fmtTime, formatDate as fmtDate } from "@/lib/format";
+import ReviewRequestModal from "@/components/admin/ReviewRequestModal";
 
 interface Service {
   id: string;
@@ -65,6 +66,9 @@ export default function AppointmentsPage() {
   const searchParams = useSearchParams();
   const [listTab, setListTab] = useState<"active" | "archived">("active");
   const [clearArchivedOpen, setClearArchivedOpen] = useState(false);
+  // Review-request modal lifted to the page so both the list-row
+  // action button AND the appointment detail modal can trigger it.
+  const [reviewForAppt, setReviewForAppt] = useState<EnrichedAppointment | null>(null);
   const { appointments: realtimeAppts, loading, error, lastUpdate, refresh } = usePolledAppointments({
     enabled: status === "authenticated",
     archived: listTab === "archived",
@@ -757,6 +761,15 @@ export default function AppointmentsPage() {
                   action set — they're finished, they just need filing. */}
               {(appt.status === "cancelled" || appt.status === "no_show" || appt.status === "completed") && (
                 <div className="flex flex-wrap gap-2 mt-3">
+                  {appt.status === "completed" && !appt.archived_at && (
+                    <button
+                      onClick={() => setReviewForAppt(appt)}
+                      className="text-xs font-body text-gold border border-gold/40 px-3 py-1 hover:bg-gold/5"
+                      title="Send a review request to this client"
+                    >
+                      Send review request
+                    </button>
+                  )}
                   {appt.archived_at ? (
                     <button
                       onClick={() => unarchiveAppointment(appt.id)}
@@ -888,6 +901,20 @@ export default function AppointmentsPage() {
         endpoint="/api/admin/appointments/archived/clear"
         onCleared={() => refresh()}
       />
+
+      {reviewForAppt && (
+        <ReviewRequestModal
+          open={true}
+          onOpenChange={(open) => { if (!open) setReviewForAppt(null); }}
+          appointment={{
+            id: reviewForAppt.id,
+            client_name: reviewForAppt.client_name,
+            client_email: reviewForAppt.client_email,
+            client_phone: reviewForAppt.client_phone,
+            sms_consent: reviewForAppt.sms_consent ?? null,
+          }}
+        />
+      )}
     </div>
   );
 }
