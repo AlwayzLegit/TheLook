@@ -32,6 +32,7 @@ const PAGES: Array<{ label: string; href: string; group: string }> = [
   { label: "Messages",         href: "/admin/messages",     group: "Navigate" },
   { label: "Reviews",          href: "/admin/reviews",      group: "Navigate" },
   { label: "Analytics",        href: "/admin/analytics",    group: "Navigate" },
+  { label: "Audience",         href: "/admin/audience",     group: "Navigate" },
   { label: "Activity Log",     href: "/admin/activity",     group: "Navigate" },
   { label: "Settings",         href: "/admin/settings",     group: "Navigate" },
 ];

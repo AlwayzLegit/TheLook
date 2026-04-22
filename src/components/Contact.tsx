@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent } from "react";
 import AnimatedSection from "./AnimatedSection";
 import TurnstileField from "./TurnstileField";
 import SalonHours from "./SalonHours";
+import { track, identify } from "@/lib/analytics";
 
 export default function Contact() {
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -44,6 +45,13 @@ export default function Contact() {
       });
 
       if (res.ok) {
+        identify(formData.email, { name: formData.name, has_phone: !!formData.phone });
+        track("contact_submitted", {
+          has_phone: !!formData.phone,
+          service: formData.service || null,
+          sms_consent: formData.smsConsent,
+          message_length: formData.message.length,
+        });
         setStatus("success");
         setFormData({
           name: "",
@@ -55,10 +63,12 @@ export default function Contact() {
         });
         setTimeout(() => setStatus("idle"), 5000);
       } else {
+        track("contact_failed", { status: res.status });
         setStatus("error");
         setTimeout(() => setStatus("idle"), 5000);
       }
     } catch {
+      track("contact_failed", { status: 0, error: "network" });
       setStatus("error");
       setTimeout(() => setStatus("idle"), 5000);
     }

@@ -12,6 +12,7 @@ import ClientInfoForm from "@/components/booking/ClientInfoForm";
 import BookingConfirmation from "@/components/booking/BookingConfirmation";
 import DepositForm from "@/components/booking/DepositForm";
 import { BOOKING } from "@/lib/constants";
+import { track, identify } from "@/lib/analytics";
 
 // Step layout (matches BookingProgress):
 //   0  Service
@@ -335,6 +336,27 @@ export default function BookPage() {
     else if (step === STEP_INFO) setStep(STEP_CONFIRM);
   };
 
+  // PostHog funnel — emit one event per step the user reaches. Anonymous
+  // until booking succeeds, at which point we identify() on the email so
+  // return visits stitch onto the same person timeline.
+  useEffect(() => {
+    const stepName =
+      step === STEP_SERVICE  ? "service" :
+      step === STEP_DATETIME ? "datetime" :
+      step === STEP_STYLIST  ? "stylist" :
+      step === STEP_INFO     ? "info" :
+      step === STEP_CONFIRM  ? "confirm" :
+      step === STEP_DONE     ? "done" : null;
+    if (!stepName) return;
+    track("booking_step_viewed", {
+      step: stepName,
+      service_count: selectedServices.length,
+      total_price_cents: totalPriceMin,
+      total_duration: totalDuration,
+      requires_deposit: requiresDeposit,
+    });
+  }, [step, selectedServices.length, totalPriceMin, totalDuration, requiresDeposit]);
+
   const prevStep = () => {
     if (step > STEP_SERVICE) setStep(step - 1);
   };
@@ -372,12 +394,36 @@ export default function BookPage() {
 
       if (!res.ok) {
         const data = await res.json();
+        track("booking_failed", {
+          status: res.status,
+          error: String(data?.error || "unknown"),
+          total_price_cents: totalPriceMin,
+          total_duration: totalDuration,
+          requires_deposit: requiresDeposit,
+        });
         setError(data.error || "Failed to book appointment");
         setSubmitting(false);
         return;
       }
 
       const data = await res.json();
+      // Identify by email so the funnel stitches across sessions,
+      // then fire the conversion event.
+      identify(clientInfo.email, {
+        name: clientInfo.name,
+        has_phone: !!clientInfo.phone,
+        sms_consent: clientInfo.smsConsent,
+      });
+      track("booking_submitted", {
+        service_count: selectedServices.length,
+        total_price_cents: totalPriceMin,
+        total_duration: totalDuration,
+        requires_deposit: requiresDeposit,
+        deposit_amount_cents: depositAmountCents,
+        deposit_paid: !!depositPaymentIntent,
+        is_any_stylist: isAny,
+        sms_consent: clientInfo.smsConsent,
+      });
       setResult(data);
       setStep(STEP_DONE);
       try {
@@ -536,7 +582,13 @@ export default function BookPage() {
                         clientEmail={clientInfo.email}
                         clientName={clientInfo.name}
                         description={selectedServices.map((s) => s.name).join(", ")}
-                        onSuccess={(pid) => setDepositPaymentIntent(pid)}
+                        onSuccess={(pid) => {
+                          setDepositPaymentIntent(pid);
+                          track("booking_deposit_paid", {
+                            amount_cents: depositAmountCents,
+                            total_price_cents: totalPriceMin,
+                          });
+                        }}
                       />
                     ) : (
                       <p className="text-navy/50 text-xs font-body">
