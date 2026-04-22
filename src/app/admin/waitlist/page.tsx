@@ -111,11 +111,12 @@ export default function WaitlistPage() {
                 </p>
               </div>
               <div className="flex gap-2 shrink-0">
-                <Button variant="secondary" size="sm" asChild>
-                  <a href={`mailto:${e.client_email}?subject=Appointment opening at The Look&body=Hi ${e.client_name}, we have an opening that matches what you're looking for!`}>
-                    Notify
-                  </a>
-                </Button>
+                <a
+                  href={`mailto:${e.client_email}?subject=Appointment opening at The Look&body=Hi ${e.client_name}, we have an opening that matches what you're looking for!`}
+                  className="inline-flex items-center justify-center rounded-md font-medium tracking-[0.02em] transition-colors duration-150 whitespace-nowrap select-none h-8 px-3 text-[0.8125rem] gap-1.5 bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border-strong)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-cream-50)]"
+                >
+                  Notify
+                </a>
                 <Button variant="primary" size="sm" onClick={() => markBooked(e.id)}>Booked</Button>
                 <Button variant="danger" size="sm" onClick={() => setDeleteId(e.id)}>Remove</Button>
               </div>

@@ -174,10 +174,13 @@ export default function ClientsPage() {
           <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
             Import CSV
           </Button>
-          <Button variant="secondary" size="sm" asChild>
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- this is a server route, not a page */}
-            <a href="/api/admin/clients/export/">Export CSV</a>
-          </Button>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- this is a server route, not a page */}
+          <a
+            href="/api/admin/clients/export/"
+            className="inline-flex items-center justify-center rounded-md font-medium tracking-[0.02em] transition-colors duration-150 whitespace-nowrap select-none h-8 px-3 text-[0.8125rem] gap-1.5 bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border-strong)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-cream-50)]"
+          >
+            Export CSV
+          </a>
         </div>
       </div>
 

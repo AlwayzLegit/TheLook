@@ -8,7 +8,6 @@ import TodayTimeline from "@/components/admin/TodayTimeline";
 import { Card, Eyebrow } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { Sparkline, CHART_COLORS } from "@/components/ui/Chart";
-import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatMoney } from "@/lib/format";
@@ -111,9 +110,12 @@ export default function AdminDashboard() {
             )}
           </p>
         </div>
-        <Button asChild variant="secondary" size="sm">
-          <Link href="/admin/appointments">Open appointments →</Link>
-        </Button>
+        <Link
+          href="/admin/appointments"
+          className="inline-flex items-center justify-center rounded-md font-medium tracking-[0.02em] transition-colors duration-150 whitespace-nowrap select-none h-8 px-3 text-[0.8125rem] gap-1.5 bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border-strong)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-cream-50)]"
+        >
+          Open appointments →
+        </Link>
       </div>
 
       {staffEmailsConfigured === false && (

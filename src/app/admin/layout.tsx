@@ -185,11 +185,11 @@ function UserMenu() {
           {role && <Badge tone={role === "admin" ? "accent" : "info"} size="sm" className="w-fit">{role}</Badge>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/admin/settings">Settings</Link>
+        <DropdownMenuItem onSelect={() => { window.location.href = "/admin/settings"; }}>
+          Settings
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/">Back to website</Link>
+        <DropdownMenuItem onSelect={() => { window.location.href = "/"; }}>
+          Back to website
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem danger onClick={() => signOut({ callbackUrl: "/admin/login" })}>

@@ -153,15 +153,19 @@ export default function MessagesPage() {
                       {msg.message}
                     </p>
                     <div className="flex flex-wrap gap-2 sm:gap-3 mt-4">
-                      <Button variant="secondary" size="sm" asChild>
-                        <a href={`mailto:${msg.email}?subject=Re: Your inquiry at The Look Hair Salon`}>
-                          Reply by email
-                        </a>
-                      </Button>
+                      <a
+                        href={`mailto:${msg.email}?subject=Re: Your inquiry at The Look Hair Salon`}
+                        className="inline-flex items-center justify-center rounded-md font-medium tracking-[0.02em] transition-colors duration-150 whitespace-nowrap select-none h-8 px-3 text-[0.8125rem] gap-1.5 bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border-strong)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-cream-50)]"
+                      >
+                        Reply by email
+                      </a>
                       {msg.phone && (
-                        <Button variant="secondary" size="sm" asChild>
-                          <a href={`tel:${msg.phone}`}>Call {msg.phone}</a>
-                        </Button>
+                        <a
+                          href={`tel:${msg.phone}`}
+                          className="inline-flex items-center justify-center rounded-md font-medium tracking-[0.02em] transition-colors duration-150 whitespace-nowrap select-none h-8 px-3 text-[0.8125rem] gap-1.5 bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border-strong)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-cream-50)]"
+                        >
+                          Call {msg.phone}
+                        </a>
                       )}
                       <Button
                         variant="danger"
