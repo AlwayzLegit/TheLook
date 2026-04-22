@@ -18,6 +18,13 @@ const ALLOWED_KEYS = new Set([
   "sms_booking_reschedule_enabled",
   "sms_staff_new_booking_enabled",
   "idle_timeout_minutes",
+  // Salon identity — DB-backed branding. Empty string falls back to the
+  // static defaults in src/lib/strings.ts (see lib/branding.ts).
+  "brand_name",
+  "brand_tagline",
+  "brand_address",
+  "brand_phone",
+  "brand_email",
 ]);
 
 export async function GET() {
