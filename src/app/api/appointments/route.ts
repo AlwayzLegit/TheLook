@@ -273,10 +273,16 @@ export async function POST(request: NextRequest) {
   }
 
   // Mirror multi-service rows — always insert so variant_id is recorded
-  // even on single-service bookings. Appointments without variants still
-  // resolve cleanly; this replaces the previous "only-insert-if-multi" path.
-  // price_min + duration are snapshotted here so historical revenue can't
-  // drift when a service's price is edited later (migration 20260430).
+  // even on single-service bookings. price_min + duration are
+  // snapshotted here so historical revenue can't drift when a service's
+  // price is edited later (migration 20260430).
+  //
+  // Historical bug (QA 2026-04-22 P1-#1): this insert used to swallow
+  // its error silently and let the route return 200, leaving
+  // appointments with no appointment_services rows — which in turn
+  // broke every downstream revenue calc. Now we compensate by
+  // deleting the just-inserted appointment and surfacing the actual
+  // Postgres message so the operator can diagnose.
   const mappingRows = effective.map((e, i) => ({
     appointment_id: appointmentId,
     service_id: e.service.id,
@@ -288,7 +294,20 @@ export async function POST(request: NextRequest) {
   const { error: mappingError } = await supabase
     .from("appointment_services")
     .insert(mappingRows);
-  if (mappingError) logError("appointments POST (services)", mappingError);
+  if (mappingError) {
+    logError("appointments POST (services)", mappingError);
+    // Roll back the parent appointment so we don't leave an orphan.
+    // Best-effort — if the delete itself errors, we still surface the
+    // original mappingError to the client.
+    await supabase.from("appointments").delete().eq("id", appointmentId).then(
+      () => {},
+      (e: unknown) => logError("appointments POST (services rollback)", e),
+    );
+    return apiError(
+      `Failed to save appointment services: ${mappingError.message || "unknown"}`,
+      500,
+    );
+  }
 
   // Record the deposit if one was paid. Two writes:
   //   1. legacy `deposits` row (kept while older admin reads depend on it)

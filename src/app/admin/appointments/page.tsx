@@ -854,12 +854,19 @@ export default function AppointmentsPage() {
       />
 
       <AppointmentActionsModal
-        appointment={selectedAppt}
+        // Keep the modal bound to the freshest row from the polled list
+        // so when admin clicks Mark Complete the status flips in place
+        // AND the "Send review request" button (gated on status==completed)
+        // appears without the user having to re-open the row.
+        appointment={
+          selectedAppt
+            ? (enrichedAppts.find((a) => a.id === selectedAppt.id) ?? selectedAppt)
+            : null
+        }
         pending={pendingStatusId !== null}
         onClose={() => setSelectedAppt(null)}
         onStatusChange={async (id, s) => {
           await modalStatusChange(id, s);
-          setSelectedAppt(null);
         }}
         onDelete={async (id) => {
           await deleteAppointment(id);

@@ -7,7 +7,7 @@ import { logAdminAction } from "@/lib/auditLog";
 
 // Manual replacement for the retired purge-activity-log cron. The admin
 // can wipe audit rows older than N days (or in a specific date range)
-// from /admin/activity. We write one "audit_log.cleared" entry AFTER the
+// from /admin/activity. We write one "admin_log.cleared" entry AFTER the
 // delete so the clear itself has an audit trail that isn't itself wiped.
 
 const schema = z.object({
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   const p = parsed.data;
 
   const days = presetDays(p.preset) ?? p.days ?? null;
-  let query = supabase.from("audit_log").delete({ count: "exact" });
+  let query = supabase.from("admin_log").delete({ count: "exact" });
 
   if (days != null) {
     const cutoff = new Date();
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   }
 
   await logAdminAction(
-    "audit_log.cleared",
+    "admin_log.cleared",
     JSON.stringify({
       preset: p.preset ?? null,
       days,

@@ -256,7 +256,15 @@ export async function POST(request: NextRequest) {
     duration: e.duration,
   }));
   const { error: mErr } = await supabase.from("appointment_services").insert(mappingRows);
-  if (mErr) logError("admin/appointments POST (services)", mErr);
+  if (mErr) {
+    logError("admin/appointments POST (services)", mErr);
+    // Compensate — don't leave an orphan appointment without line items.
+    await supabase.from("appointments").delete().eq("id", appointmentId).then(
+      () => {},
+      (e: unknown) => logError("admin/appointments POST (services rollback)", e),
+    );
+    return apiError(`Failed to save appointment services: ${mErr.message || "unknown"}`, 500);
+  }
 
   await logAdminAction(
     "appointment.create",
