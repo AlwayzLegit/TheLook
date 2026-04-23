@@ -34,9 +34,9 @@ export default async function TermsPage() {
             <section>
               <h2 className="font-heading text-2xl text-navy mb-3">1. Agreement to Terms</h2>
               <p>
-                {brand.name} is a trade name (&ldquo;doing business as&rdquo;) of <strong>Mjan Salon</strong>.
+                {brand.name} is a trade name (&ldquo;doing business as&rdquo;) of <strong>Mja Salon</strong>.
                 References to &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo; in these Terms refer
-                to Mjan Salon, operating as {brand.name}. By accessing or using the website at
+                to Mja Salon, operating as {brand.name}. By accessing or using the website at
                 thelookhairsalonla.com (the &ldquo;Site&rdquo;), booking an appointment, or using any
                 services provided by {brand.name}, you agree to be bound by these Terms of Service.
                 If you do not agree, please do not use the Site.
