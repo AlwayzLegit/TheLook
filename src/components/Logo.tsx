@@ -10,17 +10,13 @@ import Image from "next/image";
 
 interface Props {
   className?: string;
-  width?: number;
-  height?: number;
 }
 
-// Native pixel dimensions of the cropped PNG. Aspect ratio ~3.3:1 (much
-// wider than the placeholder SVG's 2:1) — callers should pass a width
-// that respects this so the lockup isn't rendered tiny.
+// Native pixel dimensions of the cropped PNG. Aspect ratio ~3.3:1.
 const NATIVE_W = 454;
 const NATIVE_H = 137;
 
-export default function Logo({ className = "", width = 160, height = 56 }: Props) {
+export default function Logo({ className = "" }: Props) {
   return (
     <Image
       src="/images/logo-mark.png"
@@ -28,13 +24,12 @@ export default function Logo({ className = "", width = 160, height = 56 }: Props
       width={NATIVE_W}
       height={NATIVE_H}
       priority
-      className={className}
-      // Fixed display box; object-contain preserves the lockup's aspect
-      // ratio inside whatever the caller asked for. Letting next/image
-      // serve the native PNG and CSS-scale it keeps text edges crisp on
-      // retina screens — the alternative (downscaling at build time)
-      // softens the serif glyphs.
-      style={{ width, height, objectFit: "contain" }}
+      // Caller controls the displayed size via className (Tailwind
+      // `w-[..]` + `h-auto`, or responsive variants). Keeping the width
+      // + height props at native pixels lets next/image serve a sharp
+      // bitmap and CSS handles the display scale — avoids the fuzzy
+      // look that shows up when you downscale a bitmap at build time.
+      className={`object-contain h-auto ${className}`}
     />
   );
 }

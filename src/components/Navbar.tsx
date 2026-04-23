@@ -109,7 +109,7 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex items-center justify-between h-20">
             <Link href="/" className="relative text-white opacity-90 hover:opacity-100 transition-opacity">
-              <Logo width={170} height={52} />
+              <Logo className="w-[130px] sm:w-[150px] md:w-[170px]" />
             </Link>
 
             {/* Desktop Navigation */}
