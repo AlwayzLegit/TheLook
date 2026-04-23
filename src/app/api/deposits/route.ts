@@ -1,7 +1,19 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { createDepositIntent, isStripeEnabled } from "@/lib/stripe";
+import { getSetting } from "@/lib/settings";
 import { NextRequest } from "next/server";
+
+// Compute the credit-card processing surcharge on top of the deposit
+// base. Admin sets the percentage in /admin/settings → Booking. Clamped
+// to [0, 10]% for safety — anything higher likely indicates a typo.
+async function computeCcFee(baseCents: number): Promise<number> {
+  const raw = await getSetting("deposit_cc_fee_pct").catch(() => null);
+  const n = raw ? parseFloat(String(raw)) : 0;
+  const pct = Number.isFinite(n) && n > 0 && n <= 10 ? n : 0;
+  if (pct === 0) return 0;
+  return Math.round(baseCents * pct / 100);
+}
 
 // Create a Stripe PaymentIntent for an appointment deposit.
 //
@@ -34,10 +46,22 @@ export async function POST(request: NextRequest) {
     return apiError("amountCents required.", 400);
   }
 
+  // Compute the CC surcharge and charge the customer deposit + fee. Both
+  // values are captured in metadata so the appointment-side logic can
+  // still credit the original deposit base to the service total while
+  // the processing fee stays with us.
+  const feeCents = await computeCcFee(amountCents);
+  const totalCents = amountCents + feeCents;
+
   let emailForStripe: string | null = null;
   let nameForStripe: string | undefined = clientName;
   let phoneForStripe: string | undefined = clientPhone;
-  const metadata: Record<string, string> = { reason: "deposit" };
+  const metadata: Record<string, string> = {
+    reason: "deposit",
+    deposit_base_cents: String(amountCents),
+    cc_fee_cents: String(feeCents),
+    charged_total_cents: String(totalCents),
+  };
 
   if (appointmentId) {
     const { data: appointment } = await supabase
@@ -62,7 +86,7 @@ export async function POST(request: NextRequest) {
   let intent;
   try {
     intent = await createDepositIntent(
-      amountCents,
+      totalCents,
       emailForStripe,
       nameForStripe,
       phoneForStripe,
@@ -84,16 +108,19 @@ export async function POST(request: NextRequest) {
   // 'succeeded' later. Skipped in pre-booking mode because there's no
   // appointment yet.
   if (appointmentId && intent.id) {
+    const chargeReason = feeCents > 0
+      ? `Booking deposit ($${(amountCents / 100).toFixed(2)} + $${(feeCents / 100).toFixed(2)} CC fee)`
+      : "Booking deposit";
     const { error: chargeErr } = await supabase.from("charges").insert({
       appointment_id: appointmentId,
       client_email: emailForStripe,
       stripe_customer_id: intent.customerId,
       stripe_payment_intent_id: intent.id,
       type: "deposit",
-      amount: amountCents,
+      amount: totalCents,
       currency: "USD",
       status: "pending",
-      reason: "Booking deposit",
+      reason: chargeReason,
     });
     if (chargeErr) logError("deposits POST (charges insert)", chargeErr);
 
@@ -101,7 +128,7 @@ export async function POST(request: NextRequest) {
     // keep working until we phase them out.
     await supabase.from("deposits").insert({
       appointment_id: appointmentId,
-      amount: amountCents,
+      amount: totalCents,
       stripe_payment_intent_id: intent.id,
       status: "pending",
     });
@@ -121,5 +148,11 @@ export async function POST(request: NextRequest) {
     clientSecret: intent.clientSecret,
     paymentIntentId: intent.id,
     customerId: intent.customerId,
+    // Breakdown so the booking UI can show the final total without a
+    // second round-trip. The client already had amountCents; we echo it
+    // back plus feeCents + totalCents for clarity.
+    depositBaseCents: amountCents,
+    ccFeeCents: feeCents,
+    chargedTotalCents: totalCents,
   });
 }

@@ -21,7 +21,9 @@ export type SettingsKey =
   | "review_request_email_body_template"
   | "google_review_url"
   // Admin UX
-  | "idle_timeout_minutes";
+  | "idle_timeout_minutes"
+  // Booking — credit-card processing surcharge (percentage, e.g. "4")
+  | "deposit_cc_fee_pct";
 
 const cache = new Map<string, { value: string | null; ts: number }>();
 const TTL_MS = 30_000;

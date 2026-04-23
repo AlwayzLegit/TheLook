@@ -87,7 +87,15 @@ export async function POST(request: NextRequest) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 30);
-  const path = `stylists/${slug}-${Date.now()}.${ext}`;
+  // Optional folder override so /admin/gallery uploads land under
+  // photos/gallery/… instead of photos/stylists/…. Whitelisted to a
+  // short set of known prefixes; anything else falls back to stylists
+  // so a rogue caller can't traverse out of the bucket root.
+  const folderRaw = (formData.get("folder") as string || "stylists").toLowerCase();
+  const folder = ["stylists", "gallery", "before-after", "services"].includes(folderRaw)
+    ? folderRaw
+    : "stylists";
+  const path = `${folder}/${slug}-${Date.now()}.${ext}`;
 
   await ensurePhotosBucketPublic();
 

@@ -19,13 +19,12 @@ interface Props {
 
 // Simple before/after pair carousel. Each pair shows the before photo on
 // the left and the after on the right, with a caption under. Prev/next
-// controls cycle through pairs. Drop image pairs into
-// public/images/before-after/ as before-01.jpg / after-01.jpg and wire
-// them through src/lib/beforeAfterPairs.ts.
+// controls cycle through pairs.
 //
-// When `pairs` is empty the component renders NOTHING — owners +
-// carriers should never see a "coming soon" placeholder in production.
-// Add pairs to the data file to light the section up.
+// Pairs are managed through /admin/gallery (Before / After tab). The
+// parent page fetches rows from gallery_before_after and maps them into
+// this component's prop shape. When `pairs` is empty the component
+// renders NOTHING — never shows a "coming soon" placeholder.
 export default function BeforeAfterCarousel({ pairs, title = "Before / After", subtitle, className = "" }: Props) {
   const [i, setI] = useState(0);
 

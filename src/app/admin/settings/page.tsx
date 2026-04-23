@@ -38,6 +38,7 @@ interface Settings {
   brand_address?: string;
   brand_phone?: string;
   brand_email?: string;
+  deposit_cc_fee_pct?: string;
 }
 
 interface DepositRule {
@@ -223,7 +224,34 @@ export default function SettingsPage() {
               </Card>
             )}
 
-            {section === "booking" && <DepositRulesCard />}
+            {section === "booking" && (
+              <div className="space-y-6">
+                <DepositRulesCard />
+                <Card className="space-y-4">
+                  <div>
+                    <h2 className="text-[1.0625rem] font-medium text-[var(--color-text)]">Card processing fee</h2>
+                    <p className="text-[0.75rem] text-[var(--color-text-muted)] mt-0.5">
+                      Percentage surcharge added to deposit payments to cover credit-card processing costs.
+                      Set to 0 (or leave blank) to disable. California allows card surcharges when the
+                      amount and reason are disclosed to the customer before payment, which the booking
+                      form does automatically when this value is &gt; 0.
+                    </p>
+                  </div>
+                  <Input
+                    label="Surcharge percentage"
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={0.1}
+                    value={s.deposit_cc_fee_pct ?? ""}
+                    placeholder="0"
+                    onChange={(e) => setS({ ...s, deposit_cc_fee_pct: e.target.value })}
+                    suffix="%"
+                    hint="e.g. 4 = a $50 deposit is charged as $52 on the card. Capped at 10%."
+                  />
+                </Card>
+              </div>
+            )}
 
             {section === "reminders" && (
               <Card className="space-y-6">

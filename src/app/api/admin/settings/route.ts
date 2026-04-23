@@ -33,6 +33,9 @@ const ALLOWED_KEYS = new Set([
   "brand_address",
   "brand_phone",
   "brand_email",
+  // Credit-card processing surcharge (percentage). CA-legal with proper
+  // disclosure at time of transaction. Empty or 0 = no surcharge.
+  "deposit_cc_fee_pct",
 ]);
 
 export async function GET() {

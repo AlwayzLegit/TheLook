@@ -11,9 +11,39 @@ import InstagramFeed from "@/components/InstagramFeed";
 import BeforeAfterCarousel from "@/components/BeforeAfterCarousel";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
-import { BEFORE_AFTER_PAIRS } from "@/lib/beforeAfterPairs";
+import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 
-export default function Home() {
+export const revalidate = 60;
+
+interface DBPair {
+  before_url: string;
+  after_url: string;
+  caption: string | null;
+  alt: string | null;
+}
+
+async function fetchPairs() {
+  if (!hasSupabaseConfig) return [];
+  try {
+    const { data } = await supabase
+      .from("gallery_before_after")
+      .select("before_url, after_url, caption, alt, sort_order")
+      .eq("active", true)
+      .order("sort_order", { ascending: true });
+    const rows = (data || []) as DBPair[];
+    return rows.map((p) => ({
+      before: p.before_url,
+      after: p.after_url,
+      caption: p.caption || undefined,
+      alt: p.alt || undefined,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export default async function Home() {
+  const beforeAfter = await fetchPairs();
   return (
     <>
       <Navbar />
@@ -24,10 +54,10 @@ export default function Home() {
         <ColorGallery />
         <StylingGallery />
         <TreatmentsGallery />
-        {BEFORE_AFTER_PAIRS.length > 0 && (
+        {beforeAfter.length > 0 && (
           <section className="py-24 md:py-32 bg-cream">
             <BeforeAfterCarousel
-              pairs={BEFORE_AFTER_PAIRS}
+              pairs={beforeAfter}
               title="Before & After"
               subtitle="Real transformations from our chairs"
             />

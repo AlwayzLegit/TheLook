@@ -25,6 +25,8 @@ function CardForm({
   paymentIntentId,
   onSuccess,
 }: {
+  // amountCents is the TOTAL customer pays (deposit base + CC surcharge).
+  // The DepositForm parent already combined both before passing in.
   amountCents: number;
   paymentIntentId: string;
   onSuccess: (id: string) => void;
@@ -90,6 +92,25 @@ export default function DepositForm({
   // null = config missing, "loading" = waiting on script, "failed" = retried
   // and gave up, Stripe instance = loaded.
   const [stripe, setStripe] = useState<Stripe | null | "failed" | "loading" | "not_configured">("loading");
+  // CC surcharge breakdown. Resolves once /api/deposits responds with the
+  // server-computed fee so we don't trust a client-side calc.
+  const [feeCents, setFeeCents] = useState<number>(0);
+  const [totalCents, setTotalCents] = useState<number>(amountCents);
+  // Prefetch just the percentage so we can render the disclosure line
+  // BEFORE the PaymentIntent resolves.
+  const [feePct, setFeePct] = useState<number>(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/deposits/fee-info")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { pct?: number } | null) => {
+        if (cancelled || !data) return;
+        if (typeof data.pct === "number") setFeePct(data.pct);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const promise = getStripeBrowser();
@@ -124,6 +145,8 @@ export default function DepositForm({
         }
         setClientSecret(data.clientSecret);
         setPaymentIntentId(data.paymentIntentId);
+        if (typeof data.ccFeeCents === "number") setFeeCents(data.ccFeeCents);
+        if (typeof data.chargedTotalCents === "number") setTotalCents(data.chargedTotalCents);
       } catch {
         if (!cancelled) setLoadError("Failed to initialize payment.");
       }
@@ -171,8 +194,31 @@ export default function DepositForm({
   }
 
   return (
-    <Elements stripe={stripe} options={{ clientSecret, appearance: { theme: "stripe" } }}>
-      <CardForm amountCents={amountCents} paymentIntentId={paymentIntentId} onSuccess={onSuccess} />
-    </Elements>
+    <div className="space-y-4">
+      {/* Fee-breakdown box — only renders when a surcharge is configured.
+          Falls back to a single-line total when pct=0. */}
+      {feeCents > 0 || feePct > 0 ? (
+        <div className="border border-navy/10 bg-cream/50 p-3 text-sm font-body text-navy/70 space-y-1">
+          <div className="flex justify-between">
+            <span>Deposit</span>
+            <span className="font-medium">${(amountCents / 100).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Card processing fee{feePct > 0 ? ` (${feePct}%)` : ""}</span>
+            <span className="font-medium">${(feeCents / 100).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between pt-1 border-t border-navy/10 font-semibold text-navy">
+            <span>Total charged now</span>
+            <span>${(totalCents / 100).toFixed(2)}</span>
+          </div>
+          <p className="text-[11px] text-navy/50 pt-1">
+            The deposit credits toward your service total at your appointment. The processing fee covers card-network costs and is non-refundable.
+          </p>
+        </div>
+      ) : null}
+      <Elements stripe={stripe} options={{ clientSecret, appearance: { theme: "stripe" } }}>
+        <CardForm amountCents={totalCents} paymentIntentId={paymentIntentId} onSuccess={onSuccess} />
+      </Elements>
+    </div>
   );
 }
