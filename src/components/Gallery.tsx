@@ -5,24 +5,29 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedSection from "./AnimatedSection";
 
+// Source of truth: only reference files that actually exist under
+// public/images/gallery/. Broken entries (men-01/02/03.jpg that never
+// shipped) were producing grey Next/Image placeholders on /gallery.
+// To add more tiles, drop files into public/images/gallery/ and append
+// an entry here with a short title + one of the existing categories.
 const galleryItems = [
-  { title: "Balayage Transformation", category: "Color", image: "/images/gallery/gallery-01.jpg" },
-  { title: "Precision Cut & Style", category: "Cut", image: "/images/gallery/gallery-02.jpg" },
-  { title: "Color & Highlights", category: "Color", image: "/images/gallery/gallery-03.jpg" },
-  { title: "Blonde Highlights", category: "Color", image: "/images/gallery/gallery-04.jpg" },
-  { title: "Hair Styling", category: "Styling", image: "/images/gallery/gallery-05.jpg" },
-  { title: "Vivid Color", category: "Color", image: "/images/gallery/gallery-06.jpg" },
-  { title: "Textured Layers", category: "Cut", image: "/images/gallery/gallery-07.jpg" },
-  { title: "Ombré", category: "Color", image: "/images/gallery/gallery-08.jpg" },
-  { title: "Full Color", category: "Color", image: "/images/gallery/gallery-09.jpg" },
-  { title: "Blowout & Style", category: "Styling", image: "/images/gallery/gallery-10.jpg" },
-  { title: "Color Correction", category: "Color", image: "/images/gallery/gallery-11.jpg" },
-  { title: "Cut & Color", category: "Color", image: "/images/gallery/gallery-12.jpg" },
-  // Men's section — drop files into public/images/gallery/men-01.jpg,
-  // men-02.jpg, etc. and append matching entries here.
-  { title: "Men's Cut + Fade", category: "Men", image: "/images/gallery/men-01.jpg" },
-  { title: "Beard Trim", category: "Men", image: "/images/gallery/men-02.jpg" },
-  { title: "Scissor Cut", category: "Men", image: "/images/gallery/men-03.jpg" },
+  { title: "Balayage Transformation", category: "Color",   image: "/images/gallery/gallery-01.jpg" },
+  { title: "Precision Cut & Style",   category: "Cut",     image: "/images/gallery/gallery-02.jpg" },
+  { title: "Color & Highlights",      category: "Color",   image: "/images/gallery/gallery-03.jpg" },
+  { title: "Blonde Highlights",       category: "Color",   image: "/images/gallery/gallery-04.jpg" },
+  { title: "Hair Styling",            category: "Styling", image: "/images/gallery/gallery-05.jpg" },
+  { title: "Vivid Color",             category: "Color",   image: "/images/gallery/gallery-06.jpg" },
+  { title: "Textured Layers",         category: "Cut",     image: "/images/gallery/gallery-07.jpg" },
+  { title: "Ombré",                   category: "Color",   image: "/images/gallery/gallery-08.jpg" },
+  { title: "Full Color",              category: "Color",   image: "/images/gallery/gallery-09.jpg" },
+  { title: "Blowout & Style",         category: "Styling", image: "/images/gallery/gallery-10.jpg" },
+  { title: "Color Correction",        category: "Color",   image: "/images/gallery/gallery-11.jpg" },
+  { title: "Cut & Color",             category: "Color",   image: "/images/gallery/gallery-12.jpg" },
+  { title: "Highlights & Toner",      category: "Color",   image: "/images/gallery/gallery-13.jpg" },
+  { title: "Layered Cut",             category: "Cut",     image: "/images/gallery/gallery-14.jpg" },
+  { title: "Keratin Smoothing",       category: "Treatment", image: "/images/gallery/gallery-15.jpg" },
+  { title: "Blowout Waves",           category: "Styling", image: "/images/gallery/gallery-16.jpg" },
+  { title: "Finished Look",           category: "Styling", image: "/images/gallery/gallery-17.jpg" },
 ];
 
 export default function Gallery() {
