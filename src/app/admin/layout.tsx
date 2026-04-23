@@ -176,6 +176,64 @@ function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
   );
 }
 
+// Mobile-only user footer baked into the sidebar drawer. Desktop keeps
+// the top-right dropdown (UserMenu); on phones that top bar is hidden
+// and the drawer was the only place with room to surface My profile /
+// Settings / Back to website / Sign out. Renders as flat nav items so
+// tap targets stay generous and no z-index juggling is needed for a
+// nested DropdownMenu inside a drawer.
+function MobileUserFooter({ onNavigate }: { onNavigate: () => void }) {
+  const { data: session } = useSession();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const email = (session?.user as any)?.email as string | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const role = (session?.user as any)?.role as string | undefined;
+  const initial = (email || "?").charAt(0).toUpperCase();
+  const go = (href: string) => {
+    onNavigate();
+    window.location.href = href;
+  };
+  return (
+    <div className="lg:hidden flex-none border-t border-white/5 px-3 py-3 space-y-1">
+      <div className="flex items-center gap-3 px-2 py-2">
+        <span className="h-9 w-9 shrink-0 rounded-full bg-white/10 text-white/90 text-[0.8125rem] font-medium flex items-center justify-center">
+          {initial}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[0.8125rem] text-white/90">{email || "Admin"}</p>
+          {role ? (
+            <p className="text-[0.6875rem] uppercase tracking-wider text-white/40">{role}</p>
+          ) : null}
+        </div>
+      </div>
+      <button
+        onClick={() => go("/admin/profile")}
+        className="w-full text-left px-3 py-2 rounded text-[0.875rem] text-white/80 hover:bg-white/5"
+      >
+        My profile
+      </button>
+      <button
+        onClick={() => go("/admin/settings")}
+        className="w-full text-left px-3 py-2 rounded text-[0.875rem] text-white/80 hover:bg-white/5"
+      >
+        Settings
+      </button>
+      <button
+        onClick={() => go("/")}
+        className="w-full text-left px-3 py-2 rounded text-[0.875rem] text-white/80 hover:bg-white/5"
+      >
+        Back to website
+      </button>
+      <button
+        onClick={() => { onNavigate(); signOut({ callbackUrl: "/admin/login" }); }}
+        className="w-full text-left px-3 py-2 rounded text-[0.875rem] text-[var(--color-crimson-400)] hover:bg-white/5"
+      >
+        Sign out
+      </button>
+    </div>
+  );
+}
+
 function UserMenu() {
   const { data: session } = useSession();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -293,6 +351,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           <NotificationsBell />
         </div>
         <SidebarNav onItemClick={() => setMobileOpen(false)} />
+        <MobileUserFooter onNavigate={() => setMobileOpen(false)} />
         <div className="flex-none px-4 py-3 border-t border-white/5 text-[0.6875rem] text-white/30 font-body">
           Admin · v2
         </div>
