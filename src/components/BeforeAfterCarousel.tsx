@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
 
 interface Pair {
@@ -48,14 +49,26 @@ export default function BeforeAfterCarousel({ pairs, title = "Before / After", s
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="aspect-[3/4] bg-navy/5 relative overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={pair.before} alt={`Before — ${pair.alt || ""}`} className="w-full h-full object-cover" />
+          <div className="aspect-[3/4] bg-cream-dark relative overflow-hidden">
+            <Image
+              src={pair.before}
+              alt={`Before — ${pair.alt || ""}`}
+              fill
+              sizes="(max-width: 768px) 50vw, 33vw"
+              className="object-cover"
+              unoptimized={!/\.supabase\.co\//.test(pair.before) && !pair.before.includes("images.unsplash.com")}
+            />
             <span className="absolute top-3 left-3 bg-black/60 text-white text-[10px] tracking-[0.2em] uppercase font-body px-2 py-1">Before</span>
           </div>
-          <div className="aspect-[3/4] bg-navy/5 relative overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={pair.after} alt={`After — ${pair.alt || ""}`} className="w-full h-full object-cover" />
+          <div className="aspect-[3/4] bg-cream-dark relative overflow-hidden">
+            <Image
+              src={pair.after}
+              alt={`After — ${pair.alt || ""}`}
+              fill
+              sizes="(max-width: 768px) 50vw, 33vw"
+              className="object-cover"
+              unoptimized={!/\.supabase\.co\//.test(pair.after) && !pair.after.includes("images.unsplash.com")}
+            />
             <span className="absolute top-3 left-3 bg-rose text-white text-[10px] tracking-[0.2em] uppercase font-body px-2 py-1">After</span>
           </div>
         </div>

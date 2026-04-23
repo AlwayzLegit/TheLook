@@ -191,7 +191,7 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
             type="button"
             onClick={onContinue}
             disabled={selected.length === 0}
-            className="bg-rose hover:bg-rose-light disabled:opacity-40 disabled:cursor-not-allowed text-white tracking-widest uppercase text-sm px-7 py-3 transition-colors font-body shrink-0"
+            className="bg-rose hover:bg-rose-light disabled:opacity-40 disabled:cursor-not-allowed text-white tracking-widest uppercase text-sm px-7 py-3 min-h-[44px] transition-colors font-body shrink-0"
           >
             Continue
           </button>
