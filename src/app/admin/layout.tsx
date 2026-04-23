@@ -353,7 +353,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <SidebarNav onItemClick={() => setMobileOpen(false)} />
         <MobileUserFooter onNavigate={() => setMobileOpen(false)} />
         <div className="flex-none px-4 py-3 border-t border-white/5 text-[0.6875rem] text-white/30 font-body">
-          Admin · v2
+          The Look
         </div>
       </aside>
 
