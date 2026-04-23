@@ -12,8 +12,9 @@ interface Props {
   // initial (text-9xl); the Team grid + stylist cards want something
   // smaller. Defaults to the stylist-detail look.
   initialClass?: string;
-  // Object-position hint for object-cover. Portraits usually want the
-  // face anchored at the top so a 4:3 shot doesn't crop the head.
+  // Object-position hint for object-cover. Center is the safest default
+  // for mixed headshot framings — anchoring at the top cropped the face
+  // off any photo where the subject wasn't shot high in frame.
   position?: "top" | "center";
   // Hand-off for next/image's sizes attr so the browser picks the
   // right candidate. Defaults to a reasonable portrait breakpoint.
@@ -31,7 +32,7 @@ export default function StylistImage({
   initial,
   className = "",
   initialClass,
-  position = "top",
+  position = "center",
   sizes = "(max-width: 768px) 100vw, 33vw",
 }: Props) {
   const [failed, setFailed] = useState(false);
