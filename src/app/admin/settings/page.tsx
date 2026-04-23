@@ -12,6 +12,26 @@ import { toast } from "@/components/ui/Toaster";
 import { cn } from "@/components/ui/cn";
 import { formatMoney } from "@/lib/format";
 import { brandingDefaults } from "@/lib/branding";
+import { estimateSmsCost, MAX_ALLOWED_SEGMENTS } from "@/lib/smsLength";
+
+// Live cost readout under an SMS template textarea — tells the admin
+// how many Twilio segments the message will split into. Going from 1
+// segment to 2 silently doubles the per-send cost, so the visible
+// colour flip keeps that from happening on autopilot.
+function SmsCostReadout({ template }: { template: string }) {
+  const cost = estimateSmsCost(template);
+  const overLimit = cost.segments > MAX_ALLOWED_SEGMENTS;
+  const warn = cost.segments > 1;
+  const tone = overLimit ? "text-red-600" : warn ? "text-amber-700" : "text-[var(--color-text-subtle)]";
+  return (
+    <p className={`text-[0.7rem] font-mono mt-1 ${tone}`}>
+      {cost.segments === 0
+        ? "Empty"
+        : `${cost.segments} SMS segment${cost.segments === 1 ? "" : "s"} · ${cost.length}/${cost.capPerSegment} chars${cost.encoding === "ucs2" ? " · UCS-2 (emoji/accents cut cap in half)" : ""}`}
+      {overLimit ? " · too long — shorten" : warn ? " · will send as multiple SMS" : ""}
+    </p>
+  );
+}
 
 interface Settings {
   staff_notification_emails?: string;
@@ -274,6 +294,7 @@ export default function SettingsPage() {
                   value={s.reminder_sms_template ?? ""}
                   onChange={(e) => setS({ ...s, reminder_sms_template: e.target.value })}
                 />
+                <SmsCostReadout template={s.reminder_sms_template ?? ""} />
                 <Input
                   label="Email subject"
                   value={s.reminder_email_subject_template ?? ""}
@@ -307,6 +328,7 @@ export default function SettingsPage() {
                   value={s.review_request_sms_template ?? ""}
                   onChange={(e) => setS({ ...s, review_request_sms_template: e.target.value })}
                 />
+                <SmsCostReadout template={s.review_request_sms_template ?? ""} />
                 <Input
                   label="Email subject"
                   value={s.review_request_email_subject_template ?? ""}

@@ -23,7 +23,7 @@ export function isStripeEnabled() {
   return Boolean(process.env.STRIPE_SECRET_KEY);
 }
 
-async function getStripe(): Promise<Stripe | null> {
+export async function getStripe(): Promise<Stripe | null> {
   if (!isStripeEnabled()) return null;
   const key = process.env.STRIPE_SECRET_KEY!;
   // Loud guard: if someone pasted the publishable key (pk_...) into

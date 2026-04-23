@@ -3,8 +3,14 @@ import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { getSessionUser, isAdminOrManager } from "@/lib/roles";
 import { logAdminAction } from "@/lib/auditLog";
 import { BRANDING_CACHE_TAG } from "@/lib/branding";
+import { estimateSmsCost, MAX_ALLOWED_SEGMENTS } from "@/lib/smsLength";
 import { revalidateTag } from "next/cache";
 import { NextRequest } from "next/server";
+
+const SMS_TEMPLATE_KEYS = new Set([
+  "reminder_sms_template",
+  "review_request_sms_template",
+]);
 
 const ALLOWED_KEYS = new Set([
   "staff_notification_emails",
@@ -66,6 +72,21 @@ export async function PATCH(request: NextRequest) {
     .map(([key, value]) => ({ key, value: value ?? "", updated_at: new Date().toISOString() }));
 
   if (rows.length === 0) return apiError("Nothing to update.", 400);
+
+  // Guardrail on SMS templates. A non-obvious multi-segment template
+  // doubles per-send cost every time Anna saves a small edit, so we
+  // reject anything beyond MAX_ALLOWED_SEGMENTS (matches the warning
+  // readout in the admin UI).
+  for (const row of rows) {
+    if (!SMS_TEMPLATE_KEYS.has(row.key)) continue;
+    const cost = estimateSmsCost(row.value || "");
+    if (cost.segments > MAX_ALLOWED_SEGMENTS) {
+      return apiError(
+        `SMS template "${row.key}" would send as ${cost.segments} segments — shorten to ${MAX_ALLOWED_SEGMENTS} or fewer before saving.`,
+        400,
+      );
+    }
+  }
 
   const { error } = await supabase.from("salon_settings").upsert(rows);
   if (error) {
