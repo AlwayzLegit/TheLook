@@ -199,6 +199,9 @@ function UserMenu() {
           {role && <Badge tone={role === "admin" ? "accent" : "info"} size="sm" className="w-fit">{role}</Badge>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => { window.location.href = "/admin/profile"; }}>
+          My profile
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => { window.location.href = "/admin/settings"; }}>
           Settings
         </DropdownMenuItem>

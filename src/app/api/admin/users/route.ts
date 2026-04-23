@@ -35,6 +35,14 @@ export async function POST(request: NextRequest) {
     return apiError("Email, password, and name are required.", 400);
   }
 
+  // Default to "admin" — historical behavior before the manager role
+  // landed. Callers must explicitly pass "manager" to create a manager.
+  // "stylist" is accepted for forward compat but no login surface uses it.
+  const role: "admin" | "manager" | "stylist" = (() => {
+    if (body.role === "manager" || body.role === "stylist") return body.role;
+    return "admin";
+  })();
+
   const passwordHash = await bcrypt.hash(body.password, 12);
 
   const { data, error } = await supabase
@@ -43,7 +51,7 @@ export async function POST(request: NextRequest) {
       email: body.email.toLowerCase().trim(),
       password_hash: passwordHash,
       name: body.name,
-      role: body.role || "stylist",
+      role,
       stylist_id: body.stylistId || null,
       active: body.active ?? true,
     })

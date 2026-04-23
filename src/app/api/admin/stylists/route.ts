@@ -1,6 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
-import { getSessionUser, isAdmin } from "@/lib/roles";
+import { getSessionUser, isAdminOrManager } from "@/lib/roles";
 import { adminStylistSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
-  if (!isAdmin(await getSessionUser())) return apiError("Admin access required.", 403);
+  if (!isAdminOrManager(await getSessionUser())) return apiError("Admin access required.", 403);
 
   const body = await request.json();
   const parsed = adminStylistSchema.safeParse(body);
@@ -107,7 +107,8 @@ export async function POST(request: NextRequest) {
   // Bust ISR caches so the new stylist appears on the live site immediately.
   try {
     revalidatePath("/");
-    revalidatePath("/stylists");
+    revalidatePath("/team");
+    revalidatePath("/stylists"); // legacy redirect
     revalidatePath("/book");
   } catch {
     // revalidatePath fails when called outside of a server context — fine to ignore.

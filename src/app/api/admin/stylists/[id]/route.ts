@@ -1,6 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
-import { getSessionUser, isAdmin } from "@/lib/roles";
+import { getSessionUser, isAdminOrManager } from "@/lib/roles";
 import { adminStylistSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
@@ -11,7 +11,8 @@ import { NextRequest } from "next/server";
 function revalidatePublic() {
   try {
     revalidatePath("/");
-    revalidatePath("/stylists");
+    revalidatePath("/team");
+    revalidatePath("/stylists"); // legacy redirect
     revalidatePath("/book");
   } catch {
     // Best-effort: not fatal.
@@ -24,7 +25,7 @@ export async function PATCH(
 ) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
-  if (!isAdmin(await getSessionUser())) return apiError("Admin access required.", 403);
+  if (!isAdminOrManager(await getSessionUser())) return apiError("Admin access required.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { id } = await params;
@@ -76,7 +77,7 @@ export async function DELETE(
 ) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
-  if (!isAdmin(await getSessionUser())) return apiError("Admin access required.", 403);
+  if (!isAdminOrManager(await getSessionUser())) return apiError("Admin access required.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { id } = await params;

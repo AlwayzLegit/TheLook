@@ -155,14 +155,15 @@ export default function UsersPage() {
               <div>
                 <label className="block text-xs font-body text-navy/40 mb-1">Role</label>
                 <select
-                  value="admin"
-                  disabled
-                  className="w-full border border-navy/20 px-3 py-2 text-sm font-body bg-navy/5 cursor-not-allowed"
+                  value={form.role === "manager" ? "manager" : "admin"}
+                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                  className="w-full border border-navy/20 px-3 py-2 text-sm font-body bg-white"
                 >
-                  <option value="admin">Admin (full access)</option>
+                  <option value="admin">Admin — full access including user management</option>
+                  <option value="manager">Manager — everything except user management</option>
                 </select>
                 <p className="text-[10px] text-navy/40 mt-1">
-                  Stylist-only accounts are disabled for now. Every login created here has full admin access.
+                  Managers can edit branding, services, schedule, and everything else, but can&apos;t create or delete users.
                 </p>
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -200,7 +201,12 @@ export default function UsersPage() {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-body font-bold text-sm">{u.name}</p>
-                  <Badge tone={u.role === "admin" ? "accent" : "info"} size="sm">{u.role}</Badge>
+                  <Badge
+                    tone={u.role === "admin" ? "accent" : u.role === "manager" ? "info" : "neutral"}
+                    size="sm"
+                  >
+                    {u.role}
+                  </Badge>
                   {!u.active && <Badge tone="neutral" size="sm">Inactive</Badge>}
                 </div>
                 <p className="text-navy/50 text-xs font-body">{u.email}</p>

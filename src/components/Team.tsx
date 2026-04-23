@@ -82,7 +82,7 @@ export default function Team() {
         <div className="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto">
           {team.map((member, index) => (
             <AnimatedSection key={member.id} delay={index * 0.15}>
-              <Link href={`/stylists/${member.slug}`} className="group text-center block">
+              <Link href={`/team/${member.slug}`} className="group text-center block">
                 <div className="w-32 h-32 mx-auto mb-8 rounded-full bg-navy/8 flex items-center justify-center overflow-hidden group-hover:ring-2 group-hover:ring-gold/40 transition-all">
                   <StylistImage
                     src={member.image_url}
@@ -115,10 +115,10 @@ export default function Team() {
 
         <AnimatedSection className="text-center mt-14 flex flex-wrap justify-center gap-4">
           <Link
-            href="/stylists"
+            href="/team"
             className="inline-block border border-navy/30 hover:border-navy text-navy text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300"
           >
-            All Stylists
+            All Team
           </Link>
           <Link
             href="/book"

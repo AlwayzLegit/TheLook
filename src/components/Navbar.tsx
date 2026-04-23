@@ -9,7 +9,7 @@ import { useBranding } from "./BrandingProvider";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
-  { href: "/stylists", label: "Our Team" },
+  { href: "/team", label: "Our Team" },
   { href: "/gallery", label: "Gallery" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },

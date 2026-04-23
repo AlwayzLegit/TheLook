@@ -1,5 +1,5 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { getSessionUser, isAdmin } from "@/lib/roles";
+import { getSessionUser, isAdminOrManager } from "@/lib/roles";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { NextRequest } from "next/server";
@@ -42,7 +42,7 @@ export async function DELETE(
 ) {
   const user = await getSessionUser();
   if (!user) return apiError("Unauthorized", 401);
-  if (!isAdmin(user)) return apiError("Admin access required.", 403);
+  if (!isAdminOrManager(user)) return apiError("Admin access required.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { id } = await params;

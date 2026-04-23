@@ -133,8 +133,11 @@ export default function SettingsPage() {
   };
 
   if (status !== "authenticated") return null;
-  if (role !== "admin") {
-    return <p className="p-8 font-body text-navy/60">Settings are admins-only.</p>;
+  // Settings is open to both admins and managers — managers can edit
+  // branding, deposits, SMS, etc. Only user management (/admin/users) is
+  // gated to admins, and that lives on its own page.
+  if (role !== "admin" && role !== "manager") {
+    return <p className="p-8 font-body text-navy/60">This page is for salon admins and managers.</p>;
   }
 
   return (

@@ -23,7 +23,15 @@ export async function PATCH(
   };
 
   if (body.name !== undefined) updateData.name = body.name;
-  if (body.role !== undefined) updateData.role = body.role;
+  if (body.role !== undefined) {
+    // Server-side allow-list — admin UI is already constrained but a
+    // stray client call with role="anything" would otherwise trip the
+    // DB check constraint with a cryptic 500.
+    if (body.role !== "admin" && body.role !== "manager" && body.role !== "stylist") {
+      return apiError("Invalid role.", 400);
+    }
+    updateData.role = body.role;
+  }
   if (body.stylistId !== undefined) updateData.stylist_id = body.stylistId || null;
   if (body.active !== undefined) updateData.active = body.active;
   if (body.password) {

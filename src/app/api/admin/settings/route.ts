@@ -1,6 +1,6 @@
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
-import { getSessionUser, isAdmin } from "@/lib/roles";
+import { getSessionUser, isAdminOrManager } from "@/lib/roles";
 import { logAdminAction } from "@/lib/auditLog";
 import { BRANDING_CACHE_TAG } from "@/lib/branding";
 import { revalidateTag } from "next/cache";
@@ -56,7 +56,7 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   const user = await getSessionUser();
-  if (!user || !isAdmin(user)) return apiError("Admins only.", 403);
+  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const body = await request.json().catch(() => ({}));

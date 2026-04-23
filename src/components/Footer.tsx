@@ -99,7 +99,7 @@ export default function Footer() {
             <div className="space-y-3">
               {[
                 { href: "/services", label: "Services" },
-                { href: "/stylists", label: "Our Team" },
+                { href: "/team", label: "Our Team" },
                 { href: "/gallery", label: "Gallery" },
                 { href: "/shop", label: "Shop" },
                 { href: "/about", label: "About" },

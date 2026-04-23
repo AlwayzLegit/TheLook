@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { getSessionUser, isAdmin } from "@/lib/roles";
+import { getSessionUser, isAdminOrManager } from "@/lib/roles";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { depositRuleSchema } from "@/lib/validation";
 import { logAdminAction } from "@/lib/auditLog";
@@ -10,7 +10,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const user = await getSessionUser();
-  if (!user || !isAdmin(user)) return apiError("Admins only.", 403);
+  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { id } = await params;
@@ -44,7 +44,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const user = await getSessionUser();
-  if (!user || !isAdmin(user)) return apiError("Admins only.", 403);
+  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { id } = await params;
