@@ -107,36 +107,53 @@ export default async function TeamPage() {
               <h2 className="font-heading text-2xl md:text-3xl mb-8 text-center">
                 Management
               </h2>
-              <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-                {staff.map((s) => (
-                  <div key={s.id} className="text-center">
-                    <div className="relative aspect-square overflow-hidden bg-cream-dark rounded-full max-w-[220px] mx-auto mb-5">
-                      {s.image_url ? (
-                        <Image
-                          src={s.image_url}
-                          alt={s.name}
-                          fill
-                          sizes="220px"
-                          className="object-cover object-top"
-                          unoptimized={!/\.supabase\.co\//.test(s.image_url) && !s.image_url.includes("images.unsplash.com")}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center font-heading text-5xl text-navy/25">
-                          {s.name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-                    <h3 className="font-heading text-2xl">{s.name}</h3>
-                    <p className="text-gold text-[11px] tracking-[0.2em] uppercase font-body mt-1">
-                      {s.title || defaultTitle(s.role)}
-                    </p>
-                    {s.bio && (
-                      <p className="text-navy/60 text-sm font-body mt-3 leading-relaxed max-w-xs mx-auto line-clamp-4">
-                        {s.bio}
+              {/* Flex-center + wrap so 1, 2, or 3 managers all sit
+                  horizontally centered on the page instead of left-
+                  aligning in a 3-column grid. */}
+              <div className="flex flex-wrap justify-center gap-10 md:gap-12 max-w-4xl mx-auto">
+                {staff.map((s) => {
+                  const body = (
+                    <>
+                      <div className="relative aspect-square overflow-hidden bg-cream-dark rounded-full max-w-[220px] mx-auto mb-5 group-hover:ring-2 group-hover:ring-gold/40 transition-all">
+                        {s.image_url ? (
+                          <Image
+                            src={s.image_url}
+                            alt={s.name}
+                            fill
+                            sizes="220px"
+                            className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                            unoptimized={!/\.supabase\.co\//.test(s.image_url) && !s.image_url.includes("images.unsplash.com")}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center font-heading text-5xl text-navy/25">
+                            {s.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <h3 className="font-heading text-2xl group-hover:text-rose transition-colors">{s.name}</h3>
+                      <p className="text-gold text-[11px] tracking-[0.2em] uppercase font-body mt-1">
+                        {s.title || defaultTitle(s.role)}
                       </p>
-                    )}
-                  </div>
-                ))}
+                      {s.bio && (
+                        <p className="text-navy/60 text-sm font-body mt-3 leading-relaxed max-w-xs mx-auto line-clamp-4">
+                          {s.bio}
+                        </p>
+                      )}
+                    </>
+                  );
+                  // Only wrap in a Link when the admin has picked a public
+                  // slug from /admin/profile — the detail route needs it
+                  // to look the record back up server-side.
+                  return s.slug ? (
+                    <Link key={s.id} href={`/team/${s.slug}`} className="group block text-center w-full sm:w-64">
+                      {body}
+                    </Link>
+                  ) : (
+                    <div key={s.id} className="group text-center w-full sm:w-64">
+                      {body}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -151,17 +168,21 @@ export default async function TeamPage() {
             {stylists.length === 0 ? (
               <p className="text-navy/60 text-center font-body">Our stylists are being featured here soon.</p>
             ) : (
-              <div className="grid md:grid-cols-3 gap-8">
+              // Circular tiles match the Management section above so the
+              // whole /team page feels uniform. Flex-wrap keeps any count
+              // (2, 3, 4, 5…) centered on the row instead of jamming at
+              // the left edge of a fixed grid.
+              <div className="flex flex-wrap justify-center gap-10 md:gap-12 max-w-5xl mx-auto">
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {stylists.map((s: any) => (
-                  <Link key={s.id} href={`/team/${s.slug}`} className="group block">
-                    <div className="relative aspect-[3/4] overflow-hidden bg-cream-dark mb-4">
+                  <Link key={s.id} href={`/team/${s.slug}`} className="group block text-center w-full sm:w-60">
+                    <div className="relative aspect-square overflow-hidden bg-cream-dark rounded-full max-w-[220px] mx-auto mb-4">
                       <StylistImage
                         src={s.image_url}
                         alt={s.name}
                         initial={s.name.charAt(0).toUpperCase()}
                         initialClass="font-heading text-6xl text-navy/25"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        sizes="220px"
                         className="group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>
@@ -171,7 +192,7 @@ export default async function TeamPage() {
                         {s.specialties.slice(0, 3).join(" · ")}
                       </p>
                     )}
-                    {s.bio && <p className="text-navy/50 text-sm font-body mt-3 line-clamp-2">{s.bio}</p>}
+                    {s.bio && <p className="text-navy/50 text-sm font-body mt-3 line-clamp-2 max-w-xs mx-auto">{s.bio}</p>}
                   </Link>
                 ))}
               </div>

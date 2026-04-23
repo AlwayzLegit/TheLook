@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -9,6 +10,33 @@ import { getBranding, telHref } from "@/lib/branding";
 import type { Metadata } from "next";
 
 export const revalidate = 60;
+
+interface StaffRecord {
+  id: string;
+  name: string;
+  role: string;
+  title: string | null;
+  bio: string | null;
+  image_url: string | null;
+  slug: string | null;
+  active_for_public: boolean;
+}
+
+async function getStaff(slug: string): Promise<StaffRecord | null> {
+  if (!hasSupabaseConfig) return null;
+  try {
+    const { data } = await supabase
+      .from("admin_users")
+      .select("id, name, role, title, bio, image_url, slug, active_for_public")
+      .eq("slug", slug)
+      .eq("active_for_public", true)
+      .maybeSingle();
+    return (data as StaffRecord | null) || null;
+  } catch {
+    // Pre-migration envs won't have the new columns yet.
+    return null;
+  }
+}
 
 async function getStylist(slug: string) {
   if (!hasSupabaseConfig) return null;
@@ -40,21 +68,87 @@ async function getStylist(slug: string) {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function generateMetadata({ params }: any): Promise<Metadata> {
-  const { slug } = await params;
-  const [stylist, brand] = await Promise.all([getStylist(slug), getBranding()]);
-  if (!stylist) return { title: "Stylist Not Found" };
-  return {
-    title: `${stylist.name} — ${brand.name}`,
-    description: stylist.bio || `Book with ${stylist.name} at ${brand.name} in Glendale, CA.`,
-  };
+function defaultRoleTitle(role: string): string {
+  if (role === "admin") return "Owner";
+  if (role === "manager") return "Salon Manager";
+  return "Team";
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default async function StylistPage({ params }: any) {
+export async function generateMetadata({ params }: any): Promise<Metadata> {
   const { slug } = await params;
-  const [stylist, brand] = await Promise.all([getStylist(slug), getBranding()]);
+  const [staff, stylist, brand] = await Promise.all([getStaff(slug), getStylist(slug), getBranding()]);
+  const person = staff || stylist;
+  if (!person) return { title: "Not Found" };
+  const title = `${person.name} — ${brand.name}`;
+  const description = person.bio || `Meet ${person.name} at ${brand.name} in Glendale, CA.`;
+  return { title, description };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default async function TeamMemberPage({ params }: any) {
+  const { slug } = await params;
+  // admin_users takes precedence — a manager and a stylist sharing the
+  // same slug is unlikely, but the slug is editable from /admin/profile,
+  // so an explicit owner/manager page should win over a stylist collision.
+  const [staff, stylist, brand] = await Promise.all([getStaff(slug), getStylist(slug), getBranding()]);
+
+  if (staff) {
+    return (
+      <>
+        <Navbar />
+        <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
+          <div className="max-w-4xl mx-auto px-6">
+            <Link href="/team" className="text-xs text-navy/60 hover:text-navy font-body mb-6 inline-block">&larr; All team</Link>
+
+            <div className="flex flex-col items-center text-center">
+              <div className="relative aspect-square overflow-hidden bg-cream-dark rounded-full w-52 md:w-64 mb-6">
+                {staff.image_url ? (
+                  <Image
+                    src={staff.image_url}
+                    alt={staff.name}
+                    fill
+                    sizes="(max-width: 768px) 208px, 256px"
+                    className="object-cover object-center"
+                    unoptimized={!/\.supabase\.co\//.test(staff.image_url) && !staff.image_url.includes("images.unsplash.com")}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center font-heading text-6xl text-navy/25">
+                    {staff.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 mb-3">
+                <span className="w-8 h-[1px] bg-gold" />
+                <span className="text-gold text-[11px] tracking-[0.3em] uppercase font-body">
+                  {staff.title || defaultRoleTitle(staff.role)}
+                </span>
+                <span className="w-8 h-[1px] bg-gold" />
+              </div>
+
+              <h1 className="font-heading text-5xl md:text-6xl mb-6">{staff.name}</h1>
+
+              {staff.bio && (
+                <p className="text-navy/70 font-body font-light leading-relaxed max-w-2xl mb-10">{staff.bio}</p>
+              )}
+
+              <div className="flex flex-wrap justify-center gap-4">
+                <Link href="/book" className="bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-8 py-3 font-body transition-all">
+                  Book an appointment
+                </Link>
+                <a href={telHref(brand.phone)} className="border border-navy/20 hover:border-navy text-navy/70 hover:text-navy text-[11px] tracking-[0.2em] uppercase px-8 py-3 font-body transition-all">
+                  Call us
+                </a>
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
   if (!stylist) notFound();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,17 +166,17 @@ export default async function StylistPage({ params }: any) {
         <div className="max-w-6xl mx-auto px-6">
           <Link href="/team" className="text-xs text-navy/60 hover:text-navy font-body mb-6 inline-block">&larr; All team</Link>
 
-          <div className="grid md:grid-cols-2 gap-12 mb-16">
-            <div className="relative aspect-[3/4] overflow-hidden bg-cream-dark">
+          <div className="grid md:grid-cols-2 gap-12 mb-16 items-center">
+            <div className="relative aspect-square overflow-hidden bg-cream-dark rounded-full w-64 md:w-80 mx-auto">
               <StylistImage
                 src={stylist.image_url}
                 alt={stylist.name}
                 initial={stylist.name.charAt(0).toUpperCase()}
-                sizes="(max-width: 768px) 100vw, 50vw"
+                sizes="(max-width: 768px) 256px, 320px"
               />
             </div>
-            <div className="flex flex-col justify-center">
-              <div className="flex items-center gap-3 mb-4">
+            <div className="flex flex-col justify-center text-center md:text-left">
+              <div className="flex items-center gap-3 mb-4 justify-center md:justify-start">
                 <span className="w-8 h-[1px] bg-gold" />
                 <span className="text-gold text-[11px] tracking-[0.3em] uppercase font-body">Stylist</span>
               </div>
@@ -98,7 +192,7 @@ export default async function StylistPage({ params }: any) {
                 <p className="text-navy/70 font-body font-light leading-relaxed mb-8">{stylist.bio}</p>
               )}
 
-              <div className="flex gap-4">
+              <div className="flex gap-4 justify-center md:justify-start">
                 <Link href={`/book?stylist=${stylist.id}`} className="bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-8 py-3 font-body transition-all">
                   Book with {stylist.name.split(" ")[0]}
                 </Link>
