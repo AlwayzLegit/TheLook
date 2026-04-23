@@ -34,9 +34,11 @@ export default async function TermsPage() {
             <section>
               <h2 className="font-heading text-2xl text-navy mb-3">1. Agreement to Terms</h2>
               <p>
-                By accessing or using the website at thelookhairsalonla.com (the &ldquo;Site&rdquo;), booking
-                an appointment, or using any services provided by {brand.name}{" "}
-                (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), you agree to be bound by these Terms of Service.
+                {brand.name} is a trade name (&ldquo;doing business as&rdquo;) of <strong>Mjan Salon</strong>.
+                References to &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo; in these Terms refer
+                to Mjan Salon, operating as {brand.name}. By accessing or using the website at
+                thelookhairsalonla.com (the &ldquo;Site&rdquo;), booking an appointment, or using any
+                services provided by {brand.name}, you agree to be bound by these Terms of Service.
                 If you do not agree, please do not use the Site.
               </p>
             </section>
@@ -203,7 +205,7 @@ export default async function TermsPage() {
                 </li>
                 <li>
                   <strong>Privacy:</strong> your mobile information is handled under our{" "}
-                  <a href="/privacy-policy" className="text-rose hover:underline">Privacy Policy</a>.
+                  <a href="/privacy" className="text-rose hover:underline">Privacy Policy</a>.
                   Mobile information will not be shared, sold, or conveyed to third parties or affiliates
                   for marketing or promotional purposes.
                 </li>

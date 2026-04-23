@@ -33,9 +33,10 @@ export default async function PrivacyPage() {
           <div className="bg-white border border-navy/10 p-8 md:p-10 space-y-6 font-body text-navy/75 leading-relaxed text-[15px]">
             <section>
               <p>
-                {brand.name} (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) respects your
-                privacy. This policy explains what information we collect, how we use it, and the choices
-                you have.
+                {brand.name} is a trade name (&ldquo;doing business as&rdquo;) of <strong>Mjan Salon</strong>.
+                Throughout this policy, &ldquo;we,&rdquo; &ldquo;us,&rdquo; and &ldquo;our&rdquo; refer to
+                Mjan Salon, operating as {brand.name}. We respect your privacy. This policy explains what
+                information we collect, how we use it, and the choices you have.
               </p>
             </section>
 

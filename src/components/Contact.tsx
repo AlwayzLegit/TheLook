@@ -251,9 +251,9 @@ export default function Contact() {
                 </label>
                 <p className="text-xs text-navy/50 font-body mt-2 ml-7">
                   For more information, please review our{" "}
-                  <a href="/privacy-policy" className="underline hover:text-rose">Privacy Policy</a>
+                  <a href="/privacy" className="underline hover:text-rose">Privacy Policy</a>
                   {" "}and{" "}
-                  <a href="/terms-and-conditions" className="underline hover:text-rose">Terms of Service</a>.
+                  <a href="/terms" className="underline hover:text-rose">Terms of Service</a>.
                 </p>
               </div>
 
