@@ -1,5 +1,5 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { auth } from "@/lib/auth";
+import { getSessionUser, isAdminOrManager } from "@/lib/roles";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { NextRequest } from "next/server";
@@ -8,8 +8,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session) return apiError("Unauthorized", 401);
+  const user = await getSessionUser();
+  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { id } = await params;
@@ -44,8 +44,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session) return apiError("Unauthorized", 401);
+  const user = await getSessionUser();
+  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { id } = await params;

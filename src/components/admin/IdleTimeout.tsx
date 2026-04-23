@@ -3,17 +3,19 @@
 import { useEffect, useRef } from "react";
 import { signOut, useSession } from "next-auth/react";
 
-// Shop-floor tool — default idle timeout is 8h so staff don't get bounced
-// mid-shift. Admin can override via settings.idle_timeout_minutes (plan
-// bug #7) but we don't hit the network for it here; the IdleTimeout
-// component reads a CSS custom prop written by the admin shell + picks up
-// a data attribute override when present.
-const DEFAULT_IDLE_MIN = 8 * 60;
+// Default idle timeout is 3h 45m so the client-side timer always trips
+// before the NextAuth JWT maxAge (4h) — otherwise the admin clicks once
+// more after the server session expired and silently gets bounced with a
+// redirect loop. Admin can raise via settings.idle_timeout_minutes but
+// it's capped server-side at 235 to preserve the invariant.
+const DEFAULT_IDLE_MIN = 225;
+const MAX_IDLE_MIN = 235;
 function resolveMinutes(): number {
   if (typeof window === "undefined") return DEFAULT_IDLE_MIN;
   const attr = document.documentElement.getAttribute("data-idle-timeout-min");
   const parsed = attr ? parseInt(attr, 10) : NaN;
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_IDLE_MIN;
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_IDLE_MIN;
+  return Math.min(parsed, MAX_IDLE_MIN);
 }
 const IDLE_MS = () => resolveMinutes() * 60 * 1000;
 const WARN_MS = () => Math.max((resolveMinutes() - 2) * 60 * 1000, 60_000);
@@ -49,10 +51,10 @@ export default function IdleTimeout() {
       warnRef.current = window.setTimeout(() => {
         if (warnedRef.current) return;
         warnedRef.current = true;
-        // Quiet warning — no blocking dialog, just a toast-like alert.
-        // Enough to nudge the admin back if they're present but didn't
-        // touch the mouse.
-        console.info("[idle] signing out in 2 minutes of inactivity");
+        // Silent marker — console logging here leaked "admin is idle" to
+        // anyone peeking at devtools. The window.setTimeout below still
+        // fires the actual sign-out; the warn slot exists to hook a
+        // toast later if we want one.
       }, WARN_MS());
       timeoutRef.current = window.setTimeout(() => {
         signOut({ callbackUrl: "/admin/login?reason=idle" }).catch(() => {

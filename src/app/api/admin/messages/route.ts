@@ -1,13 +1,13 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { auth } from "@/lib/auth";
+import { getSessionUser, isAdminOrManager } from "@/lib/roles";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
 // GET /api/admin/messages                    — full list (admin page)
 // GET /api/admin/messages?unreadOnly=true    — only unread (sidebar badge)
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session) return apiError("Unauthorized", 401);
+  const user = await getSessionUser();
+  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
   if (!hasSupabaseConfig) return apiSuccess([]);
 
   const unreadOnly = request.nextUrl.searchParams.get("unreadOnly") === "true";

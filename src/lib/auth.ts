@@ -1,13 +1,15 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { headers } from "next/headers";
 import { checkRateLimit } from "./rateLimit";
 import { logAuthEvent } from "./auditLog";
+import type { UserRole } from "./roles";
 
 const failedAttempts = new Map<string, { count: number; lockedUntil: number }>();
 const MAX_FAILED = 5;
 const LOCKOUT_MS = 15 * 60 * 1000;
 
-async function findUserInDb(email: string): Promise<{ id: string; name: string; email: string; role: string; stylistId: string | null; passwordHash: string } | null> {
+async function findUserInDb(email: string): Promise<{ id: string; name: string; email: string; role: UserRole; stylistId: string | null; passwordHash: string } | null> {
   try {
     const { supabase, hasSupabaseConfig } = await import("./supabase");
     if (!hasSupabaseConfig) return null;
@@ -20,11 +22,13 @@ async function findUserInDb(email: string): Promise<{ id: string; name: string; 
       .single();
 
     if (!data) return null;
+    const role: UserRole =
+      data.role === "manager" || data.role === "stylist" ? data.role : "admin";
     return {
       id: data.id,
       name: data.name,
       email: data.email,
-      role: data.role,
+      role,
       stylistId: data.stylist_id,
       passwordHash: data.password_hash,
     };
@@ -69,12 +73,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!inputEmail) return null;
 
-        const rl = await checkRateLimit({
-          key: `login:${inputEmail}`,
-          limit: 10,
-          windowMs: 15 * 60 * 1000,
-        });
-        if (!rl.ok) {
+        // Per-email cap AND per-IP cap. The email key stops slow-pw attacks
+        // on a known admin email; the IP key stops someone cycling through
+        // emails from a single host. Either limit trips the lockout path.
+        const h = await headers().catch(() => null);
+        const ip = h?.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+        const [rlEmail, rlIp] = await Promise.all([
+          checkRateLimit({ key: `login:${inputEmail}`, limit: 10, windowMs: 15 * 60 * 1000 }),
+          checkRateLimit({ key: `login-ip:${ip}`, limit: 30, windowMs: 15 * 60 * 1000 }),
+        ]);
+        if (!rlEmail.ok || !rlIp.ok) {
           logAuthEvent("auth.login.failed", inputEmail, { reason: "rate_limited" });
           return null;
         }
@@ -146,19 +154,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     jwt({ token, user }) {
       if (user) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        token.role = (user as any).role || "admin";
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        token.stylistId = (user as any).stylistId || null;
+        token.role = (user.role as UserRole) || "admin";
+        token.stylistId = user.stylistId ?? null;
       }
       return token;
     },
     session({ session, token }) {
       if (session.user) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (session.user as any).role = token.role;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (session.user as any).stylistId = token.stylistId;
+        session.user.role = (token.role as UserRole) || "admin";
+        session.user.stylistId = (token.stylistId as string | null) ?? null;
       }
       return session;
     },

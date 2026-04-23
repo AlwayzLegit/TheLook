@@ -1,5 +1,5 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { auth } from "@/lib/auth";
+import { getSessionUser, isAdmin } from "@/lib/roles";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
@@ -24,8 +24,10 @@ const CATEGORY_PREFIX: Record<string, string[]> = {
 };
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session) return apiError("Unauthorized", 401);
+  const user = await getSessionUser();
+  // Audit log is admin-only — contains every privileged operation and
+  // actor IPs, not something a manager or stylist should browse.
+  if (!user || !isAdmin(user)) return apiError("Admin access required.", 403);
   if (!hasSupabaseConfig) return apiSuccess({ total: 0, page: 1, pageSize: 50, entries: [] });
 
   const sp = request.nextUrl.searchParams;
@@ -91,8 +93,8 @@ export async function GET(request: NextRequest) {
 //   - distinct actor_email values for the dropdown (usually < 10)
 //   - today / 7d / 30d counts for the summary strip
 export async function OPTIONS() {
-  const session = await auth();
-  if (!session) return apiError("Unauthorized", 401);
+  const user = await getSessionUser();
+  if (!user || !isAdmin(user)) return apiError("Admin access required.", 403);
   if (!hasSupabaseConfig) return apiSuccess({ actors: [], counts: { today: 0, week: 0, month: 0 } });
 
   const now = new Date();

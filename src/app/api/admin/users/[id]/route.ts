@@ -35,7 +35,7 @@ export async function PATCH(
   if (body.stylistId !== undefined) updateData.stylist_id = body.stylistId || null;
   if (body.active !== undefined) updateData.active = body.active;
   if (body.password) {
-    updateData.password_hash = await bcrypt.hash(body.password, 12);
+    updateData.password_hash = await bcrypt.hash(body.password, 14);
   }
 
   const { data, error } = await supabase

@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { sendCancellationEmail } from "@/lib/email";
 import { sendCancellationSMS } from "@/lib/sms";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -11,6 +12,12 @@ export async function POST(request: NextRequest) {
   if (!token) {
     return apiError("Cancel token required.", 400);
   }
+
+  // Cheap throttle per-IP so a stolen email link can't be weaponized
+  // to flood the cancel endpoint with bogus tokens.
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = await checkRateLimit({ key: `cancel-ip:${ip}`, limit: 30, windowMs: 10 * 60 * 1000 });
+  if (!rl.ok) return apiError("Too many attempts. Try again later.", 429);
 
   const { data: appointment, error: findError } = await supabase
     .from("appointments")

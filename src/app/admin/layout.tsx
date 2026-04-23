@@ -184,10 +184,8 @@ function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
 // nested DropdownMenu inside a drawer.
 function MobileUserFooter({ onNavigate }: { onNavigate: () => void }) {
   const { data: session } = useSession();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const email = (session?.user as any)?.email as string | undefined;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const role = (session?.user as any)?.role as string | undefined;
+  const email = session?.user?.email ?? undefined;
+  const role = session?.user?.role ?? undefined;
   const initial = (email || "?").charAt(0).toUpperCase();
   const go = (href: string) => {
     onNavigate();
@@ -236,10 +234,8 @@ function MobileUserFooter({ onNavigate }: { onNavigate: () => void }) {
 
 function UserMenu() {
   const { data: session } = useSession();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const email = (session?.user as any)?.email as string | undefined;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const role = (session?.user as any)?.role as string | undefined;
+  const email = session?.user?.email ?? undefined;
+  const role = session?.user?.role ?? undefined;
   const initial = (email || "?").charAt(0).toUpperCase();
   return (
     <DropdownMenu>

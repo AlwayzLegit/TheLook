@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
     return "admin";
   })();
 
-  const passwordHash = await bcrypt.hash(body.password, 12);
+  // Cost 14 — 2026 baseline for bcrypt, ~1-2s per hash on modern hardware.
+  const passwordHash = await bcrypt.hash(body.password, 14);
 
   const { data, error } = await supabase
     .from("admin_users")

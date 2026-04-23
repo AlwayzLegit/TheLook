@@ -40,7 +40,7 @@ const ALLOWED_KEYS = new Set([
 
 export async function GET() {
   const user = await getSessionUser();
-  if (!user) return apiError("Unauthorized", 401);
+  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
   if (!hasSupabaseConfig) return apiSuccess({});
 
   const { data, error } = await supabase.from("salon_settings").select("key, value");

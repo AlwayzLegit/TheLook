@@ -1,5 +1,28 @@
 const buckets = new Map<string, number[]>();
 
+// Periodic sweep so the in-memory bucket map never grows unbounded
+// (findings audit P2 #14). Without it, unique keys — IP, email —
+// accumulate forever and the process RSS creeps up. Single timer per
+// process, cleared at shutdown. No-op when the module is imported in
+// an edge runtime that doesn't expose setInterval; we guard on it.
+const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
+const MAX_AGE_MS = 60 * 60 * 1000;
+if (typeof setInterval === "function" && typeof globalThis !== "undefined") {
+  const g = globalThis as unknown as { __theLookRlSweep?: NodeJS.Timeout };
+  if (!g.__theLookRlSweep) {
+    g.__theLookRlSweep = setInterval(() => {
+      const cutoff = Date.now() - MAX_AGE_MS;
+      for (const [key, ts] of buckets) {
+        const kept = ts.filter((t) => t > cutoff);
+        if (kept.length === 0) buckets.delete(key);
+        else buckets.set(key, kept);
+      }
+    }, SWEEP_INTERVAL_MS);
+    // Prevent the timer from keeping the process alive in test harnesses.
+    (g.__theLookRlSweep as { unref?: () => void }).unref?.();
+  }
+}
+
 interface RateLimitOptions {
   key: string;
   limit: number;

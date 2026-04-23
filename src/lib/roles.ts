@@ -19,13 +19,12 @@ interface SessionUser {
 export async function getSessionUser(): Promise<SessionUser | null> {
   const session = await auth();
   if (!session?.user) return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const u = session.user as any;
+  const u = session.user;
   return {
-    role: u.role || "admin",
-    stylistId: u.stylistId || null,
-    email: u.email || "",
-    name: u.name || "",
+    role: (u.role as UserRole) || "admin",
+    stylistId: u.stylistId ?? null,
+    email: u.email ?? "",
+    name: u.name ?? "",
   };
 }
 

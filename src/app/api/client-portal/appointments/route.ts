@@ -1,11 +1,13 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
+import { verifyClientSession } from "@/lib/clientSession";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
   if (!hasSupabaseConfig) return apiSuccess([]);
 
-  const email = request.cookies.get("thelook_client_session")?.value;
+  const raw = request.cookies.get("thelook_client_session")?.value;
+  const email = verifyClientSession(raw);
   if (!email) return apiError("Not signed in.", 401);
 
   const { data, error } = await supabase
