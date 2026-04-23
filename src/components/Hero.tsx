@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useBranding } from "./BrandingProvider";
 import { telHref } from "@/lib/branding";
 
@@ -11,17 +11,23 @@ export default function Hero() {
   const brand = useBranding();
   const ref = useRef(null);
   const prefersReducedMotion = useReducedMotion();
+  // Gate the motion transforms behind a mount flag. Framer-motion's
+  // MotionValue serialization differs between the SSR pass and the first
+  // client render (React #418 hydration mismatch), so we render a static
+  // frame until after hydration completes — then upgrade to the parallax.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"],
   });
+  const rawY = useTransform(scrollYProgress, [0, 1], ["0%", "25%"]);
+  const rawOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
   // When the user prefers reduced motion, pin the parallax layer —
   // useScroll still runs but we drop the transform so there's no
   // frame-by-frame movement.
-  const rawY = useTransform(scrollYProgress, [0, 1], ["0%", "25%"]);
-  const rawOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-  const y = prefersReducedMotion ? "0%" : rawY;
-  const opacity = prefersReducedMotion ? 1 : rawOpacity;
+  const y = (!mounted || prefersReducedMotion) ? "0%" : rawY;
+  const opacity = (!mounted || prefersReducedMotion) ? 1 : rawOpacity;
 
   return (
     <section

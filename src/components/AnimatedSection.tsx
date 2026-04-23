@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 interface AnimatedSectionProps {
   children: ReactNode;
@@ -15,10 +15,17 @@ export default function AnimatedSection({
   delay = 0,
 }: AnimatedSectionProps) {
   const prefersReducedMotion = useReducedMotion();
+  // Gate motion behind a mount flag to avoid React #418 — framer-motion's
+  // motion.div serializes slightly differently between the SSR pass and
+  // the first client render, which trips hydration. Static div until
+  // mounted, then upgrade to the animated shell.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  if (prefersReducedMotion) {
-    // No motion at all — render a static div so screen-reader +
-    // keyboard users don't get a flickering reveal animation.
+  if (!mounted || prefersReducedMotion) {
+    // No motion at all — render a static div so hydration matches the
+    // SSR output exactly, and screen-reader / keyboard users (or anyone
+    // with reduced-motion) don't get a flickering reveal animation.
     return <div className={className}>{children}</div>;
   }
 

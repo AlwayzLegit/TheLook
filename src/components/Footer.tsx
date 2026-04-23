@@ -174,7 +174,7 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="border-t border-white/8 mt-14 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-white/55 text-xs font-body">
+          <p className="text-white/55 text-xs font-body" suppressHydrationWarning>
             &copy; {new Date().getFullYear()} {brand.name}. All rights reserved.
           </p>
           <div className="flex items-center gap-5 text-[11px] font-body">
