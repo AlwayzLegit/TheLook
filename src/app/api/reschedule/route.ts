@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
     startTime: newStartTime,
     newStatus: "confirmed",
     cancelToken: appointment.cancel_token,
+    anyStylist: appointment.requested_stylist === false,
   }).catch((err) => logError("reschedule email", err));
 
   if (appointment.client_phone) {

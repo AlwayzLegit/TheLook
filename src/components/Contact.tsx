@@ -306,23 +306,33 @@ export default function Contact() {
                 <h3 className="font-heading text-2xl mb-4">
                   Call or Text Us
                 </h3>
-                <div className="text-navy/60 font-body font-light space-y-2">
-                  <p>
+                <div className="text-navy/60 font-body font-light space-y-3">
+                  <p className="text-lg">{brand.phone}</p>
+                  <p>{brand.email}</p>
+                  {/* Tap targets for mobile — the raw text above is
+                      intentionally not a link so the number + email can
+                      be copy-pasted cleanly; the buttons below are the
+                      action entry points for phones. */}
+                  <div className="flex flex-wrap gap-3 pt-2">
                     <a
                       href={telHref(brand.phone)}
-                      className="hover:text-rose transition-colors text-lg"
+                      className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-5 py-3 font-body transition-all duration-300 hover:shadow-[var(--shadow-rose-cta)] hover:-translate-y-0.5"
                     >
-                      {brand.phone}
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 5a2 2 0 012-2h2.5a1 1 0 01.95.68l1.2 3.6a1 1 0 01-.27 1.05l-1.9 1.9a16 16 0 006.3 6.3l1.9-1.9a1 1 0 011.05-.27l3.6 1.2a1 1 0 01.68.95V19a2 2 0 01-2 2h-1C9.82 21 3 14.18 3 6V5z" />
+                      </svg>
+                      Call Us
                     </a>
-                  </p>
-                  <p>
                     <a
                       href={mailtoHref(brand.email)}
-                      className="hover:text-rose transition-colors"
+                      className="inline-flex items-center gap-2 border border-navy/20 hover:border-navy text-navy/80 hover:text-navy text-[11px] tracking-[0.2em] uppercase px-5 py-3 font-body transition-all duration-300"
                     >
-                      {brand.email}
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Email Us
                     </a>
-                  </p>
+                  </div>
                 </div>
               </div>
 

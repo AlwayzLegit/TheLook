@@ -112,10 +112,18 @@ export default function ServicesPage() {
         setToast({ type: "success", message: editing ? "Service updated." : "Service created." });
         fetchServices();
       } else {
-        const data = await res.json().catch(() => ({}));
-        setToast({ type: "error", message: data.error || "Failed to save service." });
+        // Surface the server's actual message in both the toast + console so
+        // the owner can act on "Invalid image_url: too long" instead of a
+        // bare "SAVE not working". Keep the form open so edits aren't lost.
+        const raw = await res.text();
+        let parsed: { error?: string } = {};
+        try { parsed = JSON.parse(raw); } catch { /* keep raw */ }
+        const msg = parsed.error || raw || `Failed to save service (HTTP ${res.status}).`;
+        console.error("admin/services save failed:", res.status, msg);
+        setToast({ type: "error", message: msg });
       }
     } catch (err) {
+      console.error("admin/services save network error:", err);
       setToast({ type: "error", message: err instanceof Error ? err.message : "Network error." });
     } finally {
       setSaving(false);

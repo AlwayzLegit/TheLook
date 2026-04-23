@@ -45,7 +45,7 @@ function buildFaqs(phone: string) {
   {
     question: "What products do you use?",
     answer:
-      "We use only premium, professional-grade products from brands like Olaplex, Redken, Wella, and Kevin Murphy. All our color products are ammonia-free and gentle on your hair.",
+      "We use only premium, professional-grade products from brands like Redken, Igora Luxury Hair Color, B3 Brazilian Bond Builder and other quality products. All our permanent hair color products are gentle and nourishing, it fully covers grey hair, adding shine & hydration.",
   },
   {
     question: "Is parking available?",
@@ -55,7 +55,7 @@ function buildFaqs(phone: string) {
   {
     question: "Do you offer gift cards?",
     answer:
-      "Absolutely! Gift cards are available in any denomination and can be purchased in-salon or by calling us. They make a perfect gift for any occasion.",
+      "Absolutely! Gift cards are available in any denomination and can be purchased in-salon. They make a perfect gift for any occasion.",
   },
   ];
 }

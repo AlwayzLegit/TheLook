@@ -105,6 +105,10 @@ export async function PATCH(
       startTime: data.start_time,
       newStatus,
       cancelToken: data.cancel_token,
+      // Customer picked "Any Stylist" — show the neutral label in the
+      // confirmation / cancellation email so they don't see a name they
+      // didn't choose.
+      anyStylist: data.requested_stylist === false,
     }).catch((err) => logError("status-email", err));
 
     // Parallel SMS, gated by the client having a phone + the admin

@@ -281,15 +281,20 @@ interface StatusChangeDetails {
   startTime: string;
   newStatus: string;
   cancelToken?: string | null;
+  // True when the customer originally picked "Any Stylist" — we show the
+  // neutral label in the status-change email instead of the resolved
+  // stylist's name so expectations stay aligned with what they picked.
+  anyStylist?: boolean;
 }
 
 export async function sendStatusChangeEmail(details: StatusChangeDetails) {
-  const { clientName, clientEmail, serviceName, stylistName, date, startTime, newStatus, cancelToken } = details;
+  const { clientName, clientEmail, serviceName, stylistName, date, startTime, newStatus, cancelToken, anyStylist } = details;
   const brand = await getBranding();
+  const stylistDisplay = anyStylist ? "Any available stylist" : stylistName;
 
   const detailRows = detailsTable([
     ["Service", serviceName],
-    ["Stylist", stylistName],
+    ["Stylist", stylistDisplay],
     ["Date", formatDate(date)],
     ["Time", formatTime(startTime)],
   ]);
@@ -444,6 +449,14 @@ export async function sendStaffNewBookingEmail(details: StaffNewBookingDetails) 
   const stylistBadge = requestedStylist
     ? `<span style="background:#c2274b; color:#fff; padding:2px 8px; font-size:10px; letter-spacing:1px;">REQUESTED</span>`
     : `<span style="background:#999; color:#fff; padding:2px 8px; font-size:10px; letter-spacing:1px;">ANY STYLIST</span>`;
+  // When the customer picked "Any Stylist" the primary label should read
+  // neutrally (Any available stylist) so the staff inbox agrees with what
+  // the client sees in their confirmation. The resolved stylist name stays
+  // below as a smaller "assigned → Janet" hint so the receptionist still
+  // knows who's actually on the book.
+  const stylistCell = requestedStylist
+    ? `${stylistName} ${stylistBadge}`
+    : `Any available stylist ${stylistBadge}<br/><span style="color:#999; font-size:12px;">Assigned → ${stylistName}</span>`;
 
   const depositBadge = depositRequiredCents > 0
     ? `$${(depositRequiredCents / 100).toFixed(0)} ${depositPaid
@@ -465,7 +478,7 @@ export async function sendStaffNewBookingEmail(details: StaffNewBookingDetails) 
           ${detailsTable([
             ["Client", `${clientName}<br/><span style="color:#999; font-size:12px;">${clientEmail}${clientPhone ? " · " + clientPhone : ""}</span>`],
             ["Service", `${serviceName}${totalPriceText ? ` <span style="color:#c9a96e;">(${totalPriceText})</span>` : ""}`],
-            ["Stylist", `${stylistName} ${stylistBadge}`],
+            ["Stylist", stylistCell],
             ["Date", formatDate(date)],
             ["Time", `${formatTime(startTime)} – ${formatTime(endTime)}`],
             ["Deposit", depositBadge],

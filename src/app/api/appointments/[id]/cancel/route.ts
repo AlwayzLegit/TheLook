@@ -26,13 +26,20 @@ export async function POST(request: NextRequest) {
     return apiSuccess({ message: "Already cancelled" });
   }
 
-  const { error: updateError } = await supabase
+  // Use .select().single() after the update so an RLS-blocked write
+  // surfaces as an empty result instead of a silent no-op. Previously a
+  // missing / misconfigured service-role key could let this endpoint
+  // return 200 "cancelled" while the DB row stayed "confirmed" — the
+  // admin calendar then kept showing the stale status indefinitely.
+  const { data: updated, error: updateError } = await supabase
     .from("appointments")
     .update({ status: "cancelled", updated_at: new Date().toISOString() })
-    .eq("id", appointment.id);
+    .eq("id", appointment.id)
+    .select("id, status")
+    .single();
 
-  if (updateError) {
-    logError("appointments/cancel POST", updateError);
+  if (updateError || !updated || updated.status !== "cancelled") {
+    logError("appointments/cancel POST", updateError || { message: "update did not persist" });
     return apiError("Failed to cancel appointment.", 500);
   }
 

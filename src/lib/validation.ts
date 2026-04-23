@@ -64,9 +64,12 @@ export const adminServiceSchema = z.object({
   // packages don't bounce.
   price_min: z.number().int().min(0).max(10_000_000),
   duration: z.number().int().min(1).max(600),
-  image_url: z.string().trim().max(500).nullable().optional(),
-  description: z.string().max(5000).nullable().optional(),
-  products_used: z.string().max(2000).nullable().optional(),
+  // Long enough to hold signed Supabase Storage URLs (usually ~300-500
+  // chars, occasionally more when the bucket nests). Too tight a limit
+  // silently rejected admin edits and the owner saw "SAVE not working".
+  image_url: z.string().trim().max(2000).nullable().optional(),
+  description: z.string().max(10000).nullable().optional(),
+  products_used: z.string().max(4000).nullable().optional(),
   active: z.boolean().optional(),
   sort_order: z.number().int().min(0).max(1_000_000).optional(),
 });

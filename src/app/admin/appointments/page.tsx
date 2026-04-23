@@ -75,7 +75,8 @@ export default function AppointmentsPage() {
   const qDateFrom = searchParams.get("dateFrom");
   const qDateTo = searchParams.get("dateTo");
   const qStylistId = searchParams.get("stylistId");
-  const arrivedFromLink = !!(qStatus || qRange || qDateFrom || qDateTo || qStylistId || qOverdue);
+  const qFocus = searchParams.get("focus");
+  const arrivedFromLink = !!(qStatus || qRange || qDateFrom || qDateTo || qStylistId || qOverdue || qFocus);
   const yesterdayISO = (() => {
     const y = new Date();
     y.setDate(y.getDate() - 1);
@@ -92,6 +93,11 @@ export default function AppointmentsPage() {
   const [timeRange, setTimeRange] = useState<"upcoming" | "past30" | "past90" | "all">(() => {
     if (qRange === "upcoming" || qRange === "past30" || qRange === "past90" || qRange === "all") return qRange;
     if (qOverdue) return "past90"; // overdue rows are in the past — need history pulled
+    // Deep-linked from a notification bell: widen the scope so a focused
+    // appointment on a past date is actually in the fetched set. Without
+    // this, clicking "New booking" on an overdue row lands on an empty
+    // list.
+    if (qFocus) return "past90";
     return "upcoming";
   });
   const fromDateForFetch = (() => {
@@ -127,6 +133,10 @@ export default function AppointmentsPage() {
   // rows we counted on the dashboard are immediately visible.
   const [view, setView] = useState<"calendar" | "list">(arrivedFromLink ? "list" : "calendar");
   const [showNewAppt, setShowNewAppt] = useState(false);
+  // Latches to "true" once we've tried to auto-open the focused appointment.
+  // Without this the modal would re-open every poll tick after the user
+  // closed it.
+  const [focusOpened, setFocusOpened] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -138,11 +148,34 @@ export default function AppointmentsPage() {
     fetch("/api/admin/services")
       .then((r) => r.json())
       .then((data) => setServices(Array.isArray(data) ? data : []));
-    
+
     fetch("/api/admin/stylists")
       .then((r) => r.json())
       .then((data) => setStylists(Array.isArray(data) ? data : []));
   }, [status]);
+
+  // When a notification (or any deep-link with ?focus=<id>) lands here,
+  // auto-open that appointment's detail modal once the polled list has
+  // the row in hand. Gated on `focusOpened` so closing the modal doesn't
+  // immediately re-open it on the next 15-second poll. Service/stylist
+  // lookups are computed inline so this effect doesn't depend on the
+  // derived maps that live below the early-return check.
+  useEffect(() => {
+    if (!qFocus || focusOpened) return;
+    const match = realtimeAppts.find((a) => a.id === qFocus);
+    if (!match) return;
+    const svc = services.find((s) => s.id === match.service_id);
+    const sty = stylists.find((s) => s.id === match.stylist_id);
+    const enriched: EnrichedAppointment = {
+      ...(match as unknown as EnrichedAppointment),
+      serviceName: match.serviceName || svc?.name || "Unknown Service",
+      stylistName: match.stylistName || sty?.name || "Unknown Stylist",
+      stylistColor: sty?.color || null,
+    };
+    setSelectedAppt(enriched);
+    setFocusOpened(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [realtimeAppts, qFocus, focusOpened, services, stylists]);
 
   if (status !== "authenticated") return null;
 
