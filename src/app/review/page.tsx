@@ -18,7 +18,7 @@ export default async function ReviewPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-24 pb-20 min-h-screen bg-cream">
+      <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-2xl mx-auto px-6">
           <div className="text-center mb-10">
             <div className="flex items-center justify-center gap-4 mb-5">

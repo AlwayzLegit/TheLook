@@ -36,7 +36,7 @@ function AdminLoginInner() {
   };
 
   return (
-    <div className="min-h-screen bg-navy flex items-center justify-center px-6">
+    <div className="min-h-[100dvh] bg-navy flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <h1 className="font-heading text-3xl text-white text-center mb-2">THE LOOK</h1>
         <p className="text-gold text-center text-sm tracking-[0.3em] uppercase font-body mb-10">Admin</p>

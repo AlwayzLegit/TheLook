@@ -40,7 +40,7 @@ export default function CompareServicesPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-24 pb-20 min-h-screen bg-cream">
+      <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-6xl mx-auto px-6">
           <Link href="/services" className="text-xs text-navy/60 hover:text-navy font-body mb-4 inline-block">&larr; All Services</Link>
           <div className="text-center mb-10">

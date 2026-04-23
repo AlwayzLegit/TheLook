@@ -165,7 +165,7 @@ export default function NewAppointmentModal({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full sm:max-w-2xl m-0 sm:m-6 p-4 sm:p-6 shadow-2xl max-h-screen overflow-y-auto"
+        className="bg-white w-full sm:max-w-2xl m-0 sm:m-6 p-4 sm:p-6 shadow-2xl max-h-[100dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-4">

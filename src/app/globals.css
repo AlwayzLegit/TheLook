@@ -149,6 +149,23 @@ body {
   color: var(--color-navy);
   font-family: var(--font-body);
   line-height: 1.7;
+  /* iOS Safari: disable tap-highlight flash on buttons/links, stop
+     auto-sizing text on orientation change. Keeps the native scroll. */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* iOS Safari auto-zooms to the focused field when its computed
+   font-size is < 16px. That re-layouts the page and feels broken.
+   Force 16px on every real text input on small screens — visual size
+   is still controlled by Tailwind classes above ≥768px. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 h1, h2, h3, h4, h5, h6 {

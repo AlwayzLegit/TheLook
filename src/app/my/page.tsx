@@ -80,7 +80,7 @@ function PortalInner() {
     return (
       <>
         <Navbar />
-        <main className="pt-24 pb-20 min-h-screen bg-cream">
+        <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
           <div className="text-center py-20">
             <p className="text-navy/60 font-body">Loading...</p>
           </div>
@@ -96,7 +96,7 @@ function PortalInner() {
   return (
     <>
       <Navbar />
-      <main className="pt-24 pb-20 min-h-screen bg-cream">
+      <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-4xl mx-auto px-6">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -172,7 +172,7 @@ function PortalInner() {
 
 export default function MyPortalPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-cream" />}>
+    <Suspense fallback={<div className="min-h-[100dvh] bg-cream" />}>
       <PortalInner />
     </Suspense>
   );

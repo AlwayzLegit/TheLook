@@ -316,9 +316,17 @@ function Shell({ children }: { children: React.ReactNode }) {
   if (pathname === "/admin/login") return <>{children}</>;
 
   return (
-    <div className="admin-shell flex min-h-screen bg-[var(--color-surface-sunken)]">
+    <div className="admin-shell flex min-h-[100dvh] bg-[var(--color-surface-sunken)]">
       {/* Mobile header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-[var(--color-navy-900)] z-40 px-4 py-3 flex items-center justify-between">
+      <div
+        className="lg:hidden fixed top-0 left-0 right-0 bg-[var(--color-navy-900)] z-40 px-4 flex items-center justify-between"
+        style={{
+          paddingTop: "calc(0.75rem + env(safe-area-inset-top, 0px))",
+          paddingBottom: "0.75rem",
+          paddingLeft: "calc(1rem + env(safe-area-inset-left, 0px))",
+          paddingRight: "calc(1rem + env(safe-area-inset-right, 0px))",
+        }}
+      >
         <span className="font-heading text-lg text-white tracking-wider">THE LOOK</span>
         <div className="flex items-center gap-1">
           <NotificationsBell />
@@ -340,7 +348,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       {/* Mobile + desktop sidebar */}
       <aside
         className={
-          "fixed lg:sticky top-0 left-0 z-50 w-64 bg-[var(--color-navy-900)] h-screen flex flex-col transition-transform duration-300 " +
+          "fixed lg:sticky top-0 left-0 z-50 w-64 bg-[var(--color-navy-900)] h-[100dvh] flex flex-col transition-transform duration-300 " +
           (mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0")
         }
       >
@@ -357,8 +365,9 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Main column */}
-      <div className="flex-1 min-w-0 flex flex-col pt-14 lg:pt-0">
+      {/* Main column. Top padding has to grow with the iPhone safe-area
+          so the first row of content clears the notched mobile header. */}
+      <div className="flex-1 min-w-0 flex flex-col pt-[calc(3.5rem+env(safe-area-inset-top))] lg:pt-0">
         {/* Top bar */}
         <header className="sticky top-0 z-30 hidden lg:flex items-center gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface)]/90 backdrop-blur px-6 h-14">
           <CommandButton />

@@ -245,7 +245,7 @@ export default function Navbar() {
 
           <div
             className="flex flex-col items-center justify-center gap-8 relative"
-            style={{ height: "100vh" }}
+            style={{ height: "100dvh" }}
           >
             {navLinks.map((link, i) => (
               <div key={link.href} className="flex flex-col items-center">

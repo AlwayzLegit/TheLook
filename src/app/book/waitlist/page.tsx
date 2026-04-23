@@ -63,7 +63,7 @@ function WaitlistInner() {
   return (
     <>
       <Navbar />
-      <main className="pt-24 pb-20 min-h-screen bg-cream">
+      <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-xl mx-auto px-6">
           <h1 className="font-heading text-4xl mb-2 text-center">Join the Waitlist</h1>
           <p className="text-navy/50 text-sm font-body text-center mb-10">
@@ -158,7 +158,7 @@ function WaitlistInner() {
 
 export default function WaitlistPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-cream" />}>
+    <Suspense fallback={<div className="min-h-[100dvh] bg-cream" />}>
       <WaitlistInner />
     </Suspense>
   );

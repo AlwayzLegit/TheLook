@@ -1,6 +1,6 @@
 export default function BookingLoading() {
   return (
-    <main className="min-h-screen bg-cream pt-24 pb-16">
+    <main className="min-h-[100dvh] bg-cream pt-24 pb-16">
       <div className="max-w-3xl mx-auto px-6">
         {/* Progress bar skeleton */}
         <div className="flex items-center justify-center gap-2 mb-12">

@@ -33,7 +33,7 @@ export default function Hero() {
     <section
       ref={ref}
       id="home"
-      className="relative min-h-screen flex items-center justify-center overflow-hidden"
+      className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden"
     >
       {/* Parallax Background */}
       <motion.div className="absolute inset-0" style={{ y }}>

@@ -68,7 +68,7 @@ export default async function StylistPage({ params }: any) {
   return (
     <>
       <Navbar />
-      <main className="pt-24 pb-20 min-h-screen bg-cream">
+      <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-6xl mx-auto px-6">
           <Link href="/team" className="text-xs text-navy/60 hover:text-navy font-body mb-6 inline-block">&larr; All team</Link>
 

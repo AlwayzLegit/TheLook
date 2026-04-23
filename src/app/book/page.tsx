@@ -518,7 +518,7 @@ export default function BookPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-24 pb-20 min-h-screen bg-cream">
+      <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         {/* Screen-reader anchor — design shows the step-specific h2s,
             but every route needs a page-level h1 for assistive tech. */}
         <h1 className="sr-only">Book an appointment at The Look Hair Salon</h1>

@@ -18,7 +18,7 @@ export default async function ShopPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-24 pb-20 min-h-screen bg-cream">
+      <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-3xl mx-auto px-6 py-20 text-center">
           <div className="flex items-center justify-center gap-3 mb-4">
             <span className="w-10 h-[1px] bg-gradient-to-r from-transparent to-gold" />

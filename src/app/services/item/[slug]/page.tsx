@@ -89,7 +89,7 @@ export default async function ServiceDetailPage(
   return (
     <>
       <Navbar />
-      <main className="pt-20 pb-20 min-h-screen bg-cream">
+      <main className="pt-20 pb-20 min-h-[100dvh] bg-cream">
         {/* Breadcrumbs */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 text-xs font-body text-navy/60">
           <Link href="/" className="hover:text-navy">Home</Link>

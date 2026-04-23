@@ -80,7 +80,7 @@ export default function CancelPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-24 pb-20 min-h-screen bg-cream flex items-center justify-center">
+      <main className="pt-24 pb-20 min-h-[100dvh] bg-cream flex items-center justify-center">
         <div className="max-w-md mx-auto px-6 text-center">
           <Suspense fallback={<p className="text-navy/50 font-body">Loading...</p>}>
             <CancelContent />

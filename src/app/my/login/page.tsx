@@ -38,7 +38,7 @@ export default function ClientLoginPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-24 pb-20 min-h-screen bg-cream">
+      <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-md mx-auto px-6">
           <h1 className="font-heading text-4xl mb-3 text-center">Sign In</h1>
           <p className="text-navy/50 text-sm font-body text-center mb-10">

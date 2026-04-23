@@ -88,7 +88,7 @@ export default async function TeamPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-24 pb-20 min-h-screen bg-cream">
+      <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
             <div className="flex items-center justify-center gap-4 mb-5">
