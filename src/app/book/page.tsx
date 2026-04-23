@@ -672,7 +672,9 @@ export default function BookPage() {
                     {checkingDiscount ? "Checking..." : "Apply"}
                   </button>
                 </div>
-                {discountError && <p className="text-red-500 text-xs font-body mt-1">{discountError}</p>}
+                {discountError && (
+                  <p role="alert" aria-live="polite" className="text-red-500 text-xs font-body mt-1">{discountError}</p>
+                )}
                 {discountResult && (
                   <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded">
                     <p className="text-green-700 text-sm font-body font-bold">{discountResult.code} applied!</p>
@@ -681,7 +683,15 @@ export default function BookPage() {
                 )}
               </div>
 
-              {error && <p className="text-red-600 text-sm font-body mt-4 text-center">{error}</p>}
+              {error && (
+                <p
+                  role="alert"
+                  aria-live="polite"
+                  className="text-red-600 text-sm font-body mt-4 text-center"
+                >
+                  {error}
+                </p>
+              )}
 
               {requiresDeposit && (
                 <div className="mt-5 bg-rose/5 border border-rose/30 p-3 text-xs font-body text-navy/70 leading-relaxed">

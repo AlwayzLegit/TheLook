@@ -11,6 +11,7 @@ import {
 import { getStripeBrowser } from "@/lib/stripeBrowser";
 import { useBranding } from "@/components/BrandingProvider";
 import { telHref } from "@/lib/branding";
+import { track } from "@/lib/analytics";
 
 interface Props {
   amountCents: number;
@@ -24,17 +25,23 @@ function CardForm({
   amountCents,
   paymentIntentId,
   onSuccess,
+  phone,
 }: {
   // amountCents is the TOTAL customer pays (deposit base + CC surcharge).
   // The DepositForm parent already combined both before passing in.
   amountCents: number;
   paymentIntentId: string;
   onSuccess: (id: string) => void;
+  phone: string;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Count card declines so we can escalate to the "call to pay" escape
+  // after two consecutive failures — before this the customer could hit
+  // the same error forever with no out.
+  const [failCount, setFailCount] = useState(0);
 
   const pay = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,12 +60,19 @@ function CardForm({
     });
 
     if (stripeErr) {
-      setError(stripeErr.message || "Payment failed.");
+      setError(stripeErr.message || "Payment failed. Please check your card details and try again.");
+      setFailCount((n) => n + 1);
       setSubmitting(false);
+      track("deposit_failed", {
+        code: stripeErr.code ?? null,
+        type: stripeErr.type ?? null,
+        decline_code: stripeErr.decline_code ?? null,
+      });
       return;
     }
 
     if (paymentIntent && paymentIntent.status === "succeeded") {
+      track("deposit_succeeded", { amountCents });
       onSuccess(paymentIntent.id);
       return;
     }
@@ -67,16 +81,39 @@ function CardForm({
     onSuccess(paymentIntentId);
   };
 
+  const telUrl = phone ? telHref(phone) : null;
+
   return (
     <form onSubmit={pay} className="space-y-4">
       <PaymentElement />
-      {error && <p className="text-red-600 text-sm font-body">{error}</p>}
+      {error && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="rounded border border-red-200 bg-red-50 p-3 space-y-2 text-sm font-body"
+        >
+          <p className="text-red-700">{error}</p>
+          {failCount >= 2 && telUrl ? (
+            <p className="text-red-700/90">
+              Still having trouble? Call us at{" "}
+              <a href={telUrl} className="underline font-medium">{phone}</a>{" "}
+              and we&apos;ll take the deposit over the phone — your booking slot is held.
+            </p>
+          ) : (
+            <p className="text-red-700/80 text-xs">Edit the card details above and try again, or use a different card.</p>
+          )}
+        </div>
+      )}
       <button
         type="submit"
         disabled={!stripe || !elements || submitting}
-        className="w-full bg-navy text-white text-sm font-body uppercase tracking-widest py-3 hover:bg-navy/90 disabled:opacity-60 transition-colors"
+        className="w-full bg-navy text-white text-sm font-body uppercase tracking-widest py-3 hover:bg-navy/90 disabled:opacity-60 transition-colors min-h-[44px]"
       >
-        {submitting ? "Processing..." : `Pay $${(amountCents / 100).toFixed(0)} deposit`}
+        {submitting
+          ? "Processing..."
+          : error
+            ? `Retry — pay $${(amountCents / 100).toFixed(0)} deposit`
+            : `Pay $${(amountCents / 100).toFixed(0)} deposit`}
       </button>
     </form>
   );
@@ -217,7 +254,12 @@ export default function DepositForm({
         </div>
       ) : null}
       <Elements stripe={stripe} options={{ clientSecret, appearance: { theme: "stripe" } }}>
-        <CardForm amountCents={totalCents} paymentIntentId={paymentIntentId} onSuccess={onSuccess} />
+        <CardForm
+          amountCents={totalCents}
+          paymentIntentId={paymentIntentId}
+          onSuccess={onSuccess}
+          phone={brand.phone}
+        />
       </Elements>
     </div>
   );

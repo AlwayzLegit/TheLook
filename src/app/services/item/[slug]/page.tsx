@@ -10,6 +10,24 @@ import { getBranding } from "@/lib/branding";
 
 export const revalidate = 60;
 
+// Pre-build every active service detail page so organic-search traffic
+// hits a pre-rendered HTML response instead of waiting for on-demand
+// SSR. Keeps the existing 60s ISR revalidation intact.
+export async function generateStaticParams() {
+  if (!hasSupabaseConfig) return [];
+  try {
+    const { data } = await supabase
+      .from("services")
+      .select("slug")
+      .eq("active", true);
+    return ((data || []) as Array<{ slug: string | null }>)
+      .filter((r) => !!r.slug)
+      .map((r) => ({ slug: r.slug as string }));
+  } catch {
+    return [];
+  }
+}
+
 interface ServiceRow {
   id: string;
   category: string;

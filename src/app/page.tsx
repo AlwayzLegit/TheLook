@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import About from "@/components/About";
@@ -12,8 +13,21 @@ import BeforeAfterCarousel from "@/components/BeforeAfterCarousel";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
+import { getBranding } from "@/lib/branding";
 
 export const revalidate = 60;
+
+// Root layout already ships a generic rootMetadata(). Override here so the
+// home page advertises a tighter, more conversion-friendly description +
+// explicit canonical — matters for the URL most customers actually share.
+export async function generateMetadata(): Promise<Metadata> {
+  const brand = await getBranding();
+  return {
+    title: `${brand.name} — Hair Salon in Glendale, CA`,
+    description: `Book your next cut, color, balayage, or extension with ${brand.name} in Glendale. Family-owned since 2011.`,
+    alternates: { canonical: "/" },
+  };
+}
 
 interface DBPair {
   before_url: string;

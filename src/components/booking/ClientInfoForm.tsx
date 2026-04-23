@@ -53,6 +53,7 @@ export default function ClientInfoForm({
             id="book-name"
             type="text"
             required
+            autoComplete="name"
             value={info.name}
             onChange={(e) => onChange({ ...info, name: e.target.value })}
             className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors"
@@ -66,6 +67,8 @@ export default function ClientInfoForm({
             id="book-email"
             type="email"
             required
+            autoComplete="email"
+            inputMode="email"
             value={info.email}
             onChange={(e) => onChange({ ...info, email: e.target.value })}
             className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors"
@@ -81,11 +84,12 @@ export default function ClientInfoForm({
             required
             inputMode="tel"
             autoComplete="tel"
+            aria-describedby="book-phone-hint"
             value={info.phone}
             onChange={(e) => onChange({ ...info, phone: e.target.value })}
             className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors"
           />
-          <p className="text-xs text-navy/60 font-body mt-1">
+          <p id="book-phone-hint" className="text-xs text-navy/60 font-body mt-1">
             Required so we can reach you about same-day changes.
           </p>
         </div>

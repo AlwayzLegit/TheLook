@@ -11,6 +11,33 @@ import type { Metadata } from "next";
 
 export const revalidate = 60;
 
+// Pre-build the stylist + manager detail pages at deploy so the first
+// organic-search hit doesn't pay the SSR cold-start. Keeps revalidate=60
+// behavior: they're still regenerated in the background when stale.
+export async function generateStaticParams() {
+  if (!hasSupabaseConfig) return [];
+  const out: Array<{ slug: string }> = [];
+  try {
+    const { data: stylists } = await supabase
+      .from("stylists")
+      .select("slug")
+      .eq("active", true);
+    for (const row of (stylists || []) as Array<{ slug: string | null }>) {
+      if (row.slug) out.push({ slug: row.slug });
+    }
+  } catch {}
+  try {
+    const { data: staff } = await supabase
+      .from("admin_users")
+      .select("slug")
+      .eq("active_for_public", true);
+    for (const row of (staff || []) as Array<{ slug: string | null }>) {
+      if (row.slug) out.push({ slug: row.slug });
+    }
+  } catch {}
+  return out;
+}
+
 interface StaffRecord {
   id: string;
   name: string;
