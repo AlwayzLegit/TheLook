@@ -110,18 +110,18 @@ export default async function TeamPage() {
               <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
                 {staff.map((s) => (
                   <div key={s.id} className="text-center">
-                    <div className="relative aspect-square overflow-hidden bg-navy/5 rounded-full max-w-[220px] mx-auto mb-5">
+                    <div className="relative aspect-square overflow-hidden bg-cream-dark rounded-full max-w-[220px] mx-auto mb-5">
                       {s.image_url ? (
                         <Image
                           src={s.image_url}
                           alt={s.name}
                           fill
                           sizes="220px"
-                          className="object-cover"
-                          unoptimized={s.image_url.startsWith("http")}
+                          className="object-cover object-top"
+                          unoptimized={!/\.supabase\.co\//.test(s.image_url) && !s.image_url.includes("images.unsplash.com")}
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center font-heading text-5xl text-navy/20">
+                        <div className="w-full h-full flex items-center justify-center font-heading text-5xl text-navy/25">
                           {s.name.charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -155,12 +155,13 @@ export default async function TeamPage() {
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {stylists.map((s: any) => (
                   <Link key={s.id} href={`/team/${s.slug}`} className="group block">
-                    <div className="aspect-[3/4] overflow-hidden bg-navy/5 mb-4">
+                    <div className="relative aspect-[3/4] overflow-hidden bg-cream-dark mb-4">
                       <StylistImage
                         src={s.image_url}
                         alt={s.name}
                         initial={s.name.charAt(0).toUpperCase()}
-                        initialClass="font-heading text-6xl text-navy/20"
+                        initialClass="font-heading text-6xl text-navy/25"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         className="group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>

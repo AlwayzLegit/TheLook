@@ -83,12 +83,13 @@ export default function Team() {
           {team.map((member, index) => (
             <AnimatedSection key={member.id} delay={index * 0.15}>
               <Link href={`/team/${member.slug}`} className="group text-center block">
-                <div className="w-32 h-32 mx-auto mb-8 rounded-full bg-navy/8 flex items-center justify-center overflow-hidden group-hover:ring-2 group-hover:ring-gold/40 transition-all">
+                <div className="relative w-32 h-32 mx-auto mb-8 rounded-full bg-cream-dark overflow-hidden group-hover:ring-2 group-hover:ring-gold/40 transition-all">
                   <StylistImage
                     src={member.image_url}
                     alt={member.name}
                     initial={getInitials(member.name)}
-                    initialClass="font-heading text-3xl text-navy/30"
+                    initialClass="font-heading text-3xl text-navy/35"
+                    sizes="128px"
                   />
                 </div>
 

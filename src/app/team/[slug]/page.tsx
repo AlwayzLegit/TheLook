@@ -73,11 +73,12 @@ export default async function StylistPage({ params }: any) {
           <Link href="/team" className="text-xs text-navy/60 hover:text-navy font-body mb-6 inline-block">&larr; All team</Link>
 
           <div className="grid md:grid-cols-2 gap-12 mb-16">
-            <div className="aspect-[3/4] overflow-hidden bg-navy/5">
+            <div className="relative aspect-[3/4] overflow-hidden bg-cream-dark">
               <StylistImage
                 src={stylist.image_url}
                 alt={stylist.name}
                 initial={stylist.name.charAt(0).toUpperCase()}
+                sizes="(max-width: 768px) 100vw, 50vw"
               />
             </div>
             <div className="flex flex-col justify-center">

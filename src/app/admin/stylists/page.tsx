@@ -224,12 +224,13 @@ export default function StylistsPage() {
     <div key={stylist.id} className={inactive ? "opacity-60" : ""}>
       <div className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-full overflow-hidden shrink-0 ${inactive ? "grayscale" : ""}`}>
+          <div className={`relative w-12 h-12 rounded-full overflow-hidden shrink-0 ${inactive ? "grayscale" : ""}`}>
             <StylistImage
               src={stylist.image_url}
               alt={stylist.name}
               initial={stylist.name.charAt(0).toUpperCase()}
               initialClass="text-lg font-heading text-navy/60"
+              sizes="48px"
             />
           </div>
           <div>

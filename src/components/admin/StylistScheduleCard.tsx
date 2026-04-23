@@ -175,12 +175,13 @@ export default function StylistScheduleCard({
         className="w-full px-4 sm:px-5 py-4 flex items-center gap-4 text-left hover:bg-cream/40 transition-colors"
         aria-expanded={open}
       >
-        <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-navy/10 to-gold/20 shrink-0">
+        <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-navy/10 to-gold/20 shrink-0">
           <StylistImage
             src={stylist.image_url}
             alt={stylist.name}
             initial={stylist.name.trim().charAt(0).toUpperCase()}
             initialClass="font-heading text-lg text-navy/70"
+            sizes="48px"
           />
         </div>
         <div className="flex-1 min-w-0">
