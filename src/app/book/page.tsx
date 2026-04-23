@@ -16,14 +16,14 @@ import { track, identify } from "@/lib/analytics";
 
 // Step layout (matches BookingProgress):
 //   0  Service
-//   1  Date & Time
-//   2  Stylist     (skipped when "Any Stylist" was implicitly chosen)
+//   1  Stylist     — "Any Stylist" tile at top, specific stylists below
+//   2  Date & Time — shows that stylist's calendar (or union for "Any")
 //   3  Your Info
 //   4  Confirm
 //   5  Success
 const STEP_SERVICE = 0;
-const STEP_DATETIME = 1;
-const STEP_STYLIST = 2;
+const STEP_STYLIST = 1;
+const STEP_DATETIME = 2;
 const STEP_INFO = 3;
 const STEP_CONFIRM = 4;
 const STEP_DONE = 5;
@@ -123,14 +123,25 @@ export default function BookPage() {
   }, []);
 
   // Forward-navigation guard — if the user deep-links to step=3 but
-  // hasn't picked services yet, bounce them back to step 0.
+  // hasn't picked services yet, bounce them back to whichever earlier
+  // step they skipped. Checks run in REVERSE order of requirement so
+  // the user always lands on the earliest missing step.
   useEffect(() => {
     if (step === STEP_SERVICE) return;
-    if (step >= STEP_DATETIME && selectedServices.length === 0) setStep(STEP_SERVICE);
-    else if (step >= STEP_STYLIST && (!selectedDate || !selectedTime)) setStep(STEP_DATETIME);
-    else if (step >= STEP_INFO && !selectedStylist) setStep(STEP_STYLIST);
+    if (selectedServices.length === 0) { setStep(STEP_SERVICE); return; }
+    if (step >= STEP_DATETIME && !selectedStylist) { setStep(STEP_STYLIST); return; }
+    if (step >= STEP_INFO && (!selectedDate || !selectedTime)) { setStep(STEP_DATETIME); return; }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
+
+  // When the stylist changes, drop the previously-picked time — the new
+  // stylist's calendar is different, and a slot that was free for Janet
+  // may be taken for Armen. We intentionally KEEP selectedDate so the
+  // user can compare stylists on the same day with one click.
+  useEffect(() => {
+    setSelectedTime(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStylist]);
 
   // DEF-019: stale submit errors linger across Back + change-selection.
   // Whenever anything upstream of Confirm changes, drop the error so the
@@ -354,8 +365,8 @@ export default function BookPage() {
   const canProceed = (): boolean => {
     switch (step) {
       case STEP_SERVICE: return selectedServices.length > 0;
-      case STEP_DATETIME: return !!selectedDate && !!selectedTime;
       case STEP_STYLIST: return !!selectedStylist;
+      case STEP_DATETIME: return !!selectedDate && !!selectedTime;
       case STEP_INFO:
         return (
           !!clientInfo.name &&
@@ -369,14 +380,10 @@ export default function BookPage() {
     }
   };
 
-  // Step transitions: skip the Stylist step entirely when the customer
-  // implicitly defers to "Any Stylist" by clicking Continue without entering
-  // it explicitly. Right now we always show it (so the customer can choose),
-  // but back/forward navigation must respect that anyone can pick "Any".
   const nextStep = () => {
-    if (step === STEP_SERVICE) setStep(STEP_DATETIME);
-    else if (step === STEP_DATETIME) setStep(STEP_STYLIST);
-    else if (step === STEP_STYLIST) setStep(STEP_INFO);
+    if (step === STEP_SERVICE) setStep(STEP_STYLIST);
+    else if (step === STEP_STYLIST) setStep(STEP_DATETIME);
+    else if (step === STEP_DATETIME) setStep(STEP_INFO);
     else if (step === STEP_INFO) setStep(STEP_CONFIRM);
   };
 
@@ -386,8 +393,8 @@ export default function BookPage() {
   useEffect(() => {
     const stepName =
       step === STEP_SERVICE  ? "service" :
-      step === STEP_DATETIME ? "datetime" :
       step === STEP_STYLIST  ? "stylist" :
+      step === STEP_DATETIME ? "datetime" :
       step === STEP_INFO     ? "info" :
       step === STEP_CONFIRM  ? "confirm" :
       step === STEP_DONE     ? "done" : null;
@@ -523,18 +530,7 @@ export default function BookPage() {
               services={services}
               selected={selectedServices}
               onToggle={toggleService}
-              onContinue={() => { if (selectedServices.length > 0) setStep(STEP_DATETIME); }}
-            />
-          )}
-
-          {step === STEP_DATETIME && selectedServices.length > 0 && (
-            <DateTimePicker
-              stylistId={availabilityStylistId}
-              serviceIds={selectedServices.map((s) => s.id)}
-              variantIds={selectedServices.map((s) => s.variantId || "")}
-              selectedDate={selectedDate}
-              selectedTime={selectedTime}
-              onSelect={(d, t) => { setSelectedDate(d); setSelectedTime(t); }}
+              onContinue={() => { if (selectedServices.length > 0) setStep(STEP_STYLIST); }}
             />
           )}
 
@@ -543,10 +539,21 @@ export default function BookPage() {
               stylists={allStylists}
               serviceIds={selectedServices.map((s) => s.id)}
               variantIds={selectedServices.map((s) => s.variantId || "")}
-              date={selectedDate}
-              startTime={selectedTime}
-              onSelect={(s) => { setSelectedStylist(s); setStep(STEP_INFO); }}
+              onSelect={(s) => { setSelectedStylist(s); setStep(STEP_DATETIME); }}
               selected={selectedStylist}
+            />
+          )}
+
+          {step === STEP_DATETIME && selectedServices.length > 0 && selectedStylist && (
+            <DateTimePicker
+              stylistId={availabilityStylistId}
+              stylistName={typeof selectedStylist === "string" ? "any available stylist" : selectedStylist.name}
+              serviceIds={selectedServices.map((s) => s.id)}
+              variantIds={selectedServices.map((s) => s.variantId || "")}
+              selectedDate={selectedDate}
+              selectedTime={selectedTime}
+              onSelect={(d, t) => { setSelectedDate(d); setSelectedTime(t); }}
+              onChangeStylist={() => setStep(STEP_STYLIST)}
             />
           )}
 

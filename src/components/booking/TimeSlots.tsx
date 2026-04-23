@@ -9,6 +9,9 @@ interface Props {
   selectedTime: string | null;
   onSelectTime: (time: string) => void;
   error?: boolean;
+  // When set, the empty-state message offers a "Change stylist" inline
+  // action so a picked-but-fully-booked stylist isn't a dead end.
+  onChangeStylist?: () => void;
 }
 
 function formatTime(time: string): string {
@@ -45,7 +48,7 @@ function slotMinutes(slot: string): number {
   return h * 60 + m;
 }
 
-export default function TimeSlots({ slots, loading, selectedDate, selectedTime, onSelectTime, error }: Props) {
+export default function TimeSlots({ slots, loading, selectedDate, selectedTime, onSelectTime, error, onChangeStylist }: Props) {
   const brand = useBranding();
   // Belt-and-suspenders: if the selected date is today in LA, drop any
   // slot whose start time has already passed (with a 15-min lead). The
@@ -83,8 +86,17 @@ export default function TimeSlots({ slots, loading, selectedDate, selectedTime, 
 
   if (visibleSlots.length === 0) {
     return (
-      <div className="flex items-center justify-center text-navy/50 font-body text-sm text-center">
-        No available slots for this date. Please try another day.
+      <div className="flex flex-col items-center justify-center text-navy/50 font-body text-sm text-center gap-3">
+        <p>No available slots for this date. Try another day{onChangeStylist ? " — or pick a different stylist." : "."}</p>
+        {onChangeStylist ? (
+          <button
+            type="button"
+            onClick={onChangeStylist}
+            className="text-rose hover:underline font-body text-sm"
+          >
+            Change stylist →
+          </button>
+        ) : null}
       </div>
     );
   }

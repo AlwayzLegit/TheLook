@@ -17,12 +17,9 @@ interface Props {
   stylists: Stylist[];
   // A stylist must offer ALL these services to be bookable for this request.
   serviceIds: string[];
-  // Optional variant ids aligned by index with serviceIds so availability
-  // lookups use the right per-service duration.
+  // Optional variant ids aligned by index with serviceIds so the next-
+  // available lookup uses the right per-service duration.
   variantIds?: string[];
-  // When set, we filter stylists to only those actually free at this slot.
-  date?: string | null;
-  startTime?: string | null;
   onSelect: (stylist: Stylist | "any") => void;
   selected: Stylist | "any" | null;
 }
@@ -36,56 +33,73 @@ const ANY_STYLIST: Stylist = {
   serviceIds: [],
 };
 
+// Format an (ISO date, HH:MM) pair into a compact "next open" hint.
+// Deliberately terse so the tile doesn't grow — e.g. "Sat Apr 26, 2:00 PM".
+function formatNextHint(dateISO: string, time: string): string {
+  const [y, m, d] = dateISO.split("-").map(Number);
+  // Anchor at noon UTC for the date portion so DST can't nudge us into
+  // the wrong weekday.
+  const dateLabel = new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "America/Los_Angeles",
+  });
+  const [hh, mm] = time.split(":").map(Number);
+  const ampm = hh >= 12 ? "PM" : "AM";
+  const h12 = hh % 12 || 12;
+  const timeLabel = mm === 0 ? `${h12} ${ampm}` : `${h12}:${mm.toString().padStart(2, "0")} ${ampm}`;
+  return `${dateLabel}, ${timeLabel}`;
+}
+
 export default function StylistPicker({
-  stylists, serviceIds, variantIds, date, startTime, onSelect, selected,
+  stylists, serviceIds, variantIds, onSelect, selected,
 }: Props) {
-  // For each stylist, asynchronously check their availability at the chosen
-  // slot. Tracks three states so we can surface the right disabled reason:
-  //   "free"   — free at the requested time (tile enabled)
-  //   "booked" — scheduled that day but that slot is taken
-  //   "off"    — not scheduled that day at all
-  type Avail = "free" | "booked" | "off";
-  const [availMap, setAvailMap] = useState<Record<string, Avail>>({});
-  const [checking, setChecking] = useState(false);
+  // For each real stylist, fetch the next available slot across the
+  // booking window so the tile can show a "Next open: Sat 2:00 PM"
+  // hint. One lightweight call per stylist (N parallel); results are
+  // cached for the mount. If the stylist has zero availability the
+  // hint reads "No openings" and the tile still renders clickable so
+  // the customer sees the empty-state message on the next step.
+  const [nextMap, setNextMap] = useState<Record<string, { date: string; time: string } | null | "loading">>({});
 
   useEffect(() => {
-    if (!date || !startTime || serviceIds.length === 0) {
-      setAvailMap({});
-      return;
-    }
+    if (serviceIds.length === 0) return;
     let cancelled = false;
-    setChecking(true);
+    const eligible = stylists.filter(
+      (s) => s.id !== BOOKING.ANY_STYLIST_ID
+        && s.name.trim().toLowerCase() !== "any stylist"
+        && serviceIds.every((id) => s.serviceIds.includes(id)),
+    );
+    // Initialise every tile to "loading" so the hint area reserves
+    // vertical space — avoids layout shift when results land.
+    setNextMap(() => Object.fromEntries(eligible.map((s) => [s.id, "loading" as const])));
+    const variantQs = (variantIds || []).length > 0
+      ? "&" + (variantIds || []).map((v) => `variantIds=${encodeURIComponent(v || "")}`).join("&")
+      : "";
     (async () => {
-      const eligible = stylists.filter((s) =>
-        serviceIds.every((id) => s.serviceIds.includes(id))
-      );
-      const variantQs = (variantIds || []).length > 0
-        ? "&" + (variantIds || []).map((v) => `variantIds=${encodeURIComponent(v || "")}`).join("&")
-        : "";
       const results = await Promise.all(
         eligible.map(async (s) => {
           try {
             const r = await fetch(
-              `/api/availability?stylistId=${s.id}&date=${date}&${serviceIds.map((id) => `serviceIds=${id}`).join("&")}${variantQs}`,
+              `/api/availability-next?stylistId=${s.id}&${serviceIds.map((id) => `serviceIds=${id}`).join("&")}${variantQs}`,
             );
-            if (!r.ok) return [s.id, "off" as Avail] as const;
+            if (!r.ok) return [s.id, null] as const;
             const data = await r.json();
-            const slots: string[] = data.slots || [];
-            if (slots.length === 0) return [s.id, "off" as Avail] as const;
-            return [s.id, slots.includes(startTime) ? "free" : "booked"] as const;
+            if (data?.nextSlot?.date && data?.nextSlot?.time) {
+              return [s.id, { date: data.nextSlot.date, time: data.nextSlot.time }] as const;
+            }
+            return [s.id, null] as const;
           } catch {
-            return [s.id, "off" as Avail] as const;
+            return [s.id, null] as const;
           }
-        })
+        }),
       );
       if (cancelled) return;
-      const map: Record<string, Avail> = {};
-      for (const [id, state] of results) map[id] = state;
-      setAvailMap(map);
-      setChecking(false);
+      setNextMap(Object.fromEntries(results));
     })();
     return () => { cancelled = true; };
-  }, [stylists, serviceIds, variantIds, date, startTime]);
+  }, [stylists, serviceIds, variantIds]);
 
   // Defensive filter: even if the public API accidentally returns a stylist
   // named "Any Stylist" or the sentinel row, don't render a duplicate tile.
@@ -98,34 +112,30 @@ export default function StylistPicker({
     <div>
       <h2 className="font-heading text-3xl mb-2 text-center">Choose Your Stylist</h2>
       <p className="text-navy/50 font-body text-sm text-center mb-8">
-        {date && startTime
-          ? "Showing stylists available at your chosen time"
-          : serviceIds.length > 1
-            ? `Showing stylists who offer all ${serviceIds.length} selected services`
-            : "Select who you'd like to see"}
+        {serviceIds.length > 1
+          ? `Showing stylists who offer all ${serviceIds.length} selected services`
+          : "Pick a stylist — you'll see their calendar next"}
       </p>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
         {tiles.map((stylist) => {
           const isAny = stylist.id === BOOKING.ANY_STYLIST_ID;
           const offersAll = isAny || serviceIds.every((id) => stylist.serviceIds.includes(id));
-          const state: Avail | null = isAny || !date || !startTime ? "free" : (availMap[stylist.id] ?? null);
-          const free = state === "free";
-          const available = offersAll && (free || isAny);
           const isSelected =
             selected === "any"
               ? isAny
               : selected?.id === stylist.id;
+          const next = isAny ? undefined : nextMap[stylist.id];
 
           return (
             <button
               key={stylist.id}
-              onClick={() => available && onSelect(isAny ? "any" : stylist)}
-              disabled={!available}
+              onClick={() => offersAll && onSelect(isAny ? "any" : stylist)}
+              disabled={!offersAll}
               className={`p-6 border text-left transition-all flex flex-col ${
                 isSelected
                   ? "border-rose bg-rose/5 shadow-md"
-                  : available
+                  : offersAll
                     ? "border-navy/10 hover:border-rose/30 hover:shadow-md"
                     : "border-navy/5 opacity-40 cursor-not-allowed"
               }`}
@@ -164,18 +174,19 @@ export default function StylistPicker({
                   Doesn&apos;t offer all selected services
                 </p>
               )}
-              {offersAll && !free && date && startTime && !isAny && (
-                <p className="text-xs text-navy/60 font-body mt-3 text-center">
-                  {state === "off" ? "Off today" : "Not available at this time"}
+              {offersAll && !isAny && (
+                <p className="text-[11px] font-body text-gold text-center mt-3 min-h-[1rem] tracking-wide">
+                  {next === "loading" || next === undefined
+                    ? " " /* nbsp reserves vertical space */
+                    : next === null
+                      ? "No openings in the next 2 weeks"
+                      : `Next open: ${formatNextHint(next.date, next.time)}`}
                 </p>
               )}
             </button>
           );
         })}
       </div>
-      {checking && (
-        <p className="text-center text-xs text-navy/60 font-body mt-4">Checking availability…</p>
-      )}
     </div>
   );
 }

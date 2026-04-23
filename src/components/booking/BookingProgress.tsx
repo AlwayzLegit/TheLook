@@ -1,4 +1,4 @@
-const steps = ["Service", "Date & Time", "Stylist", "Your Info", "Confirm"];
+const steps = ["Service", "Stylist", "Date & Time", "Your Info", "Confirm"];
 
 export default function BookingProgress({ current }: { current: number }) {
   return (
