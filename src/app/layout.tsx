@@ -48,7 +48,14 @@ export default async function RootLayout({
   const branding = await getBranding();
   const jsonLd = await buildJsonLd();
   return (
-    <html lang="en" className={`${forum.variable} ${lato.variable}`}>
+    // suppressHydrationWarning on <html> + <body> is the React-recommended
+    // workaround for browser extensions that mutate these root elements
+    // before React hydrates (Grammarly's data-gr-*, Dark Reader's
+    // data-darkreader, password managers, color-mode shims). Suppression
+    // is scoped to the element itself, not its children — every nested
+    // tree still hydrates strictly. This was tripping React #418 on the
+    // public site for users with extensions enabled.
+    <html lang="en" className={`${forum.variable} ${lato.variable}`} suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"
@@ -61,7 +68,7 @@ export default async function RootLayout({
           />
         ) : null}
       </head>
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning>
         <PostHogProvider>
           <BrandingProvider branding={branding}>
             {children}

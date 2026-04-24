@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 const securityHeaders: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
@@ -64,6 +65,40 @@ const authCheck = auth((req) => {
 }) as unknown as (request: NextRequest) => Promise<NextResponse>;
 
 export default async function middleware(request: NextRequest): Promise<NextResponse> {
+  // Edge rate-limit on the credentials callback. The Credentials.authorize
+  // hook in lib/auth.ts already throttles, but NextAuth swallows that into
+  // a generic 401 so it's invisible to clients (and to QA). Doing it here
+  // in the middleware bounces brute-force traffic with a real 429 before
+  // it even hits NextAuth, and lets ops dashboards see the spike.
+  if (
+    request.method === "POST" &&
+    request.nextUrl.pathname.startsWith("/api/auth/callback/credentials")
+  ) {
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
+    const rl = await checkRateLimit({
+      key: `auth-edge-ip:${ip}`,
+      limit: 30,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (!rl.ok) {
+      return addSecurityHeaders(
+        new NextResponse(
+          JSON.stringify({ error: "Too many login attempts. Try again in a few minutes." }),
+          {
+            status: 429,
+            headers: {
+              "Content-Type": "application/json",
+              "Retry-After": "900",
+            },
+          },
+        ),
+      );
+    }
+  }
+
   if (needsAuth(request.nextUrl.pathname)) {
     return authCheck(request);
   }

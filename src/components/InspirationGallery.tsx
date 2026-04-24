@@ -61,7 +61,15 @@ export default function InspirationGallery() {
   const filtered = useMemo(() => {
     if (!rows) return [];
     return rows.filter((r) => {
-      const genderMatch = gender === "all" || (r.gender || "unisex") === gender;
+      // "Women" and "Men" chips are inclusive — they show their tagged
+      // photos PLUS anything tagged "unisex", since a unisex style is
+      // by definition relevant to both genders. Untagged rows are
+      // treated as unisex (the admin probably forgot to set it).
+      const tag = r.gender || "unisex";
+      let genderMatch: boolean;
+      if (gender === "all") genderMatch = true;
+      else if (gender === "unisex") genderMatch = tag === "unisex";
+      else genderMatch = tag === gender || tag === "unisex";
       const catMatch = category === "all" || r.category === category;
       return genderMatch && catMatch;
     });
