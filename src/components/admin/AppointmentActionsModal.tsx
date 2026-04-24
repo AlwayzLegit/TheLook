@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import ReviewRequestModal from "./ReviewRequestModal";
+import RefundDialog from "./RefundDialog";
 
 interface Appointment {
   id: string;
@@ -58,6 +59,7 @@ export default function AppointmentActionsModal({
   const [editing, setEditing] = useState(false);
   const [fields, setFields] = useState({ date: "", start_time: "", end_time: "", staff_notes: "" });
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
 
   useEffect(() => {
     if (appointment) {
@@ -199,6 +201,17 @@ export default function AppointmentActionsModal({
                 </button>
               )}
 
+              {appointment.stripe_customer_id && (
+                <button
+                  onClick={() => setRefundOpen(true)}
+                  disabled={pending}
+                  className="text-xs font-body text-amber-700 border border-amber-200 px-3 py-1.5 hover:bg-amber-50 disabled:opacity-60"
+                  title="Refund the Stripe deposit (full or partial)"
+                >
+                  Refund deposit
+                </button>
+              )}
+
               {canArchive && (
                 <button
                   onClick={() => onArchive(appointment.id)}
@@ -249,6 +262,12 @@ export default function AppointmentActionsModal({
           client_phone: appointment.client_phone,
           sms_consent: appointment.sms_consent,
         }}
+      />
+
+      <RefundDialog
+        appointmentId={refundOpen ? appointment.id : null}
+        clientName={appointment.client_name}
+        onClose={() => setRefundOpen(false)}
       />
     </div>
   );

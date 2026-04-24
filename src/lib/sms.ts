@@ -22,7 +22,8 @@ export type SMSEvent =
   | "booking.reschedule"
   | "staff.new_booking"
   | "review.request"
-  | "admin.test";
+  | "admin.test"
+  | "broadcast";
 
 export interface SendSMSArgs {
   to: string;
@@ -70,6 +71,7 @@ const EVENT_SETTING_KEY: Record<SMSEvent, import("./settings").SettingsKey | nul
   "staff.new_booking":     "sms_staff_new_booking_enabled",
   "review.request":        "sms_review_request_enabled",
   "admin.test":            null, // always allowed
+  "broadcast":             null, // admin-initiated one-off blasts, no gate
 };
 
 async function eventAllowed(event: SMSEvent): Promise<boolean> {

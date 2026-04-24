@@ -67,8 +67,9 @@ const NAV: NavGroup[] = [
   {
     label: "Communication",
     items: [
-      { href: "/admin/messages", label: "Messages" },
-      { href: "/admin/reviews",  label: "Reviews" },
+      { href: "/admin/messages",  label: "Messages" },
+      { href: "/admin/reviews",   label: "Reviews" },
+      { href: "/admin/broadcast", label: "Broadcast" },
     ],
   },
   {

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   images: {
@@ -38,4 +39,27 @@ const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
 };
 
-export default nextConfig;
+// Wrap with Sentry's webpack plugin ONLY when a DSN + auth token are
+// configured in the environment. Without the auth token Sentry's build
+// step uploads nothing but also logs a noisy warning; without the DSN
+// there's nothing to instrument at runtime so wrapping is pure waste.
+// This keeps local / preview builds quiet and lets prod opt in by
+// simply setting the env vars in Vercel.
+const shouldWrapSentry = Boolean(
+  process.env.SENTRY_DSN &&
+    process.env.SENTRY_AUTH_TOKEN &&
+    process.env.SENTRY_ORG &&
+    process.env.SENTRY_PROJECT,
+);
+
+export default shouldWrapSentry
+  ? withSentryConfig(nextConfig, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      silent: true,
+      widenClientFileUpload: true,
+      tunnelRoute: "/monitoring",
+      disableLogger: true,
+      automaticVercelMonitors: false,
+    })
+  : nextConfig;

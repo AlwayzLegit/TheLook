@@ -11,6 +11,7 @@ import { todayISOInLA, addDaysISOInLA } from "@/lib/datetime";
 import AppointmentCalendar from "@/components/admin/AppointmentCalendar";
 import ClearHistoryModal from "@/components/admin/ClearHistoryModal";
 import NewAppointmentSheet from "@/components/admin/NewAppointmentSheet";
+import WalkInDialog from "@/components/admin/WalkInDialog";
 import AppointmentActionsModal from "@/components/admin/AppointmentActionsModal";
 import { Button } from "@/components/ui/Button";
 import { Badge, badgeToneForStatus } from "@/components/ui/Badge";
@@ -133,6 +134,11 @@ export default function AppointmentsPage() {
   // rows we counted on the dashboard are immediately visible.
   const [view, setView] = useState<"calendar" | "list">(arrivedFromLink ? "list" : "calendar");
   const [showNewAppt, setShowNewAppt] = useState(false);
+  const [showWalkIn, setShowWalkIn] = useState(false);
+  // Row-selection set for bulk actions. Cleared on filter change via
+  // the effect below — stale IDs after a filter narrow are confusing.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkSaving, setBulkSaving] = useState(false);
   // Latches to "true" once we've tried to auto-open the focused appointment.
   // Without this the modal would re-open every poll tick after the user
   // closed it.
@@ -433,6 +439,9 @@ export default function AppointmentsPage() {
           <Button variant="primary" size="sm" onClick={() => setShowNewAppt(true)}>
             + New Appointment
           </Button>
+          <Button variant="secondary" size="sm" onClick={() => setShowWalkIn(true)}>
+            + Walk-in
+          </Button>
           <button
             onClick={() => {
               const events = filteredAppts.filter((a) => a.status !== "cancelled").map((a) => ({
@@ -709,6 +718,56 @@ export default function AppointmentsPage() {
         </div>
       )}
 
+      {/* Bulk action bar — floats in only when rows are selected. Skips
+          status transitions that need per-client side effects (emails,
+          SMS reminders etc.) because those would fan out unpredictably
+          across a 50-row batch. */}
+      {view === "list" && selectedIds.size > 0 && (
+        <div className="mb-4 bg-white border border-navy/20 shadow-sm px-4 py-3 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-body font-semibold">
+            {selectedIds.size} selected
+          </span>
+          <div className="flex flex-wrap items-center gap-2 ml-auto">
+            {(["completed", "no_show", "cancelled"] as const).map((status) => (
+              <button
+                key={status}
+                disabled={bulkSaving}
+                onClick={async () => {
+                  if (!confirm(`Mark ${selectedIds.size} appointment(s) as ${status.replace("_", " ")}?`)) return;
+                  setBulkSaving(true);
+                  try {
+                    const res = await fetch("/api/admin/appointments/bulk-status", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ ids: Array.from(selectedIds), status }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                      setToast({ type: "error", message: data.error || "Bulk update failed." });
+                      return;
+                    }
+                    setToast({ type: "success", message: `${data.updated ?? 0} appointment(s) updated.` });
+                    setSelectedIds(new Set());
+                    refresh();
+                  } finally {
+                    setBulkSaving(false);
+                  }
+                }}
+                className="text-xs font-body px-3 py-1.5 border border-navy/20 hover:bg-navy/5 disabled:opacity-50"
+              >
+                Mark {status.replace("_", " ")}
+              </button>
+            ))}
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs font-body text-navy/60 px-2 py-1.5 hover:text-navy"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {view === "list" && loading ? (
         <p className="text-navy/40 font-body text-sm">Loading appointments...</p>
       ) : view === "list" && filteredAppts.length === 0 ? (
@@ -717,8 +776,27 @@ export default function AppointmentsPage() {
         <div className="bg-white border border-navy/10 divide-y divide-navy/5">
           {filteredAppts.map((appt) => (
             <div key={appt.id} className="px-6 py-4">
-              <div className="flex items-start justify-between">
-                <div>
+              <div className="flex items-start justify-between gap-3">
+                <label
+                  className="mt-1 shrink-0 cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={selectedIds.has(appt.id)}
+                    onChange={(e) => {
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        if (e.target.checked) next.add(appt.id);
+                        else next.delete(appt.id);
+                        return next;
+                      });
+                    }}
+                    aria-label={`Select appointment for ${appt.client_name}`}
+                  />
+                </label>
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <button onClick={() => lookupClient(appt.client_email)} className="font-body font-bold text-sm text-navy hover:text-rose transition-colors text-left">
                       {appt.client_name}
@@ -962,6 +1040,15 @@ export default function AppointmentsPage() {
         onClose={() => setShowNewAppt(false)}
         onCreated={() => {
           setToast({ type: "success", message: "Appointment created." });
+          refresh();
+        }}
+      />
+
+      <WalkInDialog
+        open={showWalkIn}
+        onClose={() => setShowWalkIn(false)}
+        onCreated={() => {
+          setToast({ type: "success", message: "Walk-in added." });
           refresh();
         }}
       />
