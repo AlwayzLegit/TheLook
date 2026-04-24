@@ -42,44 +42,51 @@ interface UsePolledAppointmentsOptions {
 export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}) {
   const { enabled = true, pollMs = POLLING.APPOINTMENTS_MS, archived = false, fromDate } = options;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  // `loading` was previously set to true on every poll tick, which swapped
+  // the entire list for a "Loading…" placeholder and collapsed the page,
+  // scrolling the user back to the top every ~15s. Track the initial load
+  // separately so background refreshes don't touch the rendered layout.
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  const fetchAppointments = useCallback(async () => {
-    if (!enabled) {
-      setLoading(false);
-      setError(null);
-      return;
-    }
+  const fetchAppointments = useCallback(
+    async (opts: { silent?: boolean } = {}) => {
+      const { silent = false } = opts;
+      if (!enabled) {
+        setLoading(false);
+        setError(null);
+        return;
+      }
 
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (archived) {
-      params.set("archived", "true");
-    } else if (fromDate === undefined) {
-      // Default scope: today forward. Empty string = caller asked for all time.
-      params.set("from", todayISOInLA());
-    } else if (fromDate !== "") {
-      params.set("from", fromDate);
-    }
-    const res = await fetch(`/api/admin/appointments?${params.toString()}`);
-    if (!res.ok) {
-      setError("Failed to fetch appointments.");
-      setLoading(false);
-      return;
-    }
-    try {
-      const data = (await res.json()) as Appointment[];
-      setAppointments(data || []);
-      setError(null);
-      setLastUpdate(new Date());
-    } catch {
-      setError("Invalid appointments response.");
-    } finally {
-      setLoading(false);
-    }
-  }, [enabled, archived, fromDate]);
+      if (!silent) setLoading(true);
+      const params = new URLSearchParams();
+      if (archived) {
+        params.set("archived", "true");
+      } else if (fromDate === undefined) {
+        params.set("from", todayISOInLA());
+      } else if (fromDate !== "") {
+        params.set("from", fromDate);
+      }
+      const res = await fetch(`/api/admin/appointments?${params.toString()}`);
+      if (!res.ok) {
+        setError("Failed to fetch appointments.");
+        if (!silent) setLoading(false);
+        return;
+      }
+      try {
+        const data = (await res.json()) as Appointment[];
+        setAppointments(data || []);
+        setError(null);
+        setLastUpdate(new Date());
+      } catch {
+        setError("Invalid appointments response.");
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [enabled, archived, fromDate],
+  );
 
   useEffect(() => {
     if (!enabled) {
@@ -89,9 +96,12 @@ export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}
       return;
     }
 
+    // First run paints the skeleton; every subsequent tick is silent so
+    // the visible list stays in place while the fetch completes in the
+    // background — prevents the scroll-to-top jump the owner reported.
     fetchAppointments();
 
-    const interval = setInterval(fetchAppointments, pollMs);
+    const interval = setInterval(() => fetchAppointments({ silent: true }), pollMs);
 
     return () => {
       clearInterval(interval);

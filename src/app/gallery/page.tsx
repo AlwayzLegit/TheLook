@@ -3,6 +3,7 @@ import Navbar from "@/components/Navbar";
 import Gallery from "@/components/Gallery";
 import InstagramFeed from "@/components/InstagramFeed";
 import BeforeAfterCarousel from "@/components/BeforeAfterCarousel";
+import InspirationGallery from "@/components/InspirationGallery";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
 import { pageMetadata } from "@/lib/seo";
@@ -58,6 +59,7 @@ export default async function GalleryPage() {
       <Navbar />
       <main className="pt-20">
         <Gallery />
+        <InspirationGallery />
         {pairs.length > 0 && (
           <section className="py-20 md:py-24 bg-cream">
             <BeforeAfterCarousel pairs={pairs} title="Before & After" />

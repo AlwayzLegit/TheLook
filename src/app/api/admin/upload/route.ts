@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
   // short set of known prefixes; anything else falls back to stylists
   // so a rogue caller can't traverse out of the bucket root.
   const folderRaw = (formData.get("folder") as string || "stylists").toLowerCase();
-  const folder = ["stylists", "gallery", "before-after", "services", "staff"].includes(folderRaw)
+  const folder = ["stylists", "gallery", "before-after", "inspiration", "services", "staff"].includes(folderRaw)
     ? folderRaw
     : "stylists";
   const path = `${folder}/${slug}-${Date.now()}.${ext}`;

@@ -307,13 +307,12 @@ export default function Contact() {
                   Call or Text Us
                 </h3>
                 <div className="text-navy/60 font-body font-light space-y-3">
-                  <p className="text-lg">{brand.phone}</p>
-                  <p>{brand.email}</p>
-                  {/* Tap targets for mobile — the raw text above is
-                      intentionally not a link so the number + email can
-                      be copy-pasted cleanly; the buttons below are the
-                      action entry points for phones. */}
-                  <div className="flex flex-wrap gap-3 pt-2">
+                  {/* Tap-target buttons are the only contact entry points —
+                      the raw number / email used to render above them but
+                      was redundant noise on mobile and duplicated the
+                      Footer info. Buttons still carry tel: + mailto: so
+                      long-press-to-copy works on iOS.*/}
+                  <div className="flex flex-wrap gap-3">
                     <a
                       href={telHref(brand.phone)}
                       className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-5 py-3 font-body transition-all duration-300 hover:shadow-[var(--shadow-rose-cta)] hover:-translate-y-0.5"

@@ -1,19 +1,19 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiSuccess, logError } from "@/lib/apiResponse";
 
-// Public read — returns the active gallery grid items + before/after pairs
-// the owner has published through /admin/gallery. Both lists are sorted
-// ascending by sort_order. Never throws: if Supabase is down or the tables
-// don't exist yet (pre-migration env) we return empty arrays so the
-// consumer components fall back cleanly.
+// Public read — returns the active gallery grid items, before/after pairs,
+// and inspiration tiles the owner has published through /admin/gallery.
+// All three lists are sorted ascending by sort_order. Never throws: if
+// Supabase is down or a table hasn't migrated yet we return empty arrays
+// so consumer components fall back cleanly.
 export const revalidate = 60;
 
 export async function GET() {
   if (!hasSupabaseConfig) {
-    return apiSuccess({ items: [], pairs: [] });
+    return apiSuccess({ items: [], pairs: [], inspiration: [] });
   }
   try {
-    const [itemsRes, pairsRes] = await Promise.all([
+    const [itemsRes, pairsRes, inspirationRes] = await Promise.all([
       supabase
         .from("gallery_items")
         .select("id, image_url, title, caption, sort_order")
@@ -24,13 +24,22 @@ export async function GET() {
         .select("id, before_url, after_url, caption, alt, sort_order")
         .eq("active", true)
         .order("sort_order", { ascending: true }),
+      // Pre-migration envs won't have this table yet — the Promise.all
+      // still resolves but inspirationRes.error is set. We coerce that
+      // to an empty array so the public page degrades gracefully.
+      supabase
+        .from("gallery_inspiration")
+        .select("id, image_url, title, caption, category, gender, source, sort_order")
+        .eq("active", true)
+        .order("sort_order", { ascending: true }),
     ]);
     return apiSuccess({
       items: itemsRes.data || [],
       pairs: pairsRes.data || [],
+      inspiration: inspirationRes.data || [],
     });
   } catch (err) {
     logError("gallery/public", err);
-    return apiSuccess({ items: [], pairs: [] });
+    return apiSuccess({ items: [], pairs: [], inspiration: [] });
   }
 }

@@ -28,6 +28,21 @@ interface BeforeAfterPair {
   active: boolean;
 }
 
+interface InspirationItem {
+  id: string;
+  image_url: string;
+  title: string | null;
+  caption: string | null;
+  category: string | null;
+  gender: string | null;
+  source: string | null;
+  sort_order: number;
+  active: boolean;
+}
+
+const INSPIRATION_CATEGORIES = ["cut", "color", "styling", "treatment", "other"] as const;
+const INSPIRATION_GENDERS = ["women", "men", "unisex"] as const;
+
 type Toast = { type: "success" | "error"; message: string } | null;
 
 // ────────────────────────────────────────────────────────────────────────
@@ -35,7 +50,10 @@ type Toast = { type: "success" | "error"; message: string } | null;
 //  in this same PR to accept a `folder` param). Returns the public URL of
 //  the stored image.
 // ────────────────────────────────────────────────────────────────────────
-async function uploadImage(file: File, folder: "gallery" | "before-after"): Promise<string> {
+async function uploadImage(
+  file: File,
+  folder: "gallery" | "before-after" | "inspiration",
+): Promise<string> {
   const form = new FormData();
   form.append("file", file);
   form.append("folder", folder);
@@ -48,14 +66,16 @@ async function uploadImage(file: File, folder: "gallery" | "before-after"): Prom
 export default function AdminGalleryPage() {
   const { status } = useSession();
   const router = useRouter();
-  const [tab, setTab] = useState<"items" | "pairs">("items");
+  const [tab, setTab] = useState<"items" | "pairs" | "inspiration">("items");
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [pairs, setPairs] = useState<BeforeAfterPair[]>([]);
+  const [inspiration, setInspiration] = useState<InspirationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<Toast>(null);
-  const [confirmDelete, setConfirmDelete] = useState<{ kind: "item" | "pair"; id: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ kind: "item" | "pair" | "inspiration"; id: string } | null>(null);
   const [uploadingItem, setUploadingItem] = useState(false);
   const [uploadingPairKind, setUploadingPairKind] = useState<null | "before" | "after">(null);
+  const [uploadingInspiration, setUploadingInspiration] = useState(false);
   const [pendingPair, setPendingPair] = useState<{ before_url?: string; after_url?: string; caption?: string; alt?: string }>({});
 
   useEffect(() => {
@@ -65,12 +85,14 @@ export default function AdminGalleryPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [a, b] = await Promise.all([
+      const [a, b, c] = await Promise.all([
         fetch("/api/admin/gallery/items").then((r) => r.ok ? r.json() : []),
         fetch("/api/admin/gallery/pairs").then((r) => r.ok ? r.json() : []),
+        fetch("/api/admin/gallery/inspiration").then((r) => r.ok ? r.json() : []),
       ]);
       setItems(Array.isArray(a) ? a : []);
       setPairs(Array.isArray(b) ? b : []);
+      setInspiration(Array.isArray(c) ? c : []);
     } finally {
       setLoading(false);
     }
@@ -225,6 +247,72 @@ export default function AdminGalleryPage() {
     }
   };
 
+  // ─── Inspiration (trend reference tiles) ────────────────────────────
+  const handleInspirationUpload = async (file: File) => {
+    setUploadingInspiration(true);
+    try {
+      const url = await uploadImage(file, "inspiration");
+      const res = await fetch("/api/admin/gallery/inspiration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_url: url }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save inspiration item.");
+      }
+      setToast({ type: "success", message: "Inspiration photo added." });
+      fetchAll();
+    } catch (err) {
+      setToast({ type: "error", message: err instanceof Error ? err.message : "Upload failed." });
+    } finally {
+      setUploadingInspiration(false);
+    }
+  };
+
+  const handleInspirationUpdate = async (id: string, patch: Partial<InspirationItem>) => {
+    const res = await fetch("/api/admin/gallery/inspiration", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...patch }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setToast({ type: "error", message: data.error || "Failed to save." });
+      return;
+    }
+    setInspiration((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  };
+
+  const handleInspirationDelete = async (id: string) => {
+    const res = await fetch(`/api/admin/gallery/inspiration?id=${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setToast({ type: "error", message: data.error || "Failed to delete." });
+      return;
+    }
+    setInspiration((prev) => prev.filter((r) => r.id !== id));
+    setToast({ type: "success", message: "Inspiration photo removed." });
+  };
+
+  const moveInspiration = async (id: string, delta: number) => {
+    const idx = inspiration.findIndex((r) => r.id === id);
+    if (idx < 0) return;
+    const target = idx + delta;
+    if (target < 0 || target >= inspiration.length) return;
+    const next = [...inspiration];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    setInspiration(next);
+    const res = await fetch("/api/admin/gallery/inspiration", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: next.map((r) => r.id) }),
+    });
+    if (!res.ok) {
+      setToast({ type: "error", message: "Reorder failed — reload to sync." });
+    }
+  };
+
   return (
     <div className="p-4 sm:p-8 max-w-[1100px] mx-auto">
       <div className="mb-6">
@@ -236,10 +324,11 @@ export default function AdminGalleryPage() {
       </div>
 
       <div className="mb-6">
-        <Segmented value={tab} onValueChange={(v) => setTab(v as "items" | "pairs")}>
+        <Segmented value={tab} onValueChange={(v) => setTab(v as "items" | "pairs" | "inspiration")}>
           <SegmentedList>
             <SegmentedItem value="items">Gallery grid ({items.length})</SegmentedItem>
             <SegmentedItem value="pairs">Before / After ({pairs.length})</SegmentedItem>
+            <SegmentedItem value="inspiration">Inspiration ({inspiration.length})</SegmentedItem>
           </SegmentedList>
         </Segmented>
       </div>
@@ -337,7 +426,7 @@ export default function AdminGalleryPage() {
             )}
           </div>
         </div>
-      ) : (
+      ) : tab === "pairs" ? (
         <div className="space-y-6">
           {/* New-pair uploader */}
           <div className="bg-cream/40 border border-navy/10 p-4 space-y-3">
@@ -469,20 +558,162 @@ export default function AdminGalleryPage() {
             <p className="text-navy/40 text-sm font-body">No before/after pairs yet — upload a before and after image above, then save.</p>
           )}
         </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="bg-cream/40 border border-navy/10 p-3 space-y-2">
+            <p className="font-body text-sm text-navy/70 leading-relaxed">
+              Upload the latest trend photos — cuts, colors, and styles clients can
+              reference before their appointment. Set the <strong>gender</strong> and
+              <strong> category</strong> on each one so the public filter chips work.
+              Photos without a category still show in the &ldquo;All&rdquo; view.
+            </p>
+          </div>
+
+          <label className="inline-flex items-center gap-2 bg-navy text-white text-sm font-body px-4 py-2 cursor-pointer hover:bg-navy/90">
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploadingInspiration}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleInspirationUpload(f);
+                e.target.value = "";
+              }}
+            />
+            {uploadingInspiration ? "Uploading…" : "+ Add inspiration photo"}
+          </label>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {inspiration.map((row, idx) => (
+              <div key={row.id} className="bg-white border border-navy/10 p-3 flex gap-4">
+                <div className="relative w-32 h-32 shrink-0 bg-navy/5">
+                  <Image
+                    src={row.image_url}
+                    alt={row.title || "Inspiration"}
+                    fill
+                    sizes="128px"
+                    className="object-cover"
+                    unoptimized={row.image_url.startsWith("http")}
+                  />
+                </div>
+                <div className="flex-1 min-w-0 space-y-2">
+                  <input
+                    type="text"
+                    placeholder="Title (e.g. Bronde balayage lob)"
+                    defaultValue={row.title || ""}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v !== (row.title || "")) handleInspirationUpdate(row.id, { title: v || null });
+                    }}
+                    className="w-full border border-navy/20 px-2 py-1 text-sm font-body"
+                  />
+                  <textarea
+                    placeholder="Short description (optional)"
+                    defaultValue={row.caption || ""}
+                    rows={2}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v !== (row.caption || "")) handleInspirationUpdate(row.id, { caption: v || null });
+                    }}
+                    className="w-full border border-navy/20 px-2 py-1 text-sm font-body resize-none"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={row.gender || ""}
+                      onChange={(e) => handleInspirationUpdate(row.id, { gender: e.target.value || null })}
+                      className="border border-navy/20 px-2 py-1 text-sm font-body bg-white"
+                    >
+                      <option value="">— Gender —</option>
+                      {INSPIRATION_GENDERS.map((g) => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={row.category || ""}
+                      onChange={(e) => handleInspirationUpdate(row.id, { category: e.target.value || null })}
+                      className="border border-navy/20 px-2 py-1 text-sm font-body bg-white"
+                    >
+                      <option value="">— Category —</option>
+                      {INSPIRATION_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Credit / source (optional)"
+                    defaultValue={row.source || ""}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v !== (row.source || "")) handleInspirationUpdate(row.id, { source: v || null });
+                    }}
+                    className="w-full border border-navy/20 px-2 py-1 text-sm font-body"
+                  />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => moveInspiration(row.id, -1)}
+                      disabled={idx === 0}
+                      className="text-xs px-2 py-1 border border-navy/20 hover:bg-navy/5 disabled:opacity-30"
+                      aria-label="Move up"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      onClick={() => moveInspiration(row.id, 1)}
+                      disabled={idx === inspiration.length - 1}
+                      className="text-xs px-2 py-1 border border-navy/20 hover:bg-navy/5 disabled:opacity-30"
+                      aria-label="Move down"
+                    >
+                      ↓
+                    </button>
+                    <label className="text-xs flex items-center gap-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={row.active}
+                        onChange={(e) => handleInspirationUpdate(row.id, { active: e.target.checked })}
+                      />
+                      Active
+                    </label>
+                    <button
+                      onClick={() => setConfirmDelete({ kind: "inspiration", id: row.id })}
+                      className="text-xs px-2 py-1 text-red-600 border border-red-200 hover:bg-red-50 ml-auto"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {inspiration.length === 0 && (
+              <p className="text-navy/40 text-sm font-body col-span-full">
+                No inspiration photos yet — upload one to get started. Works best when
+                you tag each with gender + category.
+              </p>
+            )}
+          </div>
+        </div>
       )}
 
       {toast ? <AdminToast type={toast.type} message={toast.message} onClose={() => setToast(null)} /> : null}
 
       {confirmDelete && (
         <ConfirmModal
-          title={confirmDelete.kind === "item" ? "Delete image?" : "Delete pair?"}
+          title={
+            confirmDelete.kind === "item"
+              ? "Delete image?"
+              : confirmDelete.kind === "pair"
+                ? "Delete pair?"
+                : "Delete inspiration photo?"
+          }
           message="This cannot be undone. The public /gallery page will update within the minute."
           confirmLabel="Delete"
           onConfirm={async () => {
             const { kind, id } = confirmDelete;
             setConfirmDelete(null);
             if (kind === "item") await handleItemDelete(id);
-            else await handlePairDelete(id);
+            else if (kind === "pair") await handlePairDelete(id);
+            else await handleInspirationDelete(id);
           }}
           onCancel={() => setConfirmDelete(null)}
         />

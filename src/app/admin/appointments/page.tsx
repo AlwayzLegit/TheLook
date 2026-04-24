@@ -679,7 +679,7 @@ export default function AppointmentsPage() {
           Clear all filters
         </button>
         <button
-          onClick={refresh}
+          onClick={() => refresh()}
           className="px-4 py-2 text-sm font-body border border-navy/20 hover:bg-navy/5 h-[38px]"
         >
           Refresh
