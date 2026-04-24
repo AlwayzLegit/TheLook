@@ -173,6 +173,13 @@ export default function YelpReviews() {
   const [yelpStats, setYelpStats] = useState<{ rating: number; total: number } | null>(null);
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  // Mount flag — framer-motion's AnimatePresence serialises the initial
+  // state during SSR but not identically to the first client render,
+  // which trips React #418 on the home page (QA 2026-04-24). Gate the
+  // animated tree behind this so SSR emits a static grid that hydrates
+  // cleanly, then swap to the animated version after mount.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     async function load() {
@@ -344,34 +351,52 @@ export default function YelpReviews() {
           onMouseLeave={() => setIsPaused(false)}
         >
           <div className="hidden md:grid md:grid-cols-3 gap-6">
-            <AnimatePresence mode="popLayout">
-              {getVisibleReviews().map((review, i) => (
-                <motion.div
-                  key={`${review.name}-${(current + i) % reviews.length}`}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -15 }}
-                  transition={{ duration: 0.4, delay: i * 0.08 }}
-                  className="h-full"
-                >
+            {!mounted ? (
+              // Static SSR fallback — three plain cards, no motion.
+              // Must match what AnimatePresence renders on the client
+              // first paint closely enough that the hydration diff is
+              // just attribute / inline-style noise, not a tree shape.
+              getVisibleReviews().map((review, i) => (
+                <div key={`${review.name}-${i}`} className="h-full">
                   <ReviewCard review={review} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+                </div>
+              ))
+            ) : (
+              <AnimatePresence mode="popLayout">
+                {getVisibleReviews().map((review, i) => (
+                  <motion.div
+                    key={`${review.name}-${(current + i) % reviews.length}`}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    transition={{ duration: 0.4, delay: i * 0.08 }}
+                    className="h-full"
+                  >
+                    <ReviewCard review={review} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            )}
           </div>
 
           <div className="md:hidden">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={current}
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ duration: 0.3 }}
-              >
+            {!mounted ? (
+              <div>
                 <ReviewCard review={reviews[current] ?? reviews[0]} />
-              </motion.div>
-            </AnimatePresence>
+              </div>
+            ) : (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={current}
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <ReviewCard review={reviews[current] ?? reviews[0]} />
+                </motion.div>
+              </AnimatePresence>
+            )}
           </div>
 
           <div className="flex items-center justify-center gap-4 mt-10">
