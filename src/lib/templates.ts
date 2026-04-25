@@ -32,8 +32,11 @@ export const DEFAULT_TEMPLATES = {
     "Hi {{client_name}}! Thank you for visiting The Look today. If you have a minute, we'd love your feedback: {{review_url}} — Reply STOP to opt out.",
   review_request_email_subject_template:
     "Thank you for visiting The Look Hair Salon",
+  // The branded HTML wrapper renders a "Leave a review" button with
+  // the review URL baked in, so the body deliberately does NOT repeat
+  // the URL inline — the duplicate plaintext was visual clutter.
   review_request_email_body_template:
-    "Hi {{client_name}},\n\nThank you for coming in today for your {{service}} with {{stylist}}. We hope you love the result.\n\nIf you have a moment, we'd really appreciate a quick review — it helps other people find us:\n\n{{review_url}}\n\nThanks so much,\nThe Look Hair Salon\n(818) 662-5665",
+    "Hi {{client_name}},\n\nThank you for coming in today for your {{service}} with {{stylist}}. We hope you love the result.\n\nIf you have a moment, we'd really appreciate a quick review — it helps other people find us.\n\nThanks so much,\nThe Look Hair Salon\n(818) 662-5665",
 } as const;
 
 export type TemplateKey = keyof typeof DEFAULT_TEMPLATES;

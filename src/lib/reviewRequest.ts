@@ -109,9 +109,15 @@ export async function sendReviewRequest(
 
   const wantSms = overrides.channels?.sms ?? true;
   const wantEmail = overrides.channels?.email ?? true;
-  const smsBody = overrides.sms || renderTemplate(smsTpl, vars);
-  const emailSubject = overrides.emailSubject || renderTemplate(emailSubjTpl, vars);
-  const emailBodyRendered = overrides.emailBody || renderTemplate(emailBodyTpl, vars);
+  // Always run renderTemplate, even on overrides — admin's edit
+  // surface in the manual modal explicitly tells them placeholders
+  // are filled at send time, so {{client_name}} etc. in the override
+  // body must still substitute. Old behaviour passed the override
+  // through verbatim, which leaked raw {{...}} into the customer's
+  // inbox when admin didn't manually substitute first.
+  const smsBody = renderTemplate(overrides.sms || smsTpl, vars);
+  const emailSubject = renderTemplate(overrides.emailSubject || emailSubjTpl, vars);
+  const emailBodyRendered = renderTemplate(overrides.emailBody || emailBodyTpl, vars);
 
   let smsOk = false;
   let emailOk = false;
@@ -136,7 +142,7 @@ export async function sendReviewRequest(
       text: emailBodyRendered,
       html: brandedFromText({
         kicker: "Thanks for visiting",
-        headline: `We'd love your feedback, ${vars.client_name.split(" ")[0] || "friend"}`,
+        headline: `We'd love your feedback, ${vars.client_name.split(" ")[0] || "friend"}!`,
         preheader: `Leave a review for ${vars.service} with ${vars.stylist}`,
         text: emailBodyRendered,
         ctaLabel: "Leave a review",

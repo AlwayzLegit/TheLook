@@ -54,6 +54,7 @@ interface EnrichedAppointment {
   card_brand?: string | null;
   card_last4?: string | null;
   cancellation_fee_charged_cents?: number | null;
+  review_request_sent_at?: string | null;
 }
 
 function formatTime(time: string) {

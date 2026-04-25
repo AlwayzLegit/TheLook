@@ -16,6 +16,13 @@ interface Props {
     client_email: string;
     client_phone: string | null;
     sms_consent?: boolean | null;
+    // ISO timestamp of the last review-request fire — server stamps
+    // this on auto-send (when admin marks the appointment completed
+    // and auto_review_request_enabled !== "false") and on every manual
+    // send through this modal. When set, the modal shows an explicit
+    // "already sent on X" warning + the primary button reads "Resend"
+    // so admin doesn't double-fire by accident.
+    review_request_sent_at?: string | null;
   };
 }
 
@@ -103,6 +110,22 @@ export default function ReviewRequestModal({ open, onOpenChange, appointment }: 
         <p className="text-[0.8125rem] text-[var(--color-text-muted)]">Loading templates…</p>
       ) : (
         <div className="space-y-4">
+          {appointment.review_request_sent_at && (
+            <div className="p-3 rounded-md border border-amber-200 bg-amber-50 text-[0.8125rem] text-amber-900">
+              <p>
+                <strong>Already sent</strong> on{" "}
+                {new Date(appointment.review_request_sent_at).toLocaleString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+                . Sending again will deliver another SMS + email to the same client.
+              </p>
+            </div>
+          )}
+
           <div className="p-3 rounded-md border border-[var(--color-border)] bg-[var(--color-cream-50)] text-[0.75rem] text-[var(--color-text-muted)]">
             <p>
               Placeholders are <strong>not</strong> interpolated in this preview — the server fills
@@ -167,7 +190,7 @@ export default function ReviewRequestModal({ open, onOpenChange, appointment }: 
               loading={sending}
               disabled={!sendSms && !sendEmail}
             >
-              Send review request
+              {appointment.review_request_sent_at ? "Resend review request" : "Send review request"}
             </Button>
           </div>
         </div>

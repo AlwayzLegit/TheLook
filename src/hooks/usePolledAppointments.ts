@@ -27,6 +27,9 @@ interface Appointment {
   // Surfaced on the admin list so a small "Any" / "Requested" badge
   // can render next to the stylist name without opening the row.
   requested_stylist?: boolean | null;
+  // Used by the review-request modal to warn admin if a review was
+  // already sent (auto-on-completion or earlier manual fire).
+  review_request_sent_at?: string | null;
 }
 
 interface UsePolledAppointmentsOptions {

@@ -57,6 +57,7 @@ interface Appointment {
   card_brand?: string | null;
   card_last4?: string | null;
   cancellation_fee_charged_cents?: number | null;
+  review_request_sent_at?: string | null;
 }
 
 interface StylistOption {
@@ -429,6 +430,7 @@ export default function AppointmentActionsModal({
           client_email: appointment.client_email,
           client_phone: appointment.client_phone,
           sms_consent: appointment.sms_consent,
+          review_request_sent_at: appointment.review_request_sent_at,
         }}
       />
 

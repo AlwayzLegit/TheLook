@@ -106,7 +106,14 @@ export function brandedEmail(args: BrandedEmailArgs): string {
 
   const brand = { ...BRAND_DEFAULTS, ...(brandOverride || {}) };
   const phoneHref = phoneToTelHref(brand.phone);
-  const signoff = args.signoff ?? `— The ${brand.name} team`;
+  // Avoid double-articling the brand name. brand.name already starts
+  // with "The" for this salon ("The Look Hair Salon"), so prepending
+  // another "The" produced "— The The Look Hair Salon team". The
+  // regex strips a leading "the " (case-insensitive) before composing
+  // the signoff. Brands without a leading "The" (future locations,
+  // rebrands) still get the article naturally.
+  const trimmed = brand.name.replace(/^the\s+/i, "");
+  const signoff = args.signoff ?? `— The ${trimmed} team`;
 
   const ctaBlock = ctaLabel && ctaUrl
     ? `<tr>
