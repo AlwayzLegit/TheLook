@@ -31,6 +31,10 @@ const ALLOWED_KEYS = new Set([
   "review_request_email_subject_template",
   "review_request_email_body_template",
   "google_review_url",
+  // When "true" (default) flipping an appointment to status=completed
+  // auto-fires the review request. Set to "false" to disable and
+  // require admins to send manually from the actions modal.
+  "auto_review_request_enabled",
   "idle_timeout_minutes",
   // Salon identity — DB-backed branding. Empty string falls back to the
   // static defaults in src/lib/strings.ts (see lib/branding.ts).

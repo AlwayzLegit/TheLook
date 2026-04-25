@@ -48,6 +48,27 @@ export async function POST(request: NextRequest) {
     return apiError("Bulk update failed.", 500);
   }
 
+  // Auto-fire review requests for any rows that just landed at
+  // "completed". Same gating + idempotency as the per-row PATCH path
+  // (auto_review_request_enabled + review_request_sent_at). Fire-and-
+  // forget so a 50-row bulk doesn't block on N email + SMS round trips.
+  if (status === "completed" && data && data.length > 0) {
+    try {
+      const { getSetting } = await import("@/lib/settings");
+      const autoEnabled = (await getSetting("auto_review_request_enabled")) ?? "true";
+      if (autoEnabled !== "false") {
+        const { sendReviewRequest } = await import("@/lib/reviewRequest");
+        for (const row of data) {
+          sendReviewRequest(row.id, { trigger: "auto" }).catch((err) =>
+            logError("auto review-request bulk", err),
+          );
+        }
+      }
+    } catch (err) {
+      logError("auto review-request bulk init", err);
+    }
+  }
+
   await logAdminAction(
     "appointment.bulk_status",
     JSON.stringify({ status, count: data?.length ?? 0 }),

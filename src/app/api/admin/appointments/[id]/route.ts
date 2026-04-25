@@ -131,6 +131,40 @@ export async function PATCH(
     // come back. Admins see every status change via the admin bell already.
   }
 
+  // Auto-fire the review request whenever an appointment flips to
+  // "completed" — gated by the auto_review_request_enabled setting,
+  // ON by default. Idempotent thanks to review_request_sent_at, so
+  // an admin re-marking a row completed won't double-send.
+  if (newStatus === "completed" && data) {
+    try {
+      const { getSetting } = await import("@/lib/settings");
+      const autoEnabled = (await getSetting("auto_review_request_enabled")) ?? "true";
+      if (autoEnabled !== "false") {
+        const { sendReviewRequest } = await import("@/lib/reviewRequest");
+        // Fire-and-forget — the PATCH response shouldn't block on
+        // SMS/email round-trips. Errors land in lib/reviewRequest's
+        // own logError calls.
+        sendReviewRequest(id, { trigger: "auto" })
+          .then((r) => {
+            if (r.ok) {
+              logAdminAction(
+                "review_request.sent",
+                JSON.stringify({
+                  appointmentId: id,
+                  smsOk: r.smsOk,
+                  emailOk: r.emailOk,
+                  trigger: "auto",
+                }),
+              ).catch(() => {});
+            }
+          })
+          .catch((err) => logError("auto review-request", err));
+      }
+    } catch (err) {
+      logError("auto review-request init", err);
+    }
+  }
+
   return apiSuccess(data);
 }
 

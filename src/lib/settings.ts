@@ -20,6 +20,9 @@ export type SettingsKey =
   | "review_request_email_subject_template"
   | "review_request_email_body_template"
   | "google_review_url"
+  // "true" (default) → flipping an appointment to status=completed
+  // auto-fires the review request. "false" disables auto-send.
+  | "auto_review_request_enabled"
   // Admin UX
   | "idle_timeout_minutes"
   // Booking — credit-card processing surcharge (percentage, e.g. "4")

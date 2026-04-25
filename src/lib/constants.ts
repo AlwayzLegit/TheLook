@@ -7,7 +7,11 @@ export const RATE_LIMITS = {
 
 export const BOOKING = {
   MAX_ADVANCE_DAYS: 60,
-  SLOT_INCREMENT_MINUTES: 30,
+  // 15-min granularity gives customers enough flexibility to stack
+  // their day around the booking without flooding the picker. Going
+  // smaller (5/10) starts to feel cluttered; 30 was what we shipped
+  // with but customers wanted finer-grained options.
+  SLOT_INCREMENT_MINUTES: 15,
   // Sentinel UUID stored in the stylists table (active=false). The server
   // detects this and assigns an available real stylist before creating the
   // appointment row, so all FK constraints stay valid.

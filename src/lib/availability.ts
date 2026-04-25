@@ -147,7 +147,7 @@ export async function getAvailableSlots(
     duration = ids.reduce((sum, id) => sum + (byId.get(id) || 0), 0);
   }
 
-  // Generate 30-min aligned slots
+  // Generate slots aligned to BOOKING.SLOT_INCREMENT_MINUTES (currently 15).
   const allSlots: string[] = [];
   // For today, drop any slots that have already started in LA time. Add a
   // 15-min lead so customers can't book a slot starting right now.
