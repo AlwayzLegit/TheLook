@@ -1,14 +1,14 @@
 import * as Sentry from "@sentry/nextjs";
 
-// Client (browser) Sentry init. Completely no-ops when SENTRY_DSN isn't
-// set — this keeps local dev and preview deploys from needing the env,
-// and flipping the key on in Vercel turns capture on everywhere at once.
+// Client (browser) Sentry init. Completely no-ops when the DSN isn't
+// set — keeps local dev and preview deploys from needing the env, and
+// flipping the key on in Vercel turns capture on everywhere at once.
 //
-// Lower the trace-sampling rate from the scaffolded 1.0 because this is
-// a production site and sampling 100% of every page view is expensive
-// on both Sentry quota and client bundle size. 10% is plenty for the
-// kind of traffic a single salon receives.
-const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+// .trim() guard: Vercel's env-var UI sometimes preserves a trailing
+// newline depending on how the value was pasted, which makes Sentry
+// reject the DSN at runtime with "Invalid Sentry Dsn" and silently
+// skip every captureMessage. The trim makes init resilient to that.
+const dsn = (process.env.NEXT_PUBLIC_SENTRY_DSN || "").trim();
 
 if (dsn) {
   Sentry.init({

@@ -96,11 +96,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Try database users first
         const dbUser = await findUserInDb(inputEmail);
         if (dbUser) {
-          const { compare } = await import("bcryptjs");
+          const { compare, hash, getRounds } = await import("bcryptjs");
           const valid = await compare(password, dbUser.passwordHash);
           if (valid) {
             failedAttempts.delete(inputEmail);
             logAuthEvent("auth.login.success", dbUser.email, { userId: dbUser.id });
+            // Auto-rehash to the current target cost (14) when the
+            // stored hash was generated with a lower cost. This is the
+            // only path where we hold the plaintext password, so it's
+            // the correct moment to upgrade. Does not block login if
+            // the rehash fails — we already verified the user.
+            try {
+              const currentCost = getRounds(dbUser.passwordHash);
+              if (currentCost < 14) {
+                const upgraded = await hash(password, 14);
+                const { supabase, hasSupabaseConfig } = await import("./supabase");
+                if (hasSupabaseConfig) {
+                  await supabase
+                    .from("admin_users")
+                    .update({ password_hash: upgraded, updated_at: new Date().toISOString() })
+                    .eq("id", dbUser.id);
+                  logAuthEvent("auth.password.rehash", dbUser.email, {
+                    fromCost: currentCost,
+                    toCost: 14,
+                  });
+                }
+              }
+            } catch {
+              // Rehash failure is non-fatal — keep the old hash + log in.
+            }
             return {
               id: dbUser.id,
               name: dbUser.name,

@@ -56,10 +56,15 @@ export default shouldWrapSentry
   ? withSentryConfig(nextConfig, {
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
-      silent: true,
+      // silent:true was hiding the source-map upload status in build
+      // logs, which made it impossible to tell from CI whether the
+      // upload step actually ran. Now visible.
+      silent: false,
       widenClientFileUpload: true,
-      tunnelRoute: "/monitoring",
-      disableLogger: true,
-      automaticVercelMonitors: false,
+      // tunnelRoute removed — it adds a /monitoring rewrite that Vercel
+      // sometimes proxies through the same edge as our middleware,
+      // adding latency without much benefit at this traffic volume.
+      // disableLogger + automaticVercelMonitors moved out — they were
+      // deprecated as top-level options in @sentry/nextjs 10.x.
     })
   : nextConfig;

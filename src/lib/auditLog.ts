@@ -7,9 +7,22 @@ import { headers } from "next/headers";
 // pre-session paths like the logout hook. Fire-and-forget: failures are
 // logged to stderr but never bubble up to the caller.
 export async function logAuthEvent(
-  action: "auth.login.success" | "auth.login.failed" | "auth.login.locked" | "auth.logout" | "auth.signout_idle",
+  action:
+    | "auth.login.success"
+    | "auth.login.failed"
+    | "auth.login.locked"
+    | "auth.logout"
+    | "auth.signout_idle"
+    | "auth.password.rehash",
   email: string | null,
-  extras?: { ip?: string | null; userAgent?: string | null; userId?: string | null; reason?: string | null },
+  extras?: {
+    ip?: string | null;
+    userAgent?: string | null;
+    userId?: string | null;
+    reason?: string | null;
+    fromCost?: number;
+    toCost?: number;
+  },
 ) {
   if (!hasSupabaseConfig) return;
   let ip = extras?.ip ?? null;
