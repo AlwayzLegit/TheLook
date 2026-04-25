@@ -4,6 +4,34 @@ import { useState, useEffect } from "react";
 import ReviewRequestModal from "./ReviewRequestModal";
 import RefundDialog from "./RefundDialog";
 
+// HH:MM math helpers. Server stores times as zero-padded "HH:MM"
+// strings; using minutes-since-midnight keeps the math trivial without
+// pulling in a date lib.
+function timeToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map((s) => parseInt(s, 10));
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return 0;
+  return h * 60 + m;
+}
+function minutesToTime(total: number): string {
+  // Wrap at 24h so a 23:30 + 60-min appointment lands at 00:30, not 24:30.
+  // Salons aren't open past midnight today but the math should still
+  // never produce an invalid time string.
+  const wrapped = ((total % 1440) + 1440) % 1440;
+  const h = Math.floor(wrapped / 60);
+  const m = wrapped % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+function diffMinutes(start: string, end: string): number {
+  return timeToMinutes(end) - timeToMinutes(start);
+}
+function formatDurationLabel(mins: number): string {
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (m === 0) return h === 1 ? "1h" : `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 interface Appointment {
   id: string;
   client_name: string;
@@ -60,6 +88,13 @@ export default function AppointmentActionsModal({
   const [fields, setFields] = useState({ date: "", start_time: "", end_time: "", staff_notes: "" });
   const [reviewOpen, setReviewOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  // Sum of appointment_services.duration for this booking, in minutes.
+  // Used to auto-recompute end_time when admin edits start_time so a
+  // single-knob time change keeps the slot length intact. Falls back to
+  // (end - start) on the appointment row itself when there are no
+  // appointment_services rows (legacy / single-service bookings).
+  const [totalMinutes, setTotalMinutes] = useState<number | null>(null);
+  const [serviceCount, setServiceCount] = useState<number>(1);
 
   useEffect(() => {
     if (appointment) {
@@ -70,7 +105,48 @@ export default function AppointmentActionsModal({
         staff_notes: appointment.staff_notes || "",
       });
       setEditing(false);
+      // Reset duration cache; refetch below.
+      setTotalMinutes(null);
+      setServiceCount(1);
     }
+  }, [appointment]);
+
+  // Pull appointment_services for this booking once per modal open so we
+  // know the SUM of snapshotted durations. Snapshotted at booking time —
+  // immune to later edits of the underlying services table.
+  useEffect(() => {
+    if (!appointment) return;
+    let cancelled = false;
+    fetch(`/api/admin/appointments/${appointment.id}/services`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { services?: Array<{ duration: number | null }> } | null) => {
+        if (cancelled || !data) return;
+        const rows = Array.isArray(data.services) ? data.services : [];
+        if (rows.length > 0) {
+          const sum = rows.reduce((acc, r) => acc + (r.duration || 0), 0);
+          if (sum > 0) {
+            setTotalMinutes(sum);
+            setServiceCount(rows.length);
+            return;
+          }
+        }
+        // Fallback: derive from the appointment row itself.
+        const fallback = diffMinutes(appointment.start_time, appointment.end_time);
+        if (fallback > 0) {
+          setTotalMinutes(fallback);
+          setServiceCount(1);
+        }
+      })
+      .catch(() => {
+        const fallback = diffMinutes(appointment.start_time, appointment.end_time);
+        if (fallback > 0) {
+          setTotalMinutes(fallback);
+          setServiceCount(1);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [appointment]);
 
   if (!appointment) return null;
@@ -78,12 +154,13 @@ export default function AppointmentActionsModal({
   const isArchived = Boolean(appointment.archived_at);
   const canArchive = ["cancelled", "no_show", "completed"].includes(appointment.status) && !isArchived;
 
+  // Issue 1 fix: backdrop is no longer click-to-close. Native iOS time
+  // pickers occasionally bubble their dismissal as a tap on whatever's
+  // behind, which made the modal close mid-edit. Close is now strictly
+  // via the X button or Cancel — predictable on every device.
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
-      <div
-        className="bg-white w-full sm:max-w-lg max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between px-5 py-4 border-b border-navy/10 sticky top-0 bg-white">
           <div className="min-w-0">
             <p className="font-body font-bold text-base truncate">{appointment.client_name}</p>
@@ -138,13 +215,40 @@ export default function AppointmentActionsModal({
                 </div>
                 <div>
                   <label className="block text-xs font-body text-navy/40 mb-1">Start</label>
-                  <input type="time" value={fields.start_time} onChange={(e) => setFields({ ...fields, start_time: e.target.value })} className="border border-navy/20 px-2 py-1.5 text-sm font-body" />
+                  <input
+                    type="time"
+                    value={fields.start_time}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      // Auto-shift end_time by the cached total duration so
+                      // a single edit keeps the slot length intact. Admin
+                      // can still override end_time after this fires by
+                      // editing it directly.
+                      setFields((f) => {
+                        if (totalMinutes && totalMinutes > 0 && next) {
+                          return {
+                            ...f,
+                            start_time: next,
+                            end_time: minutesToTime(timeToMinutes(next) + totalMinutes),
+                          };
+                        }
+                        return { ...f, start_time: next };
+                      });
+                    }}
+                    className="border border-navy/20 px-2 py-1.5 text-sm font-body"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-body text-navy/40 mb-1">End</label>
                   <input type="time" value={fields.end_time} onChange={(e) => setFields({ ...fields, end_time: e.target.value })} className="border border-navy/20 px-2 py-1.5 text-sm font-body" />
                 </div>
               </div>
+              {totalMinutes !== null && totalMinutes > 0 && (
+                <p className="text-[11px] font-body text-navy/50 -mt-1">
+                  Auto-set from {serviceCount} service{serviceCount === 1 ? "" : "s"} ·{" "}
+                  {formatDurationLabel(totalMinutes)} total. Edit End to override.
+                </p>
+              )}
               <div>
                 <label className="block text-xs font-body text-navy/40 mb-1">Staff Notes</label>
                 <textarea value={fields.staff_notes} onChange={(e) => setFields({ ...fields, staff_notes: e.target.value })} rows={2} placeholder="Internal notes" className="w-full border border-navy/20 px-3 py-2 text-sm font-body resize-none" />
