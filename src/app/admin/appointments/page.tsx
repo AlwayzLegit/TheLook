@@ -709,6 +709,7 @@ export default function AppointmentsPage() {
               stylistId: a.stylist_id,
               stylistName: a.stylistName,
               stylistColor: a.stylistColor,
+              requested_stylist: a.requested_stylist,
             }))}
             onSelectAppointment={(id) => {
               const appt = filteredAppts.find((a) => a.id === id);

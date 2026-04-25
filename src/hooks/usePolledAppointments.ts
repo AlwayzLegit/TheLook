@@ -24,6 +24,9 @@ interface Appointment {
   reminder_sent: boolean;
   cancel_token: string | null;
   created_at: string;
+  // Surfaced on the admin list so a small "Any" / "Requested" badge
+  // can render next to the stylist name without opening the row.
+  requested_stylist?: boolean | null;
 }
 
 interface UsePolledAppointmentsOptions {

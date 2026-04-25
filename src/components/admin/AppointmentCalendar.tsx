@@ -18,6 +18,11 @@ interface CalendarAppointment {
   stylistName: string;
   stylistColor?: string | null;
   totalPriceText?: string | null;
+  // false = booking landed via "Any Stylist" (system picked the stylist
+  // for the customer). null/true = customer specifically asked for this
+  // stylist. Used to render a small badge in the day list so admin
+  // knows at a glance without opening the row.
+  requested_stylist?: boolean | null;
 }
 
 interface Props {
@@ -197,8 +202,25 @@ export default function AppointmentCalendar({ appointments, onSelectAppointment 
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[0.8125rem] font-medium text-[var(--color-text)] truncate">{a.client_name}</p>
-                    <p className="text-[0.75rem] text-[var(--color-text-muted)] truncate">
-                      {a.serviceName} · {a.stylistName}
+                    <p className="text-[0.75rem] text-[var(--color-text-muted)] truncate flex items-center gap-1.5">
+                      <span className="truncate">
+                        {a.serviceName} · {a.stylistName}
+                      </span>
+                      {a.requested_stylist === false ? (
+                        <span
+                          className="shrink-0 text-[0.625rem] uppercase tracking-widest font-body bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded"
+                          title="Customer chose Any Stylist; system assigned"
+                        >
+                          Any
+                        </span>
+                      ) : a.requested_stylist === true ? (
+                        <span
+                          className="shrink-0 text-[0.625rem] uppercase tracking-widest font-body bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded"
+                          title="Customer requested this stylist by name"
+                        >
+                          Requested
+                        </span>
+                      ) : null}
                     </p>
                   </div>
                   {a.totalPriceText && (
