@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "./Logo";
 import { useBranding } from "./BrandingProvider";
+import { telHref } from "@/lib/branding";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -321,12 +322,18 @@ export default function Navbar() {
               Book Now
             </Link>
 
-            <p
-              className="text-white/30 text-xs font-body tracking-wider"
+            <a
+              href={telHref(brand.phone)}
+              onClick={handleLinkClick}
+              aria-label={`Call ${brand.phone}`}
+              className="text-white/60 hover:text-gold text-sm font-body tracking-wider min-h-[44px] flex items-center gap-2 transition-colors"
               style={{ position: "absolute", bottom: 40 }}
             >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 5a2 2 0 012-2h2.5a1 1 0 01.95.68l1.2 3.6a1 1 0 01-.27 1.05l-1.9 1.9a16 16 0 006.3 6.3l1.9-1.9a1 1 0 011.05-.27l3.6 1.2a1 1 0 01.68.95V19a2 2 0 01-2 2h-1C9.82 21 3 14.18 3 6V5z" />
+              </svg>
               {brand.phone}
-            </p>
+            </a>
           </div>
 
           {/* CSS animation keyframes */}
