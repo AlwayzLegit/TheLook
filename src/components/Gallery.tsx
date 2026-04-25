@@ -17,8 +17,19 @@ interface GalleryItem {
   image?: string;
   title: string | null | string;
   caption?: string | null;
+  stylist_id?: string | null;
   // Legacy field name kept so the fallback array below still types cleanly.
   category?: string;
+}
+
+interface GalleryProps {
+  // When provided, Gallery skips its own fetch and renders only these
+  // items. Lets a parent component (GalleryWithStylistFilter on /gallery)
+  // own the filter state without Gallery duplicating the network call.
+  items?: GalleryItem[];
+  // Optional override on the heading rendered above the grid. Falls
+  // back to "Gallery" so the home-page usage stays identical.
+  heading?: string | null;
 }
 
 const fallbackItems: GalleryItem[] = [
@@ -44,28 +55,35 @@ function labelOf(item: GalleryItem): string {
   return (item.caption || item.category || "").toString();
 }
 
-export default function Gallery() {
-  const [items, setItems] = useState<GalleryItem[]>(fallbackItems);
+export default function Gallery({ items: itemsProp, heading }: GalleryProps = {}) {
+  const [fetchedItems, setFetchedItems] = useState<GalleryItem[]>(fallbackItems);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
 
+  // Either render externally-supplied items (filter parent owns the
+  // data) or self-fetch on mount. Standalone home-page usage keeps the
+  // self-fetch behaviour exactly as before.
+  const externallyControlled = Array.isArray(itemsProp);
+  const items = externallyControlled ? (itemsProp as GalleryItem[]) : fetchedItems;
+
   useEffect(() => {
+    if (externallyControlled) return;
     let cancelled = false;
     fetch("/api/gallery/public")
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { items?: GalleryItem[] } | null) => {
         if (cancelled || !data) return;
         if (Array.isArray(data.items) && data.items.length > 0) {
-          setItems(data.items);
+          setFetchedItems(data.items);
         }
       })
       .catch(() => {
         // Keep fallback array — never render empty.
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [externallyControlled]);
 
   const closeLightbox = useCallback(() => {
     setLightboxIndex(null);
@@ -115,7 +133,7 @@ export default function Gallery() {
             </span>
             <span className="w-10 h-[1px] bg-gradient-to-l from-transparent to-gold" />
           </div>
-          <h2 className="font-heading text-4xl md:text-5xl mb-5">Gallery</h2>
+          <h2 className="font-heading text-4xl md:text-5xl mb-5">{heading ?? "Gallery"}</h2>
           <p className="text-navy/75 font-body">
             Check out our Instagram for the most recent transformations
           </p>

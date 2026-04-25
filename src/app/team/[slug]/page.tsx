@@ -4,10 +4,55 @@ import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import StylistImage from "@/components/StylistImage";
+import StylistPortfolio from "@/components/StylistPortfolio";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { BOOKING } from "@/lib/constants";
 import { getBranding, telHref } from "@/lib/branding";
 import type { Metadata } from "next";
+
+interface PortfolioItem {
+  id: string;
+  image_url: string;
+  title: string | null;
+  caption: string | null;
+}
+interface PortfolioPair {
+  id: string;
+  before_url: string;
+  after_url: string;
+  caption: string | null;
+  alt: string | null;
+}
+
+async function getStylistPortfolio(
+  stylistId: string,
+): Promise<{ items: PortfolioItem[]; pairs: PortfolioPair[] }> {
+  if (!hasSupabaseConfig) return { items: [], pairs: [] };
+  try {
+    const [itemsRes, pairsRes] = await Promise.all([
+      supabase
+        .from("gallery_items")
+        .select("id, image_url, title, caption, sort_order")
+        .eq("active", true)
+        .eq("stylist_id", stylistId)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("gallery_before_after")
+        .select("id, before_url, after_url, caption, alt, sort_order")
+        .eq("active", true)
+        .eq("stylist_id", stylistId)
+        .order("sort_order", { ascending: true }),
+    ]);
+    return {
+      items: (itemsRes.data as PortfolioItem[]) || [],
+      pairs: (pairsRes.data as PortfolioPair[]) || [],
+    };
+  } catch {
+    // Pre-migration env (20260511 not run yet) — stylist_id column
+    // doesn't exist. Surface no portfolio rather than 500 the page.
+    return { items: [], pairs: [] };
+  }
+}
 
 export const revalidate = 60;
 
@@ -178,6 +223,8 @@ export default async function TeamMemberPage({ params }: any) {
 
   if (!stylist) notFound();
 
+  const portfolio = await getStylistPortfolio(stylist.id);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const servicesByCategory: Record<string, any[]> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -229,6 +276,13 @@ export default async function TeamMemberPage({ params }: any) {
               </div>
             </div>
           </div>
+
+          <StylistPortfolio
+            stylistName={stylist.name}
+            stylistSlug={stylist.slug}
+            items={portfolio.items}
+            pairs={portfolio.pairs}
+          />
 
           {Object.keys(servicesByCategory).length > 0 && (
             <div>

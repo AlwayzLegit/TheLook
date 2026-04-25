@@ -14,6 +14,7 @@ const createSchema = z.object({
   image_url: z.string().trim().min(1).max(2000),
   title: z.string().trim().max(200).nullable().optional(),
   caption: z.string().trim().max(200).nullable().optional(),
+  stylist_id: z.string().uuid().nullable().optional(),
   sort_order: z.number().int().min(0).max(1_000_000).optional(),
   active: z.boolean().optional(),
 });
@@ -23,6 +24,7 @@ const updateSchema = z.object({
   image_url: z.string().trim().min(1).max(2000).optional(),
   title: z.string().trim().max(200).nullable().optional(),
   caption: z.string().trim().max(200).nullable().optional(),
+  stylist_id: z.string().uuid().nullable().optional(),
   sort_order: z.number().int().min(0).max(1_000_000).optional(),
   active: z.boolean().optional(),
 });
@@ -78,17 +80,32 @@ export async function POST(request: NextRequest) {
     sort_order = last && last[0] ? (last[0].sort_order || 0) + 100 : 100;
   }
 
-  const { data, error } = await supabase
+  // Pre-migration envs (before 20260511) won't have stylist_id yet —
+  // retry without it if the insert errors on that column.
+  const baseInsert = {
+    image_url: parsed.data.image_url,
+    title: parsed.data.title ?? null,
+    caption: parsed.data.caption ?? null,
+    sort_order,
+    active: parsed.data.active ?? true,
+  };
+  const fullInsert =
+    parsed.data.stylist_id !== undefined
+      ? { ...baseInsert, stylist_id: parsed.data.stylist_id }
+      : baseInsert;
+
+  let { data, error } = await supabase
     .from("gallery_items")
-    .insert({
-      image_url: parsed.data.image_url,
-      title: parsed.data.title ?? null,
-      caption: parsed.data.caption ?? null,
-      sort_order,
-      active: parsed.data.active ?? true,
-    })
+    .insert(fullInsert)
     .select()
     .single();
+  if (error && /stylist_id/i.test(error.message || "")) {
+    ({ data, error } = await supabase
+      .from("gallery_items")
+      .insert(baseInsert)
+      .select()
+      .single());
+  }
 
   if (error) {
     logError("admin/gallery/items POST", error);
@@ -141,15 +158,27 @@ export async function PATCH(request: NextRequest) {
   if (parsed.data.image_url !== undefined) update.image_url = parsed.data.image_url;
   if (parsed.data.title !== undefined) update.title = parsed.data.title;
   if (parsed.data.caption !== undefined) update.caption = parsed.data.caption;
+  if (parsed.data.stylist_id !== undefined) update.stylist_id = parsed.data.stylist_id;
   if (parsed.data.sort_order !== undefined) update.sort_order = parsed.data.sort_order;
   if (parsed.data.active !== undefined) update.active = parsed.data.active;
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("gallery_items")
     .update(update)
     .eq("id", parsed.data.id)
     .select()
     .single();
+  if (error && /stylist_id/i.test(error.message || "") && update.stylist_id !== undefined) {
+    // Pre-migration env: drop the stylist_id column from the patch and
+    // retry so the rest of the edit still saves.
+    delete update.stylist_id;
+    ({ data, error } = await supabase
+      .from("gallery_items")
+      .update(update)
+      .eq("id", parsed.data.id)
+      .select()
+      .single());
+  }
 
   if (error || !data) {
     logError("admin/gallery/items PATCH", error || { message: "no row" });

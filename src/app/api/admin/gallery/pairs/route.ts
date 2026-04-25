@@ -15,6 +15,7 @@ const createSchema = z.object({
   after_url: z.string().trim().min(1).max(2000),
   caption: z.string().trim().max(200).nullable().optional(),
   alt: z.string().trim().max(200).nullable().optional(),
+  stylist_id: z.string().uuid().nullable().optional(),
   sort_order: z.number().int().min(0).max(1_000_000).optional(),
   active: z.boolean().optional(),
 });
@@ -25,6 +26,7 @@ const updateSchema = z.object({
   after_url: z.string().trim().min(1).max(2000).optional(),
   caption: z.string().trim().max(200).nullable().optional(),
   alt: z.string().trim().max(200).nullable().optional(),
+  stylist_id: z.string().uuid().nullable().optional(),
   sort_order: z.number().int().min(0).max(1_000_000).optional(),
   active: z.boolean().optional(),
 });
@@ -77,18 +79,31 @@ export async function POST(request: NextRequest) {
     sort_order = last && last[0] ? (last[0].sort_order || 0) + 100 : 100;
   }
 
-  const { data, error } = await supabase
+  const baseInsert = {
+    before_url: parsed.data.before_url,
+    after_url: parsed.data.after_url,
+    caption: parsed.data.caption ?? null,
+    alt: parsed.data.alt ?? null,
+    sort_order,
+    active: parsed.data.active ?? true,
+  };
+  const fullInsert =
+    parsed.data.stylist_id !== undefined
+      ? { ...baseInsert, stylist_id: parsed.data.stylist_id }
+      : baseInsert;
+
+  let { data, error } = await supabase
     .from("gallery_before_after")
-    .insert({
-      before_url: parsed.data.before_url,
-      after_url: parsed.data.after_url,
-      caption: parsed.data.caption ?? null,
-      alt: parsed.data.alt ?? null,
-      sort_order,
-      active: parsed.data.active ?? true,
-    })
+    .insert(fullInsert)
     .select()
     .single();
+  if (error && /stylist_id/i.test(error.message || "")) {
+    ({ data, error } = await supabase
+      .from("gallery_before_after")
+      .insert(baseInsert)
+      .select()
+      .single());
+  }
 
   if (error) {
     logError("admin/gallery/pairs POST", error);
@@ -139,15 +154,25 @@ export async function PATCH(request: NextRequest) {
   if (parsed.data.after_url !== undefined) update.after_url = parsed.data.after_url;
   if (parsed.data.caption !== undefined) update.caption = parsed.data.caption;
   if (parsed.data.alt !== undefined) update.alt = parsed.data.alt;
+  if (parsed.data.stylist_id !== undefined) update.stylist_id = parsed.data.stylist_id;
   if (parsed.data.sort_order !== undefined) update.sort_order = parsed.data.sort_order;
   if (parsed.data.active !== undefined) update.active = parsed.data.active;
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("gallery_before_after")
     .update(update)
     .eq("id", parsed.data.id)
     .select()
     .single();
+  if (error && /stylist_id/i.test(error.message || "") && update.stylist_id !== undefined) {
+    delete update.stylist_id;
+    ({ data, error } = await supabase
+      .from("gallery_before_after")
+      .update(update)
+      .eq("id", parsed.data.id)
+      .select()
+      .single());
+  }
 
   if (error || !data) {
     logError("admin/gallery/pairs PATCH", error || { message: "no row" });

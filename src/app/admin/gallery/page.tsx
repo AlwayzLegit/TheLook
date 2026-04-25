@@ -14,6 +14,7 @@ interface GalleryItem {
   image_url: string;
   title: string | null;
   caption: string | null;
+  stylist_id: string | null;
   sort_order: number;
   active: boolean;
 }
@@ -24,8 +25,14 @@ interface BeforeAfterPair {
   after_url: string;
   caption: string | null;
   alt: string | null;
+  stylist_id: string | null;
   sort_order: number;
   active: boolean;
+}
+
+interface StylistOpt {
+  id: string;
+  name: string;
 }
 
 interface InspirationItem {
@@ -70,13 +77,20 @@ export default function AdminGalleryPage() {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [pairs, setPairs] = useState<BeforeAfterPair[]>([]);
   const [inspiration, setInspiration] = useState<InspirationItem[]>([]);
+  const [stylists, setStylists] = useState<StylistOpt[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<Toast>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ kind: "item" | "pair" | "inspiration"; id: string } | null>(null);
   const [uploadingItem, setUploadingItem] = useState(false);
   const [uploadingPairKind, setUploadingPairKind] = useState<null | "before" | "after">(null);
   const [uploadingInspiration, setUploadingInspiration] = useState(false);
-  const [pendingPair, setPendingPair] = useState<{ before_url?: string; after_url?: string; caption?: string; alt?: string }>({});
+  const [pendingPair, setPendingPair] = useState<{
+    before_url?: string;
+    after_url?: string;
+    caption?: string;
+    alt?: string;
+    stylist_id?: string | null;
+  }>({});
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -85,14 +99,25 @@ export default function AdminGalleryPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [a, b, c] = await Promise.all([
+      const [a, b, c, s] = await Promise.all([
         fetch("/api/admin/gallery/items").then((r) => r.ok ? r.json() : []),
         fetch("/api/admin/gallery/pairs").then((r) => r.ok ? r.json() : []),
         fetch("/api/admin/gallery/inspiration").then((r) => r.ok ? r.json() : []),
+        fetch("/api/admin/stylists").then((r) => r.ok ? r.json() : []),
       ]);
       setItems(Array.isArray(a) ? a : []);
       setPairs(Array.isArray(b) ? b : []);
       setInspiration(Array.isArray(c) ? c : []);
+      // Filter to active stylists who are real people (skip the "Any
+      // stylist" sentinel used in the booking flow).
+      const stylistRows = (Array.isArray(s) ? s : []).filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (row: any) => row.active !== false && (row.name || "").trim().toLowerCase() !== "any stylist",
+      );
+      setStylists(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        stylistRows.map((row: any) => ({ id: row.id, name: row.name })),
+      );
     } finally {
       setLoading(false);
     }
@@ -386,6 +411,23 @@ export default function AdminGalleryPage() {
                     }}
                     className="w-full border border-navy/20 px-2 py-1 text-sm font-body"
                   />
+                  <select
+                    value={item.stylist_id || ""}
+                    onChange={(e) =>
+                      handleItemUpdate(item.id, {
+                        stylist_id: e.target.value === "" ? null : e.target.value,
+                      })
+                    }
+                    className="w-full border border-navy/20 px-2 py-1 text-sm font-body bg-white"
+                    title="Tag with a stylist — appears on their profile under Selected work"
+                  >
+                    <option value="">— Salon-wide (no stylist tag) —</option>
+                    {stylists.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
                   <div className="flex items-center gap-2 flex-wrap">
                     <button
                       onClick={() => moveItem(item.id, -1)}
@@ -475,6 +517,20 @@ export default function AdminGalleryPage() {
               onChange={(e) => setPendingPair({ ...pendingPair, alt: e.target.value })}
               className="w-full border border-navy/20 px-2 py-1 text-sm font-body"
             />
+            <select
+              value={pendingPair.stylist_id || ""}
+              onChange={(e) =>
+                setPendingPair({ ...pendingPair, stylist_id: e.target.value || null })
+              }
+              className="w-full border border-navy/20 px-2 py-1 text-sm font-body bg-white"
+            >
+              <option value="">— Salon-wide (no stylist tag) —</option>
+              {stylists.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
             <button
               onClick={submitPair}
               disabled={!pendingPair.before_url || !pendingPair.after_url}
@@ -520,6 +576,23 @@ export default function AdminGalleryPage() {
                 }}
                 className="w-full border border-navy/20 px-2 py-1 text-sm font-body"
               />
+              <select
+                value={pair.stylist_id || ""}
+                onChange={(e) =>
+                  handlePairUpdate(pair.id, {
+                    stylist_id: e.target.value === "" ? null : e.target.value,
+                  })
+                }
+                className="w-full border border-navy/20 px-2 py-1 text-sm font-body bg-white"
+                title="Tag with a stylist — appears on their profile under Selected work"
+              >
+                <option value="">— Salon-wide (no stylist tag) —</option>
+                {stylists.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
               <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={() => movePair(pair.id, -1)}

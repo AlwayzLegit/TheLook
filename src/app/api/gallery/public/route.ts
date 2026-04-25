@@ -16,12 +16,12 @@ export async function GET() {
     const [itemsRes, pairsRes, inspirationRes] = await Promise.all([
       supabase
         .from("gallery_items")
-        .select("id, image_url, title, caption, sort_order")
+        .select("id, image_url, title, caption, stylist_id, sort_order")
         .eq("active", true)
         .order("sort_order", { ascending: true }),
       supabase
         .from("gallery_before_after")
-        .select("id, before_url, after_url, caption, alt, sort_order")
+        .select("id, before_url, after_url, caption, alt, stylist_id, sort_order")
         .eq("active", true)
         .order("sort_order", { ascending: true }),
       // Pre-migration envs won't have this table yet — the Promise.all
@@ -33,9 +33,32 @@ export async function GET() {
         .eq("active", true)
         .order("sort_order", { ascending: true }),
     ]);
+    // If the gallery_*.stylist_id column hasn't migrated yet (20260511
+    // not run), the select fails. Retry without the column so the
+    // public page still loads. itemsRes / pairsRes will not have
+    // stylist_id in that case — filtering by stylist will simply
+    // return no rows on the client.
+    let items = itemsRes.data;
+    let pairs = pairsRes.data;
+    if (itemsRes.error && /stylist_id/i.test(itemsRes.error.message || "")) {
+      const retry = await supabase
+        .from("gallery_items")
+        .select("id, image_url, title, caption, sort_order")
+        .eq("active", true)
+        .order("sort_order", { ascending: true });
+      items = retry.data;
+    }
+    if (pairsRes.error && /stylist_id/i.test(pairsRes.error.message || "")) {
+      const retry = await supabase
+        .from("gallery_before_after")
+        .select("id, before_url, after_url, caption, alt, sort_order")
+        .eq("active", true)
+        .order("sort_order", { ascending: true });
+      pairs = retry.data;
+    }
     return apiSuccess({
-      items: itemsRes.data || [],
-      pairs: pairsRes.data || [],
+      items: items || [],
+      pairs: pairs || [],
       inspiration: inspirationRes.data || [],
     });
   } catch (err) {
