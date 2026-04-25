@@ -32,6 +32,7 @@ export async function PATCH(
   if (payload.date) updateData.date = payload.date;
   if (payload.start_time) updateData.start_time = payload.start_time;
   if (payload.end_time) updateData.end_time = payload.end_time;
+  if (payload.stylist_id) updateData.stylist_id = payload.stylist_id;
 
   // Stamp approver info whenever a pending booking becomes confirmed.
   // Kept in its own object so we can cleanly retry without it if the DB

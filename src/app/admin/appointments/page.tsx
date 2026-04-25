@@ -407,7 +407,13 @@ export default function AppointmentsPage() {
 
   const saveEditFromModal = async (
     id: string,
-    fields: { date: string; start_time: string; end_time: string; staff_notes: string },
+    fields: {
+      date: string;
+      start_time: string;
+      end_time: string;
+      staff_notes: string;
+      stylist_id?: string;
+    },
   ) => {
     try {
       setPendingStatusId(id);
@@ -1079,6 +1085,7 @@ export default function AppointmentsPage() {
           await saveEditFromModal(id, fields);
           setSelectedAppt(null);
         }}
+        stylists={stylists}
       />
 
       <ClearHistoryModal

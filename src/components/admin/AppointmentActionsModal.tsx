@@ -40,6 +40,13 @@ interface Appointment {
   sms_consent?: boolean | null;
   serviceName: string;
   stylistName: string;
+  // Current assigned stylist id — needed so the edit form's stylist
+  // dropdown can preselect them and detect changes.
+  stylist_id?: string | null;
+  // false = booking landed via "Any Stylist". true / null = customer
+  // requested this stylist. Surfaced in the edit form so admin sees
+  // when a reassignment is appropriate (e.g. someone else covered).
+  requested_stylist?: boolean | null;
   date: string;
   start_time: string;
   end_time: string;
@@ -52,6 +59,20 @@ interface Appointment {
   cancellation_fee_charged_cents?: number | null;
 }
 
+interface StylistOption {
+  id: string;
+  name: string;
+  active?: boolean;
+}
+
+export interface AppointmentEditFields {
+  date: string;
+  start_time: string;
+  end_time: string;
+  staff_notes: string;
+  stylist_id: string;
+}
+
 interface Props {
   appointment: Appointment | null;
   onClose: () => void;
@@ -59,7 +80,10 @@ interface Props {
   onDelete: (id: string) => void | Promise<void>;
   onArchive: (id: string) => void | Promise<void>;
   onUnarchive: (id: string) => void | Promise<void>;
-  onSaveEdit: (id: string, fields: { date: string; start_time: string; end_time: string; staff_notes: string }) => void | Promise<void>;
+  onSaveEdit: (id: string, fields: AppointmentEditFields) => void | Promise<void>;
+  // List of stylists the admin can reassign to. Comes from the parent
+  // page so the modal doesn't have to refetch.
+  stylists?: StylistOption[];
   pending: boolean;
 }
 
@@ -82,10 +106,17 @@ export default function AppointmentActionsModal({
   onArchive,
   onUnarchive,
   onSaveEdit,
+  stylists = [],
   pending,
 }: Props) {
   const [editing, setEditing] = useState(false);
-  const [fields, setFields] = useState({ date: "", start_time: "", end_time: "", staff_notes: "" });
+  const [fields, setFields] = useState<AppointmentEditFields>({
+    date: "",
+    start_time: "",
+    end_time: "",
+    staff_notes: "",
+    stylist_id: "",
+  });
   const [reviewOpen, setReviewOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   // Sum of appointment_services.duration for this booking, in minutes.
@@ -103,6 +134,7 @@ export default function AppointmentActionsModal({
         start_time: appointment.start_time,
         end_time: appointment.end_time,
         staff_notes: appointment.staff_notes || "",
+        stylist_id: appointment.stylist_id || "",
       });
       setEditing(false);
       // Reset duration cache; refetch below.
@@ -208,6 +240,38 @@ export default function AppointmentActionsModal({
 
           {editing ? (
             <div className="space-y-3 p-3 bg-cream/50 border border-navy/10">
+              <div>
+                <label className="block text-xs font-body text-navy/40 mb-1">
+                  Stylist
+                  {appointment.requested_stylist === false && (
+                    <span className="ml-2 text-[10px] font-body text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded normal-case tracking-normal">
+                      Booked as Any — set who actually did the service
+                    </span>
+                  )}
+                </label>
+                <select
+                  value={fields.stylist_id}
+                  onChange={(e) => setFields({ ...fields, stylist_id: e.target.value })}
+                  className="border border-navy/20 px-2 py-1.5 text-sm font-body bg-white w-full sm:w-auto"
+                >
+                  {/* If the assigned stylist is somehow inactive (deleted /
+                      hidden) we still need to render their option so the
+                      select shows the current value. Filter active for the
+                      rest of the list. */}
+                  {!stylists.some((s) => s.id === fields.stylist_id) && fields.stylist_id && (
+                    <option value={fields.stylist_id}>
+                      {appointment.stylistName} (current)
+                    </option>
+                  )}
+                  {stylists
+                    .filter((s) => s.active !== false)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
               <div className="flex flex-wrap gap-3">
                 <div>
                   <label className="block text-xs font-body text-navy/40 mb-1">Date</label>

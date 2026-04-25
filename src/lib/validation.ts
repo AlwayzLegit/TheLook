@@ -119,5 +119,10 @@ export const adminAppointmentPatchSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   start_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   end_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  // Reassign the stylist on a booking — used when "Any Stylist" was
+  // chosen at booking time and a different stylist actually performed
+  // the service, OR when the assigned stylist needs to be swapped due
+  // to a schedule change.
+  stylist_id: z.string().uuid().optional(),
 });
 
