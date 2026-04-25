@@ -33,6 +33,23 @@ export async function GET() {
     return apiError("Failed to fetch stylist services.", 500);
   }
 
+  // Pull active service rows once and key them by id so we can resolve
+  // serviceIds → category list per stylist below. Listing pages
+  // (/team and the home/about <Team /> component) want a short summary
+  // line ("Cuts · Color · Styling") that reflects what each stylist
+  // actually does, not just the free-text specialty tags admin types
+  // into the stylist edit form.
+  const { data: allServices } = await supabase
+    .from("services")
+    .select("id, name, category")
+    .eq("active", true);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const serviceById = new Map<string, { name: string; category: string }>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (allServices || []).map((s: any) => [s.id, { name: s.name, category: s.category }]),
+  );
+
   const parseSpecialties = (raw: unknown): string[] => {
     if (!raw) return [];
     if (Array.isArray(raw)) return raw as string[];
@@ -48,16 +65,39 @@ export async function GET() {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result = (allStylists || []).map((s: any) => ({
-    ...s,
-    imageUrl: s.image_url ?? null,
-    specialties: parseSpecialties(s.specialties),
-    serviceIds: (allMappings || [])
+  const result = (allStylists || []).map((s: any) => {
+    const serviceIds = (allMappings || [])
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((m: any) => m.stylist_id === s.id)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((m: any) => m.service_id),
-  }));
+      .map((m: any) => m.service_id) as string[];
+
+    // Distinct, ordered category list. We preserve insertion order
+    // (first occurrence per category) so the most-prominent service
+    // category for that stylist comes first on the public tile.
+    const categorySet = new Set<string>();
+    const categories: string[] = [];
+    for (const id of serviceIds) {
+      const svc = serviceById.get(id);
+      if (!svc) continue;
+      if (!categorySet.has(svc.category)) {
+        categorySet.add(svc.category);
+        categories.push(svc.category);
+      }
+    }
+
+    return {
+      ...s,
+      imageUrl: s.image_url ?? null,
+      specialties: parseSpecialties(s.specialties),
+      serviceIds,
+      // Service category names this stylist offers, deduped + ordered.
+      // Public listing pages prefer this over `specialties` because
+      // it's grounded in the actual stylist_services mapping, not
+      // free-text tags that drift over time.
+      categories,
+    };
+  });
 
   return apiSuccess(result);
 }

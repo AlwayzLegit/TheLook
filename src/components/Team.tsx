@@ -11,6 +11,11 @@ interface TeamMember {
   slug: string;
   bio: string | null;
   image_url: string | null;
+  // Tagline shown under the bio. Prefers `categories` (resolved from
+  // stylist_services on /api/stylists), falls back to `specialties`
+  // (free-text tags on the stylist row) when no services have been
+  // mapped yet so the tile still has SOMETHING to say.
+  categories: string[];
   specialties: string[];
 }
 
@@ -20,18 +25,21 @@ const FALLBACK: TeamMember[] = [
     id: "armen-p", slug: "armen-p", name: "Armen P.",
     bio: "Trained in Moscow. World-class expertise in coloring, cutting & styling. Specialist in barber fades for men & women.",
     image_url: null,
+    categories: [],
     specialties: ["Coloring", "Barber Fades", "Cutting"],
   },
   {
     id: "kristina-g", slug: "kristina-g", name: "Kristina G.",
     bio: "Trained in Armenia. 15 years of expertise in cutting & coloring for both men's & women's hair.",
     image_url: null,
+    categories: [],
     specialties: ["Cutting", "Coloring", "Men & Women"],
   },
   {
     id: "alisa-h", slug: "alisa-h", name: "Alisa (Liz) H.",
     bio: "Over 30 years in the industry. Specializes in cutting & coloring. A true veteran of the craft.",
     image_url: null,
+    categories: [],
     specialties: ["Cutting", "Coloring", "30+ Years"],
   },
 ];
@@ -55,6 +63,7 @@ export default function Team() {
             slug: s.slug,
             bio: s.bio,
             image_url: s.image_url,
+            categories: Array.isArray(s.categories) ? s.categories : [],
             specialties: Array.isArray(s.specialties) ? s.specialties : [],
           })));
         }
@@ -100,9 +109,15 @@ export default function Team() {
                   </p>
                 )}
 
-                {member.specialties.length > 0 && (
+                {/* Service categories the stylist is mapped to via
+                    stylist_services come first; if a stylist hasn't
+                    been mapped yet, the legacy free-text specialty
+                    tags fill the slot so the tile still reads. */}
+                {(member.categories.length > 0 ? member.categories : member.specialties).length > 0 && (
                   <p className="text-xs font-body text-navy/50 tracking-wide">
-                    {member.specialties.slice(0, 3).join(" · ")}
+                    {(member.categories.length > 0 ? member.categories : member.specialties)
+                      .slice(0, 3)
+                      .join(" · ")}
                   </p>
                 )}
 

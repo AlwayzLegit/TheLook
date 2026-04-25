@@ -43,21 +43,57 @@ interface StaffProfile {
 
 async function getStylists() {
   if (!hasSupabaseConfig) return [];
-  const { data } = await supabase
-    .from("stylists")
-    .select("*")
-    .eq("active", true)
-    .neq("id", BOOKING.ANY_STYLIST_ID)
-    .not("name", "ilike", "any stylist")
-    .order("sort_order", { ascending: true });
+
+  // Three queries in parallel — the stylists themselves, the
+  // stylist_services join rows, and the active services we need to
+  // resolve those into category names. Single round-trip, then a
+  // small in-memory join below so the public tiles can show what
+  // each stylist actually does.
+  const [stylistsRes, mappingsRes, servicesRes] = await Promise.all([
+    supabase
+      .from("stylists")
+      .select("*")
+      .eq("active", true)
+      .neq("id", BOOKING.ANY_STYLIST_ID)
+      .not("name", "ilike", "any stylist")
+      .order("sort_order", { ascending: true }),
+    supabase.from("stylist_services").select("stylist_id, service_id"),
+    supabase.from("services").select("id, category").eq("active", true),
+  ]);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data || []).map((s: any) => ({
-    ...s,
-    specialties: (() => {
-      try { return JSON.parse(normalizeSpecialties(s.specialties)); }
-      catch { return []; }
-    })(),
-  }));
+  const mappings = (mappingsRes.data || []) as Array<{ stylist_id: string; service_id: string }>;
+  const categoryById = new Map<string, string>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((servicesRes.data || []) as any[]).map((s) => [s.id, s.category]),
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (stylistsRes.data || []).map((s: any) => {
+    const serviceIds = mappings.filter((m) => m.stylist_id === s.id).map((m) => m.service_id);
+    // Distinct categories in first-seen order. The tile shows the
+    // top three, so ordering matters — most-used categories should
+    // appear first if the admin ordered the stylist_services rows
+    // intentionally.
+    const seen = new Set<string>();
+    const categories: string[] = [];
+    for (const id of serviceIds) {
+      const cat = categoryById.get(id);
+      if (!cat) continue;
+      if (!seen.has(cat)) {
+        seen.add(cat);
+        categories.push(cat);
+      }
+    }
+    return {
+      ...s,
+      specialties: (() => {
+        try { return JSON.parse(normalizeSpecialties(s.specialties)); }
+        catch { return []; }
+      })(),
+      categories,
+    };
+  });
 }
 
 async function getPublicStaff(): Promise<StaffProfile[]> {
@@ -187,11 +223,20 @@ export default async function TeamPage() {
                       />
                     </div>
                     <h3 className="font-heading text-2xl group-hover:text-rose transition-colors">{s.name}</h3>
-                    {s.specialties.length > 0 && (
-                      <p className="text-xs font-body text-navy/50 mt-2">
-                        {s.specialties.slice(0, 3).join(" · ")}
-                      </p>
-                    )}
+                    {(() => {
+                      // Prefer service categories the stylist is mapped
+                      // to (real, source-of-truth); fall back to legacy
+                      // free-text specialties when nothing is mapped
+                      // yet so a fresh stylist record still has SOMETHING
+                      // under their name on the listing.
+                      const tags: string[] = (s.categories?.length ? s.categories : s.specialties) || [];
+                      if (tags.length === 0) return null;
+                      return (
+                        <p className="text-xs font-body text-navy/50 mt-2">
+                          {tags.slice(0, 3).join(" · ")}
+                        </p>
+                      );
+                    })()}
                     {s.bio && <p className="text-navy/50 text-sm font-body mt-3 line-clamp-2 max-w-xs mx-auto">{s.bio}</p>}
                   </Link>
                 ))}
