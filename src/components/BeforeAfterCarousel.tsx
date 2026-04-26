@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
+import BeforeAfterSlider from "./BeforeAfterSlider";
 
 interface Pair {
   before: string;
@@ -18,9 +18,10 @@ interface Props {
   className?: string;
 }
 
-// Simple before/after pair carousel. Each pair shows the before photo on
-// the left and the after on the right, with a caption under. Prev/next
-// controls cycle through pairs.
+// Before/after pair carousel. Each pair renders as an interactive
+// drag-to-compare slider (BeforeAfterSlider) — the customer scrubs a
+// vertical handle to morph from before to after. Prev/next controls
+// cycle through the configured pairs.
 //
 // Pairs are managed through /admin/gallery (Before / After tab). The
 // parent page fetches rows from gallery_before_after and maps them into
@@ -48,30 +49,16 @@ export default function BeforeAfterCarousel({ pairs, title = "Before / After", s
           {subtitle && <p className="text-navy/60 font-body text-sm mt-2">{subtitle}</p>}
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="aspect-[3/4] bg-cream-dark relative overflow-hidden">
-            <Image
-              src={pair.before}
-              alt={`Before — ${pair.alt || ""}`}
-              fill
-              sizes="(max-width: 768px) 50vw, 33vw"
-              className="object-cover"
-              unoptimized={!/\.supabase\.co\//.test(pair.before) && !pair.before.includes("images.unsplash.com")}
-            />
-            <span className="absolute top-3 left-3 bg-black/60 text-white text-[10px] tracking-[0.2em] uppercase font-body px-2 py-1">Before</span>
-          </div>
-          <div className="aspect-[3/4] bg-cream-dark relative overflow-hidden">
-            <Image
-              src={pair.after}
-              alt={`After — ${pair.alt || ""}`}
-              fill
-              sizes="(max-width: 768px) 50vw, 33vw"
-              className="object-cover"
-              unoptimized={!/\.supabase\.co\//.test(pair.after) && !pair.after.includes("images.unsplash.com")}
-            />
-            <span className="absolute top-3 left-3 bg-rose text-white text-[10px] tracking-[0.2em] uppercase font-body px-2 py-1">After</span>
-          </div>
-        </div>
+        <BeforeAfterSlider
+          beforeUrl={pair.before}
+          afterUrl={pair.after}
+          alt={pair.alt}
+          className="mb-4"
+        />
+
+        <p className="text-center text-[11px] tracking-[0.2em] uppercase font-body text-navy/40 mb-4">
+          Drag to compare
+        </p>
 
         <div className="flex items-center justify-between">
           <button

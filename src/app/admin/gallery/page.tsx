@@ -65,7 +65,31 @@ async function uploadImage(
   form.append("file", file);
   form.append("folder", folder);
   const res = await fetch("/api/admin/upload", { method: "POST", body: form });
-  const data = await res.json();
+
+  // The /api/admin/upload route always returns JSON on a successful or
+  // application-level-rejected request. But Vercel's edge proxy returns a
+  // plain-text "Request Entity Too Large" body with a 413 when the upload
+  // exceeds the runtime body size limit (≈4.5 MB on the standard
+  // serverless function), and Next.js itself can return HTML for some
+  // 500-class errors. Guard res.json() so the admin sees a useful
+  // message instead of the raw "Unexpected token 'R'..." JSON parser
+  // crash.
+  let data: { url?: string; error?: string } = {};
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) {
+    data = await res.json().catch(() => ({} as { url?: string; error?: string }));
+  } else {
+    const text = await res.text().catch(() => "");
+    if (res.status === 413) {
+      throw new Error(
+        "Image is too large. Try a smaller version (under 4 MB) or compress it before uploading.",
+      );
+    }
+    throw new Error(
+      text ? text.slice(0, 200) : `Upload failed (HTTP ${res.status}).`,
+    );
+  }
+
   if (!res.ok || !data.url) throw new Error(data.error || "Upload failed.");
   return data.url as string;
 }

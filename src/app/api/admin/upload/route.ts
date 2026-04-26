@@ -4,6 +4,14 @@ import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { ensurePhotosBucketPublic } from "@/lib/storage";
 import { NextRequest } from "next/server";
 
+// Force the Node.js runtime + lift the body size limit so iPhone photos
+// (typically 3-5 MB raw HEIC, 1-2 MB JPEG) can be uploaded without
+// hitting Vercel's default 4.5 MB serverless-function cap. The route
+// itself enforces a 10 MB cap below; setting maxDuration prevents the
+// stream from being torn down mid-upload on slower mobile networks.
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 // Accepted image types — broader than the initial JPG/PNG/WebP set because
 // real-world uploads come from iPhones (HEIC/HEIF), Windows (JFIF),
 // Android/Chrome screenshots (AVIF), and scanners (TIFF/BMP). Reject only
