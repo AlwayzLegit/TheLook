@@ -8,6 +8,12 @@ import AdminToast from "@/components/admin/AdminToast";
 import ConfirmModal from "@/components/admin/ConfirmModal";
 import { downloadIcs } from "@/lib/icsExport";
 import { todayISOInLA, addDaysISOInLA } from "@/lib/datetime";
+import {
+  timeToMinutes,
+  minutesToTime,
+  formatDurationLabel,
+  loadAppointmentDuration,
+} from "@/lib/appointmentTime";
 import AppointmentCalendar from "@/components/admin/AppointmentCalendar";
 import ClearHistoryModal from "@/components/admin/ClearHistoryModal";
 import NewAppointmentSheet from "@/components/admin/NewAppointmentSheet";
@@ -139,6 +145,13 @@ export default function AppointmentsPage() {
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState({ date: "", start_time: "", end_time: "", staff_notes: "" });
+  // Total snapshotted duration of the appointment_services rows for the
+  // currently-edited row. Drives the auto-shift-end-on-start-change
+  // behaviour + the helper line below the time inputs. Stays null until
+  // the lookup resolves so the helper text doesn't flash before the
+  // duration is known.
+  const [editTotalMinutes, setEditTotalMinutes] = useState<number | null>(null);
+  const [editServiceCount, setEditServiceCount] = useState<number>(1);
   const [confirmAction, setConfirmAction] = useState<{ id: string; status: string; name: string } | null>(null);
   const [clientHistoryId, setClientHistoryId] = useState<string | null>(null);
   const [clientHistory, setClientHistory] = useState<EnrichedAppointment[]>([]);
@@ -289,6 +302,21 @@ export default function AppointmentsPage() {
       end_time: appt.end_time,
       staff_notes: appt.staff_notes || "",
     });
+    // Pull the snapshotted duration so changing Start auto-shifts End
+    // by the right amount. Caches in state so the on-change handler
+    // doesn't re-fetch on every keystroke.
+    setEditTotalMinutes(null);
+    setEditServiceCount(1);
+    loadAppointmentDuration(appt.id, appt.start_time, appt.end_time)
+      .then(({ totalMinutes, serviceCount }) => {
+        if (totalMinutes > 0) {
+          setEditTotalMinutes(totalMinutes);
+          setEditServiceCount(serviceCount);
+        }
+      })
+      .catch(() => {
+        /* fall back to manual edit */
+      });
   };
 
   const saveEdit = async () => {
@@ -876,13 +904,39 @@ export default function AppointmentsPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-body text-navy/40 mb-1">Start</label>
-                      <input type="time" value={editFields.start_time} onChange={(e) => setEditFields({ ...editFields, start_time: e.target.value })} className="border border-navy/20 px-2 py-1.5 text-sm font-body" />
+                      <input
+                        type="time"
+                        value={editFields.start_time}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          // Auto-shift End by the cached total duration so a
+                          // single edit keeps the slot length intact. Admin can
+                          // still override End by editing it directly afterwards.
+                          setEditFields((f) => {
+                            if (editTotalMinutes && editTotalMinutes > 0 && next) {
+                              return {
+                                ...f,
+                                start_time: next,
+                                end_time: minutesToTime(timeToMinutes(next) + editTotalMinutes),
+                              };
+                            }
+                            return { ...f, start_time: next };
+                          });
+                        }}
+                        className="border border-navy/20 px-2 py-1.5 text-sm font-body"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-body text-navy/40 mb-1">End</label>
                       <input type="time" value={editFields.end_time} onChange={(e) => setEditFields({ ...editFields, end_time: e.target.value })} className="border border-navy/20 px-2 py-1.5 text-sm font-body" />
                     </div>
                   </div>
+                  {editTotalMinutes !== null && editTotalMinutes > 0 && (
+                    <p className="text-[11px] font-body text-navy/50 -mt-1">
+                      Auto-set from {editServiceCount} service{editServiceCount === 1 ? "" : "s"} ·{" "}
+                      {formatDurationLabel(editTotalMinutes)} total. Edit End to override.
+                    </p>
+                  )}
                   <div>
                     <label className="block text-xs font-body text-navy/40 mb-1">Staff Notes</label>
                     <textarea value={editFields.staff_notes} onChange={(e) => setEditFields({ ...editFields, staff_notes: e.target.value })} rows={2} placeholder="Internal notes (not visible to client)" className="w-full border border-navy/20 px-3 py-2 text-sm font-body resize-none" />

@@ -84,6 +84,21 @@ export default async function middleware(request: NextRequest): Promise<NextResp
       windowMs: 15 * 60 * 1000,
     });
     if (!rl.ok) {
+      // Audit the cap firing so the round-8 finding (no admin_log row
+      // when middleware blocks 31st attempt) is fixed. Fire-and-forget
+      // — never block the 429 response on a write. Lazy-import so the
+      // edge runtime doesn't pull supabase + auditLog into the
+      // middleware bundle when it's not needed.
+      try {
+        const { logAuthEvent } = await import("./lib/auditLog");
+        logAuthEvent("auth.login.locked", null, {
+          ip,
+          reason: "ip_edge_capped",
+          userAgent: request.headers.get("user-agent"),
+        }).catch(() => {});
+      } catch {
+        /* never let audit failure block rate-limit response */
+      }
       return addSecurityHeaders(
         new NextResponse(
           JSON.stringify({ error: "Too many login attempts. Try again in a few minutes." }),

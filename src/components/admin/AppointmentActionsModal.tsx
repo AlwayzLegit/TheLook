@@ -3,34 +3,12 @@
 import { useState, useEffect } from "react";
 import ReviewRequestModal from "./ReviewRequestModal";
 import RefundDialog from "./RefundDialog";
-
-// HH:MM math helpers. Server stores times as zero-padded "HH:MM"
-// strings; using minutes-since-midnight keeps the math trivial without
-// pulling in a date lib.
-function timeToMinutes(hhmm: string): number {
-  const [h, m] = hhmm.split(":").map((s) => parseInt(s, 10));
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return 0;
-  return h * 60 + m;
-}
-function minutesToTime(total: number): string {
-  // Wrap at 24h so a 23:30 + 60-min appointment lands at 00:30, not 24:30.
-  // Salons aren't open past midnight today but the math should still
-  // never produce an invalid time string.
-  const wrapped = ((total % 1440) + 1440) % 1440;
-  const h = Math.floor(wrapped / 60);
-  const m = wrapped % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-function diffMinutes(start: string, end: string): number {
-  return timeToMinutes(end) - timeToMinutes(start);
-}
-function formatDurationLabel(mins: number): string {
-  if (mins < 60) return `${mins} min`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (m === 0) return h === 1 ? "1h" : `${h}h`;
-  return `${h}h ${m}m`;
-}
+import {
+  timeToMinutes,
+  minutesToTime,
+  diffMinutes,
+  formatDurationLabel,
+} from "@/lib/appointmentTime";
 
 interface Appointment {
   id: string;

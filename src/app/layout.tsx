@@ -57,10 +57,6 @@ export default async function RootLayout({
     // public site for users with extensions enabled.
     <html lang="en" className={`${forum.variable} ${lato.variable}`} suppressHydrationWarning>
       <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
         {hasTurnstile ? (
           <Script
             src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
@@ -69,6 +65,19 @@ export default async function RootLayout({
         ) : null}
       </head>
       <body className="antialiased" suppressHydrationWarning>
+        {/* JSON-LD lives in <body> not <head>: round-8 QA found two
+            HairSalon blocks rendering on / when this script was a child
+            of <head>, which Next.js's App Router streams twice in some
+            configurations (initial SSR + metadata-finalisation pass).
+            Moving it inside <body> with a stable Next.js Script id
+            keeps the structured data discoverable to crawlers + lets
+            Next dedupe by id so we never get two copies. */}
+        <Script
+          id="ldjson-hairsalon"
+          type="application/ld+json"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <PostHogProvider>
           <BrandingProvider branding={branding}>
             {children}

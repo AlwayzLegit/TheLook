@@ -64,6 +64,20 @@ export async function POST(request: NextRequest) {
     return apiError("Body must be JSON.", 400);
   }
 
+  // Light shape validation — keeps a curious same-origin caller from
+  // polluting the audit feed with arbitrary data. We don't insist on
+  // every field (the client may not always have all of them) but
+  // require AT LEAST one of the diagnostic-shaped keys.
+  const looksHydration =
+    typeof payload === "object" &&
+    payload !== null &&
+    (Array.isArray((payload as { consoleArgs?: unknown }).consoleArgs) ||
+      typeof (payload as { stack?: unknown }).stack === "string" ||
+      typeof (payload as { url?: unknown }).url === "string");
+  if (!looksHydration) {
+    return apiError("Payload must include consoleArgs, stack, or url.", 400);
+  }
+
   if (!hasSupabaseConfig) return apiSuccess({ ok: true, stored: false });
 
   try {
