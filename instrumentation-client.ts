@@ -33,81 +33,144 @@ if (dsn) {
 
 // Hydration-error capture, dual-path. React 18/19 doesn't surface the
 // offending component name in production builds — the message is
-// "Minified React error #418" with an empty stack. Wrapping
-// window.console.error to detect the #418 signature lets us forward
-// the original args (which include the component stack in dev / arg
-// index in prod) so we can finally identify the mismatching subtree.
+// "Minified React error #418" with an empty stack. There are TWO ways
+// production React surfaces this and we have to handle both:
 //
-// Round-6 QA confirmed Sentry's transport is on every default adblock
-// list, which means captures CAN silently fail in real users' browsers.
-// We mirror the capture into our own /api/internal/hydration-error
-// endpoint (writes to admin_log with action=client.hydration_mismatch)
-// so the data lands SOMEWHERE the owner can read, regardless of
-// whether Sentry was reachable from the reporter's browser.
+//   a) console.error('Minified React error #%s; visit %s ...', 418, url)
+//      — printf-style template, the digits live in the args array, not
+//        in args[0]. The previous match logic (regex against args[0])
+//        missed this entirely (round-7 QA confirmed). Now we stringify
+//        every arg and match the joined message.
+//
+//   b) window.addEventListener('error', (event) => event.error.message)
+//      — React 18.3+ in production rethrows hydration mismatches as
+//        uncaught errors that don't always go through console.error.
+//        We attach a backup listener so neither shape escapes.
+//
+// Round-7 QA confirmed Sentry's transport is on every default adblock
+// list AND the prod CSP didn't include *.sentry.io in connect-src
+// (now fixed in middleware.ts). We mirror every capture into our own
+// /api/internal/hydration-error endpoint (writes admin_log with action
+// =client.hydration_mismatch) so the data lands SOMEWHERE the owner
+// can read regardless of Sentry's transport health.
+
 if (typeof window !== "undefined") {
+  // Same-shape detector used by both capture paths.
+  const HYDRATION_PATTERN =
+    /Minified React error #(?:418|421|423|425|%s)|Hydration failed|There was an error while hydrating|Text content does not match server-rendered HTML/;
+
+  function buildPayload(rawArgs: unknown[]): Record<string, unknown> {
+    return {
+      consoleArgs: rawArgs.map((a) =>
+        a instanceof Error ? { name: a.name, message: a.message, stack: a.stack } : a,
+      ),
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      // Capture useful client-side context that helps narrow the
+      // mismatch source: known body-attr injections from common
+      // browser extensions (Grammarly's data-gr-*, Dark Reader's
+      // data-darkreader, ColorZilla's cz-shortcut-listen), viewport
+      // size (different SSR cache layers can produce different
+      // responsive markup), and document title at the moment of
+      // capture (sometimes hints at routing-level mismatches).
+      bodyAttrs:
+        typeof document !== "undefined"
+          ? Array.from(document.body.attributes)
+              .map((a) => `${a.name}=${a.value}`)
+              .filter((s) => !s.startsWith("class="))
+              .slice(0, 20)
+          : [],
+      viewport:
+        typeof window !== "undefined"
+          ? `${window.innerWidth}x${window.innerHeight}`
+          : null,
+      documentTitle: typeof document !== "undefined" ? document.title : null,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  function deliver(source: "console.error" | "window.error", payload: Record<string, unknown>) {
+    payload.captureSource = source;
+
+    // Send to Sentry first (best-effort).
+    if (dsn) {
+      try {
+        Sentry.captureMessage(`React hydration mismatch (#418, via ${source})`, {
+          level: "error",
+          extra: payload,
+        });
+      } catch {
+        // never let Sentry path crash the diagnostic
+      }
+    }
+
+    // Mirror to our admin_log via the dedicated capture endpoint.
+    // Uses fetch with keepalive:true so the request survives a page
+    // navigation that follows the error.
+    try {
+      fetch("/api/internal/hydration-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      // fetch threw — give up silently
+    }
+  }
+
+  // Path (a) — console.error wrapper.
   const originalError = window.console.error;
   window.console.error = (...args: unknown[]) => {
     try {
-      const first = args[0];
-      const msg = typeof first === "string" ? first : first instanceof Error ? first.message : "";
-      if (/Minified React error #418|Hydration failed/.test(msg)) {
-        const payload = {
-          consoleArgs: args.map((a) =>
-            a instanceof Error ? { name: a.name, message: a.message, stack: a.stack } : a,
-          ),
-          url: window.location.href,
-          userAgent: navigator.userAgent,
-          // Capture useful client-side context that helps narrow the
-          // mismatch source: known body-attr injections from common
-          // browser extensions, viewport size (different SSR cache
-          // layers can produce different responsive markup), and
-          // anything in localStorage that might gate-render.
-          bodyAttrs:
-            typeof document !== "undefined"
-              ? Array.from(document.body.attributes)
-                  .map((a) => `${a.name}=${a.value}`)
-                  .filter((s) => !s.startsWith("class="))
-                  .slice(0, 20)
-              : [],
-          viewport:
-            typeof window !== "undefined"
-              ? `${window.innerWidth}x${window.innerHeight}`
-              : null,
-          timestamp: new Date().toISOString(),
-        };
-
-        // Send to Sentry first (best-effort).
-        if (dsn) {
-          try {
-            Sentry.captureMessage("React hydration mismatch (#418)", {
-              level: "error",
-              extra: payload,
-            });
-          } catch {
-            // never let Sentry path crash the diagnostic
-          }
-        }
-
-        // Mirror to our admin_log via the dedicated capture endpoint.
-        // Uses fetch with keepalive:true so the request survives a
-        // page navigation that follows the error.
-        try {
-          fetch("/api/internal/hydration-error", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-            keepalive: true,
-            // Don't surface a network error in the console — that
-            // would itself trigger another console.error and risk
-            // a loop. The endpoint is fire-and-forget by design.
-          }).catch(() => {});
-        } catch {
-          // localStorage / fetch threw — give up silently
-        }
+      // Stringify ALL args (including printf-style template + numeric
+      // codes) and match against the joined message — this is what
+      // QA caught: previous code only inspected args[0] which was the
+      // template string `"Minified React error #%s..."` and missed
+      // the actual number entirely.
+      const joined = args
+        .map((a) =>
+          typeof a === "string"
+            ? a
+            : a instanceof Error
+              ? a.message
+              : a == null
+                ? ""
+                : String(a),
+        )
+        .join(" ");
+      if (HYDRATION_PATTERN.test(joined)) {
+        deliver("console.error", buildPayload(args));
       }
     } catch {
       // Never let our diagnostic break the original console.error
     }
     originalError.apply(window.console, args as Parameters<typeof console.error>);
   };
+
+  // Path (b) — window.error listener for the uncaught-throw shape.
+  // De-dupe with a small flag so a single mismatch that hits both
+  // paths only generates one admin_log row.
+  let lastSeen = 0;
+  window.addEventListener("error", (event) => {
+    try {
+      const msg =
+        (event.error && typeof event.error.message === "string" && event.error.message) ||
+        (typeof event.message === "string" ? event.message : "");
+      if (!HYDRATION_PATTERN.test(msg)) return;
+      const now = Date.now();
+      if (now - lastSeen < 1000) return; // 1s coalesce window
+      lastSeen = now;
+      deliver(
+        "window.error",
+        buildPayload([
+          event.error || event.message,
+          event.filename ? `${event.filename}:${event.lineno || 0}` : null,
+        ]),
+      );
+    } catch {
+      // never let our diagnostic break the original error listener
+    }
+  });
 }
+

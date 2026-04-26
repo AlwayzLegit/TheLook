@@ -88,7 +88,15 @@ export async function GET(request: NextRequest) {
 
   const sp = request.nextUrl.searchParams;
   const countOnly = sp.get("count") === "true";
-  const period = sp.get("period") || "24h";
+  // Sentry's project-issues endpoint only accepts a narrow set of
+  // statsPeriod values. Anything else is rejected with
+  // {"detail":"Invalid stats_period. Valid choices are '', '24h',
+  // and '14d'"} which the page surfaces as a red banner. Normalise
+  // here so older saved bookmarks / unknown future client values
+  // degrade to a working default instead of breaking the page.
+  const ALLOWED_PERIODS = new Set(["24h", "7d", "14d"]);
+  const requestedPeriod = sp.get("period") || "24h";
+  const period = ALLOWED_PERIODS.has(requestedPeriod) ? requestedPeriod : "24h";
   const query = sp.get("query") || "is:unresolved";
   const limit = countOnly ? 100 : Math.min(parseInt(sp.get("limit") || "25", 10) || 25, 100);
 

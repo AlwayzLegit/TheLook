@@ -24,7 +24,7 @@ const securityHeaders: Record<string, string> = {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' https://images.unsplash.com https://static.wixstatic.com https://*.stripe.com https://*.supabase.co data: blob:",
-    "connect-src 'self' https://api.stripe.com https://m.stripe.network https://*.supabase.co wss://*.supabase.co",
+    "connect-src 'self' https://api.stripe.com https://m.stripe.network https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
     "frame-src https://challenges.cloudflare.com https://www.google.com https://js.stripe.com https://hooks.stripe.com",
     "frame-ancestors 'none'",
   ].join("; "),

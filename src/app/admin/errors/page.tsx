@@ -35,11 +35,16 @@ interface ErrorIssue {
   filename: string | null;
 }
 
+// Sentry's project-issues endpoint is strict about statsPeriod values
+// — round-7 QA found it rejects "1h" / "30d" as "Invalid stats_period".
+// The accepted values for issues are 24h / 7d / 14d. Keep this list
+// in sync with what Sentry actually allows OR the API proxy will
+// surface a red banner. The proxy ALSO defensively normalises any
+// other value to "24h" so future client changes degrade gracefully.
 const PERIOD_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "1h", label: "Last hour" },
   { value: "24h", label: "Last 24 hours" },
   { value: "7d", label: "Last 7 days" },
-  { value: "30d", label: "Last 30 days" },
+  { value: "14d", label: "Last 14 days" },
 ];
 
 const QUERY_OPTIONS: Array<{ value: string; label: string }> = [
