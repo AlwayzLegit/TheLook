@@ -22,6 +22,12 @@ export function renderTemplate(tpl: string, vars: TemplateVars): string {
 }
 
 export const DEFAULT_TEMPLATES = {
+  // SMS templates intentionally use plain ASCII only — an em dash (—),
+  // smart quote ("/'), bullet (•), or any emoji flips Twilio's
+  // encoding from GSM-7 (160-char segments) to UCS-2 (70-char
+  // segments), so a normal-length reminder suddenly costs 2-3 SMS
+  // segments per send. Keep dashes as "-", quotes as ASCII
+  // apostrophes, and skip the bullet character.
   reminder_sms_template:
     "Hi {{client_name}}! Reminder: {{service}} with {{stylist}} today at {{time}} at The Look Hair Salon, 919 S Central Ave, Glendale. Reply STOP to opt out.",
   reminder_email_subject_template:
@@ -29,7 +35,7 @@ export const DEFAULT_TEMPLATES = {
   reminder_email_body_template:
     "Hi {{client_name}},\n\nThis is a friendly reminder about your appointment today:\n\n• {{service}}\n• With {{stylist}}\n• At {{time}}\n\nWe're at 919 S Central Ave, Suite E, Glendale, CA 91204.\n\nIf you need to cancel or reschedule, please reply to this email or call (818) 662-5665.{{cancel_url}}\n\nSee you soon!\nThe Look Hair Salon",
   review_request_sms_template:
-    "Hi {{client_name}}! Thank you for visiting The Look today. If you have a minute, we'd love your feedback: {{review_url}} — Reply STOP to opt out.",
+    "Hi {{client_name}}! Thank you for visiting The Look today. If you have a minute, we'd love your feedback: {{review_url}} - Reply STOP to opt out.",
   review_request_email_subject_template:
     "Thank you for visiting The Look Hair Salon",
   // The branded HTML wrapper renders a "Leave a review" button with

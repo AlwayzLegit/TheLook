@@ -102,7 +102,19 @@ export default function AppointmentsPage() {
     if (qFocus) return "past90";
     return "upcoming";
   });
+  // View toggle declared up-front because fromDateForFetch below needs
+  // it — calendar view always pulls full history so prior months stay
+  // populated when the admin navigates back.
+  const [view, setView] = useState<"calendar" | "list">(arrivedFromLink ? "list" : "calendar");
+
   const fromDateForFetch = (() => {
+    // Calendar view always pulls full history regardless of the
+    // timeRange dropdown — the grid's whole point is being able to
+    // navigate back through prior months and see the appointments
+    // that landed there. The timeRange filter only governs the list
+    // view, where "upcoming" is genuinely useful for triaging
+    // pending bookings.
+    if (view === "calendar") return "";
     if (timeRange === "upcoming") return undefined; // hook default = today+
     if (timeRange === "all") return "";
     const days = timeRange === "past30" ? 30 : 90;
@@ -131,9 +143,9 @@ export default function AppointmentsPage() {
   const [clientHistoryId, setClientHistoryId] = useState<string | null>(null);
   const [clientHistory, setClientHistory] = useState<EnrichedAppointment[]>([]);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  // Landing from a Needs-Attention link defaults to the list view so the
-  // rows we counted on the dashboard are immediately visible.
-  const [view, setView] = useState<"calendar" | "list">(arrivedFromLink ? "list" : "calendar");
+  // (view state moved above fromDateForFetch — see earlier in this
+  // component. Landing from a Needs-Attention link still defaults to
+  // the list view via the arrivedFromLink check there.)
   const [showNewAppt, setShowNewAppt] = useState(false);
   const [showWalkIn, setShowWalkIn] = useState(false);
   // Row-selection set for bulk actions. Cleared on filter change via

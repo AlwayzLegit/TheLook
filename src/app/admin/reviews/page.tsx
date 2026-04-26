@@ -50,6 +50,11 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | Source | "low">("all");
   const [copied, setCopied] = useState(false);
+  // Google Review URL from /admin/settings (key: google_review_url).
+  // The Copy button hands this URL to clients so they land directly
+  // on the salon's Google review page. Falls back to the internal
+  // /review redirect when the setting is empty (e.g. fresh install).
+  const [googleReviewUrl, setGoogleReviewUrl] = useState<string>("");
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -59,9 +64,10 @@ export default function AdminReviewsPage() {
     if (status !== "authenticated") return;
     (async () => {
       try {
-        const [gRes, yRes] = await Promise.all([
+        const [gRes, yRes, sRes] = await Promise.all([
           fetch("/api/google-reviews"),
           fetch("/api/yelp-reviews"),
+          fetch("/api/admin/settings"),
         ]);
         const merged: FeedItem[] = [];
         if (gRes.ok) {
@@ -74,6 +80,12 @@ export default function AdminReviewsPage() {
           setYelpStats(y);
           for (const r of y.reviews || []) merged.push({ ...r, source: "Yelp" });
         }
+        if (sRes.ok) {
+          const s = (await sRes.json().catch(() => ({}))) as { google_review_url?: string };
+          if (typeof s?.google_review_url === "string" && s.google_review_url.trim()) {
+            setGoogleReviewUrl(s.google_review_url.trim());
+          }
+        }
         merged.sort((a, b) => (b.time || 0) - (a.time || 0));
         setItems(merged);
       } finally {
@@ -84,8 +96,19 @@ export default function AdminReviewsPage() {
 
   if (status !== "authenticated") return null;
 
+  // Prefer the configured google_review_url so the copy button hands
+  // clients the actual Google review page link, not the salon's
+  // internal /review wrapper. The wrapper is kept as a fallback for
+  // installs that haven't configured a Google URL yet.
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const reviewLink = `${baseUrl}/review`;
+  const internalFallback = `${baseUrl}/review`;
+  const reviewLink = googleReviewUrl || internalFallback;
+  // Truncate the URL shown on the button so a long Google `g.page/r/...`
+  // link doesn't break the layout. Full URL is still what gets copied.
+  const buttonLabel = (() => {
+    const display = reviewLink.length > 38 ? `${reviewLink.slice(0, 35)}…` : reviewLink;
+    return `Copy review link (${display})`;
+  })();
 
   const copyLink = async () => {
     try {
@@ -107,8 +130,8 @@ export default function AdminReviewsPage() {
     <div className="p-4 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 className="font-heading text-3xl">Reviews</h1>
-        <Button variant="secondary" size="sm" onClick={copyLink}>
-          {copied ? "Copied!" : `Copy review link (${reviewLink || "/review"})`}
+        <Button variant="secondary" size="sm" onClick={copyLink} title={reviewLink}>
+          {copied ? "Copied!" : buttonLabel}
         </Button>
       </div>
 
