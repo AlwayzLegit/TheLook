@@ -75,6 +75,9 @@ export default function AdminDashboard() {
     if (status === "unauthenticated") router.push("/admin/login");
   }, [status, router]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const role = (session?.user as any)?.role;
+
   useEffect(() => {
     if (status !== "authenticated") return;
     let active = true;
@@ -116,20 +119,46 @@ export default function AdminDashboard() {
     loadAudience();
     const t2 = setInterval(loadAudience, 120_000);
 
-    // Banner for missing staff emails.
-    fetch("/api/admin/settings")
-      .then((r) => r.json())
-      .then((data) => {
-        const val = (data?.staff_notification_emails || "").trim();
-        setStaffEmailsConfigured(val.length > 0);
-      })
-      .catch(() => setStaffEmailsConfigured(null));
+    // Banner for missing staff emails. Admin-only — settings is
+    // admin-scoped after round-9, and managers can't fix the value
+    // themselves, so showing them the warning would be misleading.
+    if (role === "admin") {
+      fetch("/api/admin/settings")
+        .then((r) => r.json())
+        .then((data) => {
+          const val = (data?.staff_notification_emails || "").trim();
+          setStaffEmailsConfigured(val.length > 0);
+        })
+        .catch(() => setStaffEmailsConfigured(null));
+    }
     return () => { active = false; clearInterval(t); clearInterval(t2); };
-  }, [status]);
+  }, [status, role]);
 
   if (status !== "authenticated") return null;
 
-  const greeting = session?.user?.name ? `Welcome back, ${session.user.name.split(" ")[0]}.` : "Welcome back.";
+  // Round-9 QA caught the greeting saying "Welcome back, Anna." for
+  // a manager session because admin_users.name was seeded as Anna's
+  // name on a different account. Prefer the stored display name when
+  // it looks aligned with the email (multi-word, or first-word
+  // appears in the local-part); otherwise fall back to a label
+  // derived from the email so we don't greet the wrong person if
+  // that row is mis-seeded again later.
+  const greeting = (() => {
+    const rawName = (session?.user?.name || "").trim();
+    const email = (session?.user?.email || "").trim();
+    const localPart = email.split("@")[0] || "";
+    const firstWord = rawName.split(/\s+/)[0] || "";
+    const aligned =
+      rawName.includes(" ") ||
+      (firstWord && localPart.toLowerCase().includes(firstWord.toLowerCase()));
+    if (firstWord && aligned) return `Welcome back, ${firstWord}.`;
+    if (localPart) {
+      const chunk = localPart.split(/[._-]+/)[0] || localPart;
+      const display = chunk.charAt(0).toUpperCase() + chunk.slice(1).toLowerCase();
+      return `Welcome back, ${display}.`;
+    }
+    return "Welcome back.";
+  })();
 
   return (
     <div className="p-4 sm:p-8 max-w-[1400px] mx-auto">

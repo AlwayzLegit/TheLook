@@ -1,6 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
-import { getSessionUser, isAdminOrManager } from "@/lib/roles";
+import { requireAdmin } from "@/lib/apiAuth";
 import { adminStylistSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
@@ -46,9 +46,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session) return apiError("Unauthorized", 401);
-  if (!isAdminOrManager(await getSessionUser())) return apiError("Admin access required.", 403);
+  // Round-9 P0: this used to accept managers and a manager session
+  // could create new stylist rows. Locked to admin — managers can
+  // still edit existing stylists via PATCH on the [id] route.
+  const gate = await requireAdmin(request);
+  if (!gate.ok) return gate.response;
 
   const body = await request.json();
   const parsed = adminStylistSchema.safeParse(body);

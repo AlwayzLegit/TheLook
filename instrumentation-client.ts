@@ -11,6 +11,13 @@ import * as Sentry from "@sentry/nextjs";
 // skip every captureMessage. The trim makes init resilient to that.
 const dsn = (process.env.NEXT_PUBLIC_SENTRY_DSN || "").trim();
 
+// Sentry/Next.js 15.5+ contract — re-export the navigation hook so
+// SPA route changes show up as transactions in Sentry. Without this
+// the build emits an "ACTION REQUIRED" warning and route-level
+// performance traces are missing. No-ops at runtime when DSN isn't
+// set because Sentry.init never ran.
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+
 if (dsn) {
   Sentry.init({
     dsn,
@@ -89,14 +96,36 @@ if (typeof window !== "undefined") {
     };
   }
 
-  function deliver(source: "console.error" | "window.error", payload: Record<string, unknown>) {
+  // Pull the original Error (preferred) or build a synthetic one
+  // whose `.stack` is the captured frame string. Sentry's debug-id
+  // matcher only runs on `exception.values[].stacktrace.frames` —
+  // round-9 QA confirmed that captureMessage() with a stack stuffed
+  // into `extras` will NOT symbolicate even when source maps are
+  // uploaded (which they are, via the build-time Sentry plugin).
+  function buildException(
+    source: "console.error" | "window.error",
+    rawArgs: unknown[],
+  ): Error {
+    const directError = rawArgs.find((a) => a instanceof Error) as Error | undefined;
+    if (directError) return directError;
+    const stackArg = rawArgs.find(
+      (a) => typeof a === "object" && a !== null && typeof (a as { stack?: unknown }).stack === "string",
+    ) as { stack?: string; message?: string } | undefined;
+    const e = new Error(`React hydration mismatch (#418, via ${source})`);
+    if (stackArg?.stack) e.stack = stackArg.stack;
+    return e;
+  }
+
+  function deliver(source: "console.error" | "window.error", payload: Record<string, unknown>, rawArgs: unknown[]) {
     payload.captureSource = source;
 
     // Send to Sentry first (best-effort).
     if (dsn) {
       try {
-        Sentry.captureMessage(`React hydration mismatch (#418, via ${source})`, {
+        const err = buildException(source, rawArgs);
+        Sentry.captureException(err, {
           level: "error",
+          tags: { hydration: "true", captureSource: source },
           extra: payload,
         });
       } catch {
@@ -140,7 +169,7 @@ if (typeof window !== "undefined") {
         )
         .join(" ");
       if (HYDRATION_PATTERN.test(joined)) {
-        deliver("console.error", buildPayload(args));
+        deliver("console.error", buildPayload(args), args);
       }
     } catch {
       // Never let our diagnostic break the original console.error
@@ -161,13 +190,11 @@ if (typeof window !== "undefined") {
       const now = Date.now();
       if (now - lastSeen < 1000) return; // 1s coalesce window
       lastSeen = now;
-      deliver(
-        "window.error",
-        buildPayload([
-          event.error || event.message,
-          event.filename ? `${event.filename}:${event.lineno || 0}` : null,
-        ]),
-      );
+      const wrappedArgs: unknown[] = [
+        event.error || event.message,
+        event.filename ? `${event.filename}:${event.lineno || 0}` : null,
+      ];
+      deliver("window.error", buildPayload(wrappedArgs), wrappedArgs);
     } catch {
       // never let our diagnostic break the original error listener
     }

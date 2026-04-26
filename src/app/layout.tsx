@@ -7,7 +7,7 @@ import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import "./globals.css";
 import { getBranding } from "@/lib/branding";
 import { BrandingProvider } from "@/components/BrandingProvider";
-import { rootMetadata, jsonLd as buildJsonLd } from "@/lib/seo";
+import { rootMetadata } from "@/lib/seo";
 
 // Self-hosted Google Fonts via next/font — eliminates the render-blocking
 // <link> to fonts.googleapis.com, handles subsetting + preload + CSS
@@ -46,7 +46,6 @@ export default async function RootLayout({
   // Fetch branding server-side once per request so Footer / Navbar / any
   // other consumer can read it synchronously via useBranding().
   const branding = await getBranding();
-  const jsonLd = await buildJsonLd();
   return (
     // suppressHydrationWarning on <html> + <body> is the React-recommended
     // workaround for browser extensions that mutate these root elements
@@ -65,19 +64,11 @@ export default async function RootLayout({
         ) : null}
       </head>
       <body className="antialiased" suppressHydrationWarning>
-        {/* JSON-LD lives in <body> not <head>: round-8 QA found two
-            HairSalon blocks rendering on / when this script was a child
-            of <head>, which Next.js's App Router streams twice in some
-            configurations (initial SSR + metadata-finalisation pass).
-            Moving it inside <body> with a stable Next.js Script id
-            keeps the structured data discoverable to crawlers + lets
-            Next dedupe by id so we never get two copies. */}
-        <Script
-          id="ldjson-hairsalon"
-          type="application/ld+json"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+        {/* HairSalon JSON-LD now lives in app/page.tsx so it only
+            renders on the home page. Round-9 QA found we were
+            emitting it on every page that uses the root layout
+            (/services, /about, /team, etc.) which Google flags as
+            duplicate organization schema. */}
         <PostHogProvider>
           <BrandingProvider branding={branding}>
             {children}

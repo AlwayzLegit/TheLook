@@ -1,14 +1,13 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { getSessionUser, isAdmin } from "@/lib/roles";
+import { requireAdmin } from "@/lib/apiAuth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import bcrypt from "bcryptjs";
 import { NextRequest } from "next/server";
 
 export async function GET() {
-  const user = await getSessionUser();
-  if (!user) return apiError("Unauthorized", 401);
-  if (!isAdmin(user)) return apiError("Admin access required.", 403);
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiSuccess([]);
 
   const { data, error } = await supabase
@@ -25,9 +24,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getSessionUser();
-  if (!user) return apiError("Unauthorized", 401);
-  if (!isAdmin(user)) return apiError("Admin access required.", 403);
+  const gate = await requireAdmin(request);
+  if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const body = await request.json();

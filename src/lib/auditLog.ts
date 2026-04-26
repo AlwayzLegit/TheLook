@@ -13,7 +13,8 @@ export async function logAuthEvent(
     | "auth.login.locked"
     | "auth.logout"
     | "auth.signout_idle"
-    | "auth.password.rehash",
+    | "auth.password.rehash"
+    | "auth.rbac.denied",
   email: string | null,
   extras?: {
     ip?: string | null;
@@ -22,6 +23,11 @@ export async function logAuthEvent(
     reason?: string | null;
     fromCost?: number;
     toCost?: number;
+    // RBAC-denied rows record what was attempted so the audit feed
+    // shows which surface a manager bounced off of.
+    path?: string | null;
+    method?: string | null;
+    role?: string | null;
   },
 ) {
   if (!hasSupabaseConfig) return;
@@ -37,15 +43,17 @@ export async function logAuthEvent(
     }
   }
   // Compose details from any of the structured extras the caller
-  // supplied. Old behaviour only wrote a row when `reason` was set,
-  // which left auth.password.rehash audit rows with null details
-  // (the test caught this — fromCost / toCost weren't surfacing).
-  // Now we write whatever was passed, so the rehash trail captures
-  // both costs.
+  // supplied. We also mirror userAgent into details so SQL queries
+  // like `details->>'userAgent'` work without joining to the
+  // user_agent column — the round-9 audit query relied on that.
   const detailParts: Record<string, unknown> = {};
   if (extras?.reason) detailParts.reason = extras.reason;
   if (typeof extras?.fromCost === "number") detailParts.fromCost = extras.fromCost;
   if (typeof extras?.toCost === "number") detailParts.toCost = extras.toCost;
+  if (extras?.path) detailParts.path = extras.path;
+  if (extras?.method) detailParts.method = extras.method;
+  if (extras?.role) detailParts.role = extras.role;
+  if (ua) detailParts.userAgent = ua;
   const detailsStr = Object.keys(detailParts).length > 0 ? JSON.stringify(detailParts) : null;
 
   const row: Record<string, unknown> = {

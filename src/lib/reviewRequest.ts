@@ -35,7 +35,17 @@ export interface ReviewRequestResult {
   emailOk: boolean;
   reviewUrl: string;
   alreadySent?: boolean;
+  // Filled when a manual send is rejected by the cooldown so the
+  // caller can surface "sent X minutes ago" in the UI/toast.
+  lastSentAt?: string;
 }
+
+// Round-9 review-email dedupe: even with the modal warning, manual
+// sends were stacking on top of the auto-send within seconds. Real
+// customers got 2-3 review emails for one appointment. We enforce
+// the cooldown here at the service layer so any caller (manual API,
+// auto trigger, cron, future Slack action) inherits the gate.
+const MANUAL_RESEND_COOLDOWN_MS = 30 * 60 * 1000;
 
 export async function sendReviewRequest(
   appointmentId: string,
@@ -55,17 +65,37 @@ export async function sendReviewRequest(
   if (appt.status !== "completed") {
     return { ok: false, reason: "not_completed", smsOk: false, emailOk: false, reviewUrl: "" };
   }
-  // Auto-trigger: skip if already sent. Manual: allow re-send (admin
-  // chose to via the actions modal).
-  if (overrides.trigger !== "manual" && appt.review_request_sent_at) {
-    return {
-      ok: false,
-      reason: "already_sent",
-      alreadySent: true,
-      smsOk: false,
-      emailOk: false,
-      reviewUrl: "",
-    };
+  // Auto-trigger: skip if already sent — full idempotency.
+  // Manual trigger: enforce a 30-minute cooldown so a stuck admin
+  // hitting "Resend" (or the auto + manual race seen in round-9 QA)
+  // can't blast the customer with multiple emails in a row. After
+  // the cooldown elapses, manual is allowed in case of a legitimate
+  // bounce / delivery failure.
+  if (appt.review_request_sent_at) {
+    const lastSent = new Date(appt.review_request_sent_at).getTime();
+    const ageMs = Date.now() - lastSent;
+    if (overrides.trigger !== "manual") {
+      return {
+        ok: false,
+        reason: "already_sent",
+        alreadySent: true,
+        smsOk: false,
+        emailOk: false,
+        reviewUrl: "",
+        lastSentAt: appt.review_request_sent_at,
+      };
+    }
+    if (ageMs < MANUAL_RESEND_COOLDOWN_MS) {
+      return {
+        ok: false,
+        reason: "cooldown_active",
+        alreadySent: true,
+        smsOk: false,
+        emailOk: false,
+        reviewUrl: "",
+        lastSentAt: appt.review_request_sent_at,
+      };
+    }
   }
 
   const [{ data: stylist }, { data: mappings }] = await Promise.all([

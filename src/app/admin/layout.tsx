@@ -26,9 +26,13 @@ import { Badge } from "@/components/ui/Badge";
 // notifications bell) with the new design language applied.
 // ─────────────────────────────────────────────────────────────────────
 
-type NavItem = { href: string; label: string; icon?: React.ReactNode };
+type NavItem = { href: string; label: string; icon?: React.ReactNode; adminOnly?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
 
+// adminOnly: true → hidden from the sidebar for non-admin roles AND
+// the underlying page/API redirects/403s if a manager hand-types
+// the URL. Round-9 introduced this list after QA found managers
+// could see + click links to surfaces they couldn't actually use.
 const NAV: NavGroup[] = [
   {
     label: "Overview",
@@ -51,7 +55,7 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/admin/clients",  label: "Clients" },
       { href: "/admin/stylists", label: "Stylists" },
-      { href: "/admin/users",    label: "Users" },
+      { href: "/admin/users",    label: "Users", adminOnly: true },
     ],
   },
   {
@@ -75,15 +79,16 @@ const NAV: NavGroup[] = [
   {
     label: "System",
     items: [
-      { href: "/admin/settings", label: "Settings" },
-      { href: "/admin/activity", label: "Activity Log" },
-      { href: "/admin/errors",   label: "Errors" },
+      { href: "/admin/settings", label: "Settings",     adminOnly: true },
+      { href: "/admin/activity", label: "Activity Log", adminOnly: true },
+      { href: "/admin/errors",   label: "Errors",       adminOnly: true },
     ],
   },
 ];
 
 function useBadgeCounts() {
-  const { status } = useSession();
+  const { status, data: session } = useSession();
+  const role = session?.user?.role;
   const [pending, setPending] = useState(0);
   const [messages, setMessages] = useState(0);
   // Sentry unresolved-issue count for the last 24h. Refreshes on the
@@ -114,21 +119,23 @@ function useBadgeCounts() {
         .then((data) => setMessages(Array.isArray(data) ? data.length : 0))
         .catch(() => {});
       // Errors badge — pulls the unresolved Sentry-issue count via our
-      // proxy. Fails silent (badge stays 0) when Sentry isn't
-      // configured yet so a fresh install doesn't show a confusing red
-      // dot before observability is wired.
-      fetch("/api/admin/errors?count=true&period=24h&query=is:unresolved")
-        .then((r) => r.json())
-        .then((data) => {
-          const c = typeof data?.count === "number" ? data.count : 0;
-          setErrors(c);
-        })
-        .catch(() => {});
+      // proxy. Admin-only after round-9 RBAC tightening; managers
+      // wouldn't see the link anyway, and polling it for them would
+      // write an auth.rbac.denied audit row every 30s.
+      if (role === "admin") {
+        fetch("/api/admin/errors?count=true&period=24h&query=is:unresolved")
+          .then((r) => r.json())
+          .then((data) => {
+            const c = typeof data?.count === "number" ? data.count : 0;
+            setErrors(c);
+          })
+          .catch(() => {});
+      }
     };
     load();
     const t = setInterval(load, 30000);
     return () => clearInterval(t);
-  }, [status]);
+  }, [status, role]);
   return { pending, messages, errors };
 }
 
@@ -140,6 +147,8 @@ function isActive(pathname: string, href: string): boolean {
 function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
   const pathname = usePathname() || "";
   const badges = useBadgeCounts();
+  const { data: session } = useSession();
+  const role = session?.user?.role;
   const badgeFor = (href: string) => {
     if (href === "/admin/appointments") return badges.pending;
     if (href === "/admin/messages") return badges.messages;
@@ -147,9 +156,18 @@ function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
     return 0;
   };
 
+  // Strip admin-only items + any group that ends up empty after the
+  // strip (so we don't render "System" with no children for managers).
+  const visibleNav = NAV
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((it) => !it.adminOnly || role === "admin"),
+    }))
+    .filter((group) => group.items.length > 0);
+
   return (
     <nav className="flex-1 min-h-0 overflow-y-auto py-4 space-y-6">
-      {NAV.map((group) => (
+      {visibleNav.map((group) => (
         <div key={group.label}>
           <p className="px-4 mb-1.5 text-[0.6875rem] uppercase tracking-[0.15em] text-white/35">
             {group.label}
@@ -228,12 +246,14 @@ function MobileUserFooter({ onNavigate }: { onNavigate: () => void }) {
       >
         My profile
       </button>
-      <button
-        onClick={() => go("/admin/settings")}
-        className="w-full text-left px-3 py-2 rounded text-[0.875rem] text-white/80 hover:bg-white/5"
-      >
-        Settings
-      </button>
+      {role === "admin" && (
+        <button
+          onClick={() => go("/admin/settings")}
+          className="w-full text-left px-3 py-2 rounded text-[0.875rem] text-white/80 hover:bg-white/5"
+        >
+          Settings
+        </button>
+      )}
       <button
         onClick={() => go("/")}
         className="w-full text-left px-3 py-2 rounded text-[0.875rem] text-white/80 hover:bg-white/5"
@@ -274,9 +294,11 @@ function UserMenu() {
         <DropdownMenuItem onSelect={() => { window.location.href = "/admin/profile"; }}>
           My profile
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => { window.location.href = "/admin/settings"; }}>
-          Settings
-        </DropdownMenuItem>
+        {role === "admin" && (
+          <DropdownMenuItem onSelect={() => { window.location.href = "/admin/settings"; }}>
+            Settings
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onSelect={() => { window.location.href = "/"; }}>
           Back to website
         </DropdownMenuItem>
@@ -309,12 +331,16 @@ function CommandButton() {
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "";
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { status } = useSession();
+  const { status, data: session } = useSession();
+  const role = session?.user?.role;
 
   // Fetch idle_timeout_minutes once + write it to the <html> element so
   // the IdleTimeout component picks up the admin's override.
+  // Admin-only after round-9 RBAC tightening; managers fall back to
+  // the default idle TTL (8h, plenty for an active session) rather
+  // than each page load writing an auth.rbac.denied audit row.
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (status !== "authenticated" || role !== "admin") return;
     fetch("/api/admin/settings")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -325,7 +351,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {});
-  }, [status]);
+  }, [status, role]);
 
   if (pathname === "/admin/login") return <>{children}</>;
 

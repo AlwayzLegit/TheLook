@@ -47,6 +47,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (result.reason === "not_completed") {
       return apiError("Review requests only go to completed appointments.", 400);
     }
+    if (result.reason === "cooldown_active") {
+      const ageMin = result.lastSentAt
+        ? Math.round((Date.now() - new Date(result.lastSentAt).getTime()) / 60000)
+        : null;
+      const ago = ageMin === null ? "recently" : `${ageMin} minute${ageMin === 1 ? "" : "s"} ago`;
+      return apiError(
+        `A review request was already sent ${ago}. Try again in 30 minutes if it didn't go through.`,
+        429,
+      );
+    }
     return apiError("Failed to send review request.", 500);
   }
 

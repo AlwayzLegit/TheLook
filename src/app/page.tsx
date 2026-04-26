@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import About from "@/components/About";
@@ -14,6 +15,7 @@ import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { getBranding } from "@/lib/branding";
+import { jsonLd as buildJsonLd } from "@/lib/seo";
 
 export const revalidate = 60;
 
@@ -58,8 +60,20 @@ async function fetchPairs() {
 
 export default async function Home() {
   const beforeAfter = await fetchPairs();
+  const jsonLd = await buildJsonLd();
   return (
     <>
+      {/* HairSalon JSON-LD scoped to / only — round-9 QA flagged
+          duplicate org schema on every page when this lived in the
+          root layout. afterInteractive defers injection until the
+          page settles, which avoids the React #418 hydration race
+          we saw with strategy="beforeInteractive". */}
+      <Script
+        id="ldjson-hairsalon"
+        type="application/ld+json"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar />
       <main>
         <Hero />

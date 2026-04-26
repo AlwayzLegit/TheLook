@@ -137,15 +137,19 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
-  }, [status, router]);
+    // Round-9 RBAC fix — settings (branding, SMS toggles, security
+    // TTL, notifications) is admin-only. Managers were previously
+    // able to read AND modify these via this page.
+    if (status === "authenticated" && role && role !== "admin") router.push("/admin");
+  }, [status, router, role]);
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (status !== "authenticated" || role !== "admin") return;
     fetch("/api/admin/settings")
       .then((r) => r.json())
       .then((data) => { setS(data || {}); setInitial(data || {}); })
       .finally(() => setLoading(false));
-  }, [status]);
+  }, [status, role]);
 
   const dirty = JSON.stringify(s) !== JSON.stringify(initial);
 
@@ -192,11 +196,11 @@ export default function SettingsPage() {
   };
 
   if (status !== "authenticated") return null;
-  // Settings is open to both admins and managers — managers can edit
-  // branding, deposits, SMS, etc. Only user management (/admin/users) is
-  // gated to admins, and that lives on its own page.
-  if (role !== "admin" && role !== "manager") {
-    return <p className="p-8 font-body text-navy/60">This page is for salon admins and managers.</p>;
+  // Round-9 RBAC tightening: settings is admin-only. Managers used
+  // to be allowed but the QA caught it as a P0 — they could change
+  // global config (branding, SMS, security TTL, notifications).
+  if (role !== "admin") {
+    return <p className="p-8 font-body text-navy/60">This page is for salon admins.</p>;
   }
 
   return (

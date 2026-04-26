@@ -57,8 +57,10 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 export default function ActivityPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userRole = (session?.user as any)?.role;
   const [entries, setEntries] = useState<Entry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -79,7 +81,10 @@ export default function ActivityPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
-  }, [status, router]);
+    // Activity / audit log is admin-only — contains every privileged
+    // action plus actor IPs. Manager hits → bounce to /admin.
+    if (status === "authenticated" && userRole && userRole !== "admin") router.push("/admin");
+  }, [status, router, userRole]);
 
   useEffect(() => {
     if (status !== "authenticated") return;

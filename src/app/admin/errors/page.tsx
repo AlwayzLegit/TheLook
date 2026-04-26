@@ -35,15 +35,14 @@ interface ErrorIssue {
   filename: string | null;
 }
 
-// Sentry's project-issues endpoint is strict about statsPeriod values
-// — round-7 QA found it rejects "1h" / "30d" as "Invalid stats_period".
-// The accepted values for issues are 24h / 7d / 14d. Keep this list
-// in sync with what Sentry actually allows OR the API proxy will
-// surface a red banner. The proxy ALSO defensively normalises any
-// other value to "24h" so future client changes degrade gracefully.
+// Sentry's project-issues endpoint is strict about statsPeriod values.
+// History: round-7 dropped "1h"/"30d", round-9 dropped "7d" — Sentry
+// narrowed the accepted set to '', '24h', '14d' and started returning
+// "Invalid stats_period" for anything else. Keep this list in sync
+// with what Sentry actually allows; the proxy ALSO rewrites legacy
+// "7d" → "14d" so saved bookmarks don't break.
 const PERIOD_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "24h", label: "Last 24 hours" },
-  { value: "7d", label: "Last 7 days" },
   { value: "14d", label: "Last 14 days" },
 ];
 
@@ -75,8 +74,10 @@ function relativeTime(iso: string): string {
 }
 
 export default function AdminErrorsPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userRole = (session?.user as any)?.role;
 
   const [issues, setIssues] = useState<ErrorIssue[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,10 +89,13 @@ export default function AdminErrorsPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
-  }, [status, router]);
+    // Round-9 RBAC fix — Sentry payloads include user emails + IPs
+    // in breadcrumbs, so the issue feed is admin-only.
+    if (status === "authenticated" && userRole && userRole !== "admin") router.push("/admin");
+  }, [status, router, userRole]);
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (status !== "authenticated" || userRole !== "admin") return;
     let cancelled = false;
     const load = async () => {
       try {
@@ -121,9 +125,9 @@ export default function AdminErrorsPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [status, period, query]);
+  }, [status, userRole, period, query]);
 
-  if (status !== "authenticated") return null;
+  if (status !== "authenticated" || userRole !== "admin") return null;
 
   return (
     <div className="p-4 sm:p-8 max-w-5xl mx-auto">

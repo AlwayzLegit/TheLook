@@ -1,5 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/apiAuth";
 import { adminServiceSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
@@ -39,8 +40,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session) return apiError("Unauthorized", 401);
+  // Creating new services is admin-only. Managers can re-price /
+  // re-photograph existing services through the per-id PATCH.
+  const gate = await requireAdmin(request);
+  if (!gate.ok) return gate.response;
 
   const body = await request.json();
   const parsed = adminServiceSchema.safeParse(body);

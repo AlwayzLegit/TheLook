@@ -1,4 +1,4 @@
-import { getSessionUser, isAdminOrManager } from "@/lib/roles";
+import { requireAdmin } from "@/lib/apiAuth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
@@ -67,8 +67,11 @@ async function fetchIssues(opts: {
 }
 
 export async function GET(request: NextRequest) {
-  const user = await getSessionUser();
-  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
+  // Admin-only — round-9 QA flagged that managers could fully read
+  // production error data here. Sentry payload may include user
+  // emails / IPs in breadcrumbs, so it stays scoped to admins.
+  const gate = await requireAdmin(request);
+  if (!gate.ok) return gate.response;
 
   const token = process.env.SENTRY_AUTH_TOKEN;
   const org = process.env.SENTRY_ORG;
@@ -89,14 +92,20 @@ export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
   const countOnly = sp.get("count") === "true";
   // Sentry's project-issues endpoint only accepts a narrow set of
-  // statsPeriod values. Anything else is rejected with
-  // {"detail":"Invalid stats_period. Valid choices are '', '24h',
-  // and '14d'"} which the page surfaces as a red banner. Normalise
-  // here so older saved bookmarks / unknown future client values
-  // degrade to a working default instead of breaking the page.
-  const ALLOWED_PERIODS = new Set(["24h", "7d", "14d"]);
-  const requestedPeriod = sp.get("period") || "24h";
-  const period = ALLOWED_PERIODS.has(requestedPeriod) ? requestedPeriod : "24h";
+  // statsPeriod values. The current accepted set is '', '24h', '14d'
+  // — anything else is rejected with "Invalid stats_period" which
+  // the page surfaces as a red banner. Round-9 had to drop "7d"
+  // after Sentry narrowed the list further. We keep a rewrite map
+  // for legacy/saved values so older bookmarks degrade gracefully.
+  const ALLOWED_PERIODS = new Set(["24h", "14d"]);
+  const PERIOD_REWRITES: Record<string, string> = {
+    "1h": "24h",
+    "7d": "14d",
+    "30d": "14d",
+  };
+  const rawPeriod = sp.get("period") || "24h";
+  const rewritten = PERIOD_REWRITES[rawPeriod] ?? rawPeriod;
+  const period = ALLOWED_PERIODS.has(rewritten) ? rewritten : "24h";
   const query = sp.get("query") || "is:unresolved";
   const limit = countOnly ? 100 : Math.min(parseInt(sp.get("limit") || "25", 10) || 25, 100);
 

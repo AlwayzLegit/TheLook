@@ -1,6 +1,6 @@
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
-import { getSessionUser, isAdminOrManager } from "@/lib/roles";
+import { requireAdmin } from "@/lib/apiAuth";
 import { logAdminAction } from "@/lib/auditLog";
 import { BRANDING_CACHE_TAG } from "@/lib/branding";
 import { estimateSmsCost, MAX_ALLOWED_SEGMENTS } from "@/lib/smsLength";
@@ -49,8 +49,13 @@ const ALLOWED_KEYS = new Set([
 ]);
 
 export async function GET() {
-  const user = await getSessionUser();
-  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
+  // Round-9 QA tightened settings to admin-only — branding, SMS
+  // toggles, security TTL, and notification recipients are all
+  // levers managers shouldn't pull. Manager-side surfaces that
+  // need a couple of values (idle timeout, brand name) read them
+  // through their own dedicated endpoints or page props instead.
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiSuccess({});
 
   const { data, error } = await supabase.from("salon_settings").select("key, value");
@@ -65,8 +70,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  const user = await getSessionUser();
-  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
+  const gate = await requireAdmin(request);
+  if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const body = await request.json().catch(() => ({}));
