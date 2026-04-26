@@ -87,6 +87,36 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
+        // Belt-and-suspenders DB-backed IP cap. Vercel runs middleware
+        // at edge POPs that don't share in-memory state — sequential
+        // requests from one IP can hit different POPs and bypass the
+        // checkRateLimit bucket above. Counting auth.login.failed +
+        // auth.login.locked rows from admin_log catches that pattern
+        // because the table is shared by every worker. Skipped silently
+        // when Supabase isn't configured (dev/preview without DB) so
+        // the auth flow doesn't break.
+        if (ip !== "unknown") {
+          try {
+            const { supabase, hasSupabaseConfig } = await import("./supabase");
+            if (!hasSupabaseConfig) throw new Error("supabase-not-configured");
+            const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+            const { count } = await supabase
+              .from("admin_log")
+              .select("id", { count: "exact", head: true })
+              .eq("ip_address", ip)
+              .in("action", ["auth.login.failed", "auth.login.locked"])
+              .gte("created_at", since);
+            if (typeof count === "number" && count >= 30) {
+              logAuthEvent("auth.login.failed", inputEmail, { reason: "ip_db_capped" });
+              return null;
+            }
+          } catch {
+            // Fail open — DB cap is a defence-in-depth layer, not the
+            // primary gate. Keep auth working if the table is missing
+            // (pre-migration) or the query errors.
+          }
+        }
+
         const attempts = failedAttempts.get(inputEmail);
         if (attempts && attempts.lockedUntil > Date.now()) {
           logAuthEvent("auth.login.locked", inputEmail, { reason: "lockout_active" });

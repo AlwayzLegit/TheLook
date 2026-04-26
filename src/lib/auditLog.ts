@@ -36,9 +36,21 @@ export async function logAuthEvent(
       // Called outside a request scope — headers() throws.
     }
   }
+  // Compose details from any of the structured extras the caller
+  // supplied. Old behaviour only wrote a row when `reason` was set,
+  // which left auth.password.rehash audit rows with null details
+  // (the test caught this — fromCost / toCost weren't surfacing).
+  // Now we write whatever was passed, so the rehash trail captures
+  // both costs.
+  const detailParts: Record<string, unknown> = {};
+  if (extras?.reason) detailParts.reason = extras.reason;
+  if (typeof extras?.fromCost === "number") detailParts.fromCost = extras.fromCost;
+  if (typeof extras?.toCost === "number") detailParts.toCost = extras.toCost;
+  const detailsStr = Object.keys(detailParts).length > 0 ? JSON.stringify(detailParts) : null;
+
   const row: Record<string, unknown> = {
     action,
-    details: extras?.reason ? JSON.stringify({ reason: extras.reason }) : null,
+    details: detailsStr,
     actor_email: email ? email.toLowerCase() : null,
     actor_user_id: extras?.userId || null,
     ip_address: ip,
