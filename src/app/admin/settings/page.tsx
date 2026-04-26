@@ -33,6 +33,45 @@ function SmsCostReadout({ template }: { template: string }) {
   );
 }
 
+// Inline disclaimer rendered beneath every editable template field on
+// this page so admins know exactly what happens when they save / clear:
+//   - Empty = system uses the built-in default + future template
+//     improvements come through automatically.
+//   - Filled = the typed value overrides the default permanently for
+//     every send until the field is cleared again.
+// SMS variant adds a Twilio-cost warning about non-ASCII characters
+// (em dash, smart quotes, emoji) flipping encoding to UCS-2 and
+// halving the segment cap, which doubles or triples per-send cost.
+function TemplateOverrideHint({ kind, isCustom }: { kind: "sms" | "email"; isCustom: boolean }) {
+  return (
+    <div className="text-[0.7rem] text-[var(--color-text-muted)] leading-relaxed mt-1.5 space-y-0.5">
+      <p>
+        {isCustom ? (
+          <>
+            <strong>Custom template active.</strong> What you type here overrides the
+            built-in default for every send. Clear the field + save to fall back to
+            the default and stay current with future updates.
+          </>
+        ) : (
+          <>
+            <strong>Empty &mdash; using built-in default.</strong> Type any text here
+            to override the default permanently for every send. Clear + save to
+            return to the default at any time.
+          </>
+        )}
+      </p>
+      {kind === "sms" && (
+        <p>
+          Tip: stick to plain ASCII (no &mdash;, smart quotes, bullets, or emoji).
+          Non-ASCII flips encoding to UCS-2 which cuts the segment cap from
+          160 to 70 chars and 2-3&times;s the per-send cost. The cost line
+          above turns amber/red when this happens.
+        </p>
+      )}
+    </div>
+  );
+}
+
 interface Settings {
   staff_notification_emails?: string;
   staff_notification_sms_numbers?: string;
@@ -295,6 +334,7 @@ export default function SettingsPage() {
                   onChange={(e) => setS({ ...s, reminder_sms_template: e.target.value })}
                 />
                 <SmsCostReadout template={s.reminder_sms_template ?? ""} />
+                <TemplateOverrideHint kind="sms" isCustom={!!(s.reminder_sms_template ?? "").trim()} />
                 <Input
                   label="Email subject"
                   value={s.reminder_email_subject_template ?? ""}
@@ -306,6 +346,7 @@ export default function SettingsPage() {
                   value={s.reminder_email_body_template ?? ""}
                   onChange={(e) => setS({ ...s, reminder_email_body_template: e.target.value })}
                 />
+                <TemplateOverrideHint kind="email" isCustom={!!(s.reminder_email_body_template ?? "").trim()} />
 
                 <div className="pt-4 border-t border-[var(--color-border)]">
                   <h2 className="text-[1.0625rem] font-medium text-[var(--color-text)]">Review request</h2>
@@ -329,6 +370,7 @@ export default function SettingsPage() {
                   onChange={(e) => setS({ ...s, review_request_sms_template: e.target.value })}
                 />
                 <SmsCostReadout template={s.review_request_sms_template ?? ""} />
+                <TemplateOverrideHint kind="sms" isCustom={!!(s.review_request_sms_template ?? "").trim()} />
                 <Input
                   label="Email subject"
                   value={s.review_request_email_subject_template ?? ""}
@@ -340,6 +382,7 @@ export default function SettingsPage() {
                   value={s.review_request_email_body_template ?? ""}
                   onChange={(e) => setS({ ...s, review_request_email_body_template: e.target.value })}
                 />
+                <TemplateOverrideHint kind="email" isCustom={!!(s.review_request_email_body_template ?? "").trim()} />
               </Card>
             )}
 
