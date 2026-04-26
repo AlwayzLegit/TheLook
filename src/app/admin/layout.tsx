@@ -77,6 +77,7 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/admin/settings", label: "Settings" },
       { href: "/admin/activity", label: "Activity Log" },
+      { href: "/admin/errors",   label: "Errors" },
     ],
   },
 ];
@@ -85,6 +86,10 @@ function useBadgeCounts() {
   const { status } = useSession();
   const [pending, setPending] = useState(0);
   const [messages, setMessages] = useState(0);
+  // Sentry unresolved-issue count for the last 24h. Refreshes on the
+  // same 30s tick as the other badges so the operator sees a new
+  // production error within at most one minute of it being captured.
+  const [errors, setErrors] = useState(0);
   useEffect(() => {
     if (status !== "authenticated") return;
     const load = () => {
@@ -108,12 +113,23 @@ function useBadgeCounts() {
         .then((r) => r.json())
         .then((data) => setMessages(Array.isArray(data) ? data.length : 0))
         .catch(() => {});
+      // Errors badge — pulls the unresolved Sentry-issue count via our
+      // proxy. Fails silent (badge stays 0) when Sentry isn't
+      // configured yet so a fresh install doesn't show a confusing red
+      // dot before observability is wired.
+      fetch("/api/admin/errors?count=true&period=24h&query=is:unresolved")
+        .then((r) => r.json())
+        .then((data) => {
+          const c = typeof data?.count === "number" ? data.count : 0;
+          setErrors(c);
+        })
+        .catch(() => {});
     };
     load();
     const t = setInterval(load, 30000);
     return () => clearInterval(t);
   }, [status]);
-  return { pending, messages };
+  return { pending, messages, errors };
 }
 
 function isActive(pathname: string, href: string): boolean {
@@ -127,6 +143,7 @@ function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
   const badgeFor = (href: string) => {
     if (href === "/admin/appointments") return badges.pending;
     if (href === "/admin/messages") return badges.messages;
+    if (href === "/admin/errors") return badges.errors;
     return 0;
   };
 
