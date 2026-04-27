@@ -165,7 +165,13 @@ function ReviewCard({ review }: { review: Review }) {
 }
 
 const YELP_PROFILE_URL = "https://www.yelp.com/biz/the-look-hair-salon-glendale";
-const GOOGLE_MAPS_URL = "https://www.google.com/maps/place/The+Look+Hair+Salon/@34.1425,-118.2553,17z/";
+// Google Maps URLs API search format — always resolves to the salon's
+// Place card (with the reviews CTA visible) regardless of place-id /
+// CID drift. The previous hand-built /maps/place/...@lat,lng/ URL
+// never landed on the real listing, which is what the QA screenshot
+// flagged as "google link invalid".
+const GOOGLE_MAPS_URL =
+  "https://www.google.com/maps/search/?api=1&query=The+Look+Hair+Salon+Glendale+CA";
 
 export default function YelpReviews() {
   const [reviews, setReviews] = useState<Review[]>(curatedReviews);
@@ -276,11 +282,12 @@ export default function YelpReviews() {
   };
 
   // Use live stats when present; fall back to prior hardcoded numbers so badges
-  // still look right before API keys are configured.
+  // still look right before API keys are configured. Google fallback was
+  // 146 — bumped to 200 after owner pointed out the real count is 200+.
   const yelpRating = yelpStats?.rating ?? 4.2;
   const yelpTotal = yelpStats?.total ?? 830;
   const googleRating = googleStats?.rating ?? 4.1;
-  const googleTotal = googleStats?.total ?? 146;
+  const googleTotal = googleStats?.total ?? 200;
 
   return (
     <section className="py-24 md:py-32 bg-charcoal relative overflow-hidden">
