@@ -81,7 +81,33 @@ export default function ServicesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Explicit JS-side validation. We intentionally set noValidate on
+    // the <form> below: HTML5's required-attribute path silently blocks
+    // submit when a required field is empty AND scrolled out of view in
+    // an overflow-y-auto modal — the user sees the Save button "do
+    // nothing" with no toast, no spinner, no console error. Validating
+    // here gives us a concrete toast naming the missing field and
+    // guarantees handleSubmit (and the saving spinner) always runs.
+    const trimmedName = formData.name.trim();
+    const trimmedPriceText = (formData.price_text || "").trim();
+    if (!trimmedName) {
+      setToast({ type: "error", message: "Service name is required." });
+      return;
+    }
+    if (!trimmedPriceText) {
+      setToast({ type: "error", message: "Price display is required (e.g. \"$80+\")." });
+      return;
+    }
+    if (!Number.isFinite(formData.price_min) || formData.price_min < 0) {
+      setToast({ type: "error", message: "Min price (cents) must be a non-negative number." });
+      return;
+    }
+    if (!Number.isFinite(formData.duration) || formData.duration < 1) {
+      setToast({ type: "error", message: "Duration must be at least 1 minute." });
+      return;
+    }
+
     const url = editing ? `/api/admin/services/${editing.id}` : "/api/admin/services";
     const method = editing ? "PATCH" : "POST";
     
@@ -132,21 +158,28 @@ export default function ServicesPage() {
 
   const handleEdit = (service: Service) => {
     setEditing(service);
+    // Coerce every field into a defined non-null value before it lands
+    // in formData. Older / migrated service rows can have nulls in
+    // columns the form treats as required (price_text, price_min,
+    // duration). Letting null reach a controlled <input> produces
+    // value="" and would make Save look broken via stale state +
+    // browser quirks even though noValidate now prevents the silent
+    // block.
     setFormData({
-      category: service.category,
-      name: service.name,
+      category: service.category || "Haircuts",
+      name: service.name || "",
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       slug: (service as any).slug || "",
-      price_text: service.price_text,
-      price_min: service.price_min,
-      duration: service.duration,
+      price_text: service.price_text || "",
+      price_min: Number.isFinite(service.price_min) ? service.price_min : 0,
+      duration: Number.isFinite(service.duration) && service.duration > 0 ? service.duration : 30,
       image_url: service.image_url || "",
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       description: (service as any).description || "",
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       products_used: (service as any).products_used || "",
-      active: service.active,
-      sort_order: service.sort_order,
+      active: service.active ?? true,
+      sort_order: Number.isFinite(service.sort_order) ? service.sort_order : 0,
     });
     setShowForm(true);
   };
@@ -221,7 +254,7 @@ export default function ServicesPage() {
           <div className="bg-white p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="font-heading text-xl mb-4">{editing ? "Edit Service" : "Add Service"}</h2>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div>
                 <label className="block text-sm font-body text-navy/60 mb-1">Category</label>
                 <select
