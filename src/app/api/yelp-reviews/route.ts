@@ -1,64 +1,14 @@
-import { apiSuccess, logError } from "@/lib/apiResponse";
+import { apiSuccess } from "@/lib/apiResponse";
+import { readCachedReviews } from "@/lib/externalReviewsSync";
 
-// Cache reviews for 6 hours
-let cache: { data: unknown; expires: number } | null = null;
-const CACHE_DURATION = 6 * 60 * 60 * 1000;
+// Public read for Yelp reviews. Reads from external_reviews_cache
+// (populated daily by /api/cron/sync-reviews + on demand from
+// /admin/reviews → "Refresh now"). Yelp's Fusion API is rate-limited
+// per-day rather than per-call so even with no traffic we'd benefit
+// from a single daily refresh and DB-backed reads.
 
 export async function GET() {
-  const apiKey = process.env.YELP_API_KEY;
-  const alias = process.env.YELP_BUSINESS_ALIAS;
-
-  if (!apiKey || !alias) {
-    return apiSuccess({ reviews: [], rating: null, total: null });
-  }
-
-  if (cache && cache.expires > Date.now()) {
-    return apiSuccess(cache.data);
-  }
-
-  try {
-    const [businessRes, reviewsRes] = await Promise.all([
-      fetch(`https://api.yelp.com/v3/businesses/${encodeURIComponent(alias)}`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-        cache: "no-store",
-      }),
-      fetch(`https://api.yelp.com/v3/businesses/${encodeURIComponent(alias)}/reviews?sort_by=yelp_sort`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-        cache: "no-store",
-      }),
-    ]);
-
-    if (!businessRes.ok || !reviewsRes.ok) {
-      return apiSuccess({ reviews: [], rating: null, total: null });
-    }
-
-    const business = await businessRes.json();
-    const reviewsData = await reviewsRes.json();
-
-    const result = {
-      reviews: (reviewsData.reviews || []).slice(0, 3).map((r: {
-        user: { name: string; image_url: string };
-        rating: number;
-        text: string;
-        time_created: string;
-        url: string;
-      }) => ({
-        author: r.user?.name ?? "Yelp user",
-        authorPhoto: r.user?.image_url ?? null,
-        rating: r.rating,
-        text: r.text,
-        time: new Date(r.time_created).getTime() / 1000,
-        relative: new Date(r.time_created).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-        url: r.url,
-      })),
-      rating: business.rating ?? null,
-      total: business.review_count ?? null,
-    };
-
-    cache = { data: result, expires: Date.now() + CACHE_DURATION };
-    return apiSuccess(result);
-  } catch (err) {
-    logError("yelp-reviews GET", err);
-    return apiSuccess({ reviews: [], rating: null, total: null });
-  }
+  const cached = await readCachedReviews("yelp");
+  if (cached) return apiSuccess(cached);
+  return apiSuccess({ reviews: [], rating: null, total: null });
 }
