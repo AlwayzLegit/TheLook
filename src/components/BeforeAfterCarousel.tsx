@@ -38,7 +38,12 @@ export default function BeforeAfterCarousel({ pairs, title = "Before / After", s
 
   return (
     <AnimatedSection className={className}>
-      <div className="max-w-5xl mx-auto">
+      {/* max-w-3xl was max-w-5xl — desktop felt page-dominant with the
+          larger 16:10 slider, and the portrait hair photos inside got
+          aggressively cropped top/bottom by object-cover. Tighter
+          container + portrait aspect (set in BeforeAfterSlider) keeps
+          the section proportional and shows more of each photo. */}
+      <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-4 mb-3">
             <span className="w-8 h-[1px] bg-gold" />

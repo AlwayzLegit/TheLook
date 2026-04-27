@@ -87,7 +87,7 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className 
   return (
     <div
       ref={containerRef}
-      className={`relative aspect-[4/3] md:aspect-[16/10] w-full overflow-hidden bg-cream-dark select-none touch-none cursor-ew-resize ${className}`}
+      className={`relative aspect-[4/5] w-full overflow-hidden bg-cream-dark select-none touch-none cursor-ew-resize ${className}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -101,7 +101,7 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className 
         src={afterUrl}
         alt={alt ? `After — ${alt}` : "After"}
         fill
-        sizes="(max-width: 768px) 100vw, 800px"
+        sizes="(max-width: 768px) 100vw, 768px"
         className="object-cover pointer-events-none"
         unoptimized={afterUnoptimized}
         priority={false}
@@ -118,7 +118,7 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className 
           src={beforeUrl}
           alt={alt ? `Before — ${alt}` : "Before"}
           fill
-          sizes="(max-width: 768px) 100vw, 800px"
+          sizes="(max-width: 768px) 100vw, 768px"
           className="object-cover"
           unoptimized={beforeUnoptimized}
           priority={false}
