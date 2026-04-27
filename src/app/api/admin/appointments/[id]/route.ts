@@ -32,7 +32,22 @@ export async function PATCH(
   if (payload.date) updateData.date = payload.date;
   if (payload.start_time) updateData.start_time = payload.start_time;
   if (payload.end_time) updateData.end_time = payload.end_time;
-  if (payload.stylist_id) updateData.stylist_id = payload.stylist_id;
+  if (payload.stylist_id) {
+    updateData.stylist_id = payload.stylist_id;
+    // When admin assigns a real stylist (often after an "Any" booking),
+    // requested_stylist flips to true so the customer's confirmation
+    // emails + dashboard chips stop showing the "Any Stylist" badge.
+    updateData.requested_stylist = true;
+    // Mirror the legacy single-service column too when services are
+    // also being replaced — keeps the appointment row's service_id in
+    // sync with the first appointment_services entry.
+  }
+  if (payload.services && payload.services.length > 0) {
+    // Snapshot the service_id of the first line into the legacy
+    // appointments.service_id column so dashboards / list APIs that
+    // still read off it keep working.
+    updateData.service_id = payload.services[0].service_id;
+  }
 
   // Stamp approver info whenever a pending booking becomes confirmed.
   // Kept in its own object so we can cleanly retry without it if the DB
@@ -71,6 +86,66 @@ export async function PATCH(
   if (error) {
     logError("admin/appointments PATCH", error);
     return apiError(`Failed to update appointment: ${error.message || "unknown error"}`, 500);
+  }
+
+  // Replace appointment_services when the admin sent a new services
+  // list inline. Delete-then-insert keeps the legacy snapshot model
+  // intact (each line keeps its own price/duration) and is fine
+  // outside a transaction because we restore the previous rows if the
+  // insert fails. The PATCH itself has already succeeded so a
+  // services-replace failure is a partial-success — we surface the
+  // error so the admin can retry rather than silently dropping it.
+  if (payload.services && payload.services.length > 0) {
+    const { data: previous, error: fetchPrevErr } = await supabase
+      .from("appointment_services")
+      .select("service_id, variant_id, sort_order, price_min, duration, duration_minutes")
+      .eq("appointment_id", id);
+    if (fetchPrevErr) {
+      logError("admin/appointments PATCH (services snapshot)", fetchPrevErr);
+    }
+    const { error: deleteErr } = await supabase
+      .from("appointment_services")
+      .delete()
+      .eq("appointment_id", id);
+    if (deleteErr) {
+      logError("admin/appointments PATCH (services delete)", deleteErr);
+      return apiError(`Failed to update services: ${deleteErr.message || "unknown"}`, 500);
+    }
+    const newRows = payload.services.map((line, i) => ({
+      appointment_id: id,
+      service_id: line.service_id,
+      variant_id: null,
+      sort_order: typeof line.sort_order === "number" ? line.sort_order : i,
+      price_min: line.price_min,
+      duration: line.duration,
+      // Mirror duration into the legacy duration_minutes column for
+      // any reader that still walks the older field — the appointment
+      // create path does the same on insert.
+      duration_minutes: line.duration,
+    }));
+    const { error: insertErr } = await supabase
+      .from("appointment_services")
+      .insert(newRows);
+    if (insertErr) {
+      logError("admin/appointments PATCH (services insert)", insertErr);
+      // Restore the previous rows so the appointment isn't left with
+      // zero line items. Best-effort — if the restore also fails the
+      // admin will see an explicit error and can re-edit.
+      if (previous && previous.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const restoreRows = (previous as any[]).map((p) => ({
+          appointment_id: id,
+          service_id: p.service_id,
+          variant_id: p.variant_id,
+          sort_order: p.sort_order,
+          price_min: p.price_min,
+          duration: p.duration,
+          duration_minutes: p.duration_minutes ?? p.duration,
+        }));
+        await supabase.from("appointment_services").insert(restoreRows);
+      }
+      return apiError(`Failed to save updated services: ${insertErr.message || "unknown"}`, 500);
+    }
   }
 
   logAdminAction("appointment.update", JSON.stringify(payload), id);

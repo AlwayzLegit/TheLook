@@ -12,7 +12,6 @@ import {
   timeToMinutes,
   minutesToTime,
   formatDurationLabel,
-  loadAppointmentDuration,
 } from "@/lib/appointmentTime";
 import AppointmentCalendar from "@/components/admin/AppointmentCalendar";
 import ClearHistoryModal from "@/components/admin/ClearHistoryModal";
@@ -27,12 +26,30 @@ import ReviewRequestModal from "@/components/admin/ReviewRequestModal";
 interface Service {
   id: string;
   name: string;
+  // Default per-line snapshots used to seed a freshly-added line on the
+  // inline edit panel. Both fields can be null on legacy rows; the UI
+  // coerces missing values to safe defaults at point of use.
+  duration?: number | null;
+  price_min?: number | null;
+  active?: boolean | null;
 }
 
 interface Stylist {
   id: string;
   name: string;
   color?: string | null;
+  active?: boolean | null;
+}
+
+// One row in the inline edit panel's services list. Mirrors the
+// backend appointment_services row plus the cached service name for
+// rendering. price_min stored in cents to match the column.
+interface InlineServiceLine {
+  service_id: string;
+  name: string;
+  price_min: number;
+  duration: number;
+  sort_order: number;
 }
 
 interface EnrichedAppointment {
@@ -144,14 +161,23 @@ export default function AppointmentsPage() {
   const [search, setSearch] = useState("");
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFields, setEditFields] = useState({ date: "", start_time: "", end_time: "", staff_notes: "" });
-  // Total snapshotted duration of the appointment_services rows for the
-  // currently-edited row. Drives the auto-shift-end-on-start-change
-  // behaviour + the helper line below the time inputs. Stays null until
-  // the lookup resolves so the helper text doesn't flash before the
-  // duration is known.
-  const [editTotalMinutes, setEditTotalMinutes] = useState<number | null>(null);
-  const [editServiceCount, setEditServiceCount] = useState<number>(1);
+  const [editFields, setEditFields] = useState({
+    date: "",
+    start_time: "",
+    end_time: "",
+    staff_notes: "",
+    stylist_id: "",
+  });
+  // The full set of services attached to the currently-edited
+  // appointment, with per-line snapshotted price + duration. Replaces
+  // the older totalMinutes/serviceCount cache — the inline panel now
+  // edits each line so we need the full row, not just the sum.
+  const [editServiceLines, setEditServiceLines] = useState<InlineServiceLine[]>([]);
+  const [editAddServiceId, setEditAddServiceId] = useState<string>("");
+  // Tracks whether the current End time was touched by the admin
+  // after openEdit. Once flagged, automatic recomputation from
+  // services/start changes stops overwriting their override.
+  const [editEndOverridden, setEditEndOverridden] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ id: string; status: string; name: string } | null>(null);
   const [clientHistoryId, setClientHistoryId] = useState<string | null>(null);
   const [clientHistory, setClientHistory] = useState<EnrichedAppointment[]>([]);
@@ -301,39 +327,108 @@ export default function AppointmentsPage() {
       start_time: appt.start_time,
       end_time: appt.end_time,
       staff_notes: appt.staff_notes || "",
+      stylist_id: appt.stylist_id || "",
     });
-    // Pull the snapshotted duration so changing Start auto-shifts End
-    // by the right amount. Caches in state so the on-change handler
-    // doesn't re-fetch on every keystroke.
-    setEditTotalMinutes(null);
-    setEditServiceCount(1);
-    loadAppointmentDuration(appt.id, appt.start_time, appt.end_time)
-      .then(({ totalMinutes, serviceCount }) => {
-        if (totalMinutes > 0) {
-          setEditTotalMinutes(totalMinutes);
-          setEditServiceCount(serviceCount);
-        }
-      })
+    setEditServiceLines([]);
+    setEditAddServiceId("");
+    setEditEndOverridden(false);
+    // Pull the full appointment_services rows so the inline panel can
+    // render each line with editable price + duration. Falls back to
+    // a single line synthesised from the appointment row if the
+    // mapping table is empty (legacy single-service imports).
+    fetch(`/api/admin/appointments/${appt.id}/services`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (data: {
+          services?: Array<{
+            service_id: string;
+            duration: number | null;
+            price_min: number | null;
+            sort_order: number | null;
+          }>;
+        } | null) => {
+          const rows = Array.isArray(data?.services) ? data!.services! : [];
+          const lines: InlineServiceLine[] = rows.map((r, i) => ({
+            service_id: r.service_id,
+            name: services.find((s) => s.id === r.service_id)?.name || "Unknown service",
+            price_min: Number.isFinite(r.price_min) ? Number(r.price_min) : 0,
+            duration: Number.isFinite(r.duration) && (r.duration as number) > 0
+              ? Number(r.duration)
+              : 30,
+            sort_order: typeof r.sort_order === "number" ? r.sort_order : i,
+          }));
+          if (lines.length === 0 && appt.service_id) {
+            const svc = services.find((s) => s.id === appt.service_id);
+            const fallbackDuration =
+              timeToMinutes(appt.end_time) - timeToMinutes(appt.start_time);
+            lines.push({
+              service_id: appt.service_id,
+              name: svc?.name || "Unknown service",
+              price_min: Number.isFinite(svc?.price_min) ? Number(svc?.price_min) : 0,
+              duration: fallbackDuration > 0 ? fallbackDuration : (svc?.duration ?? 30),
+              sort_order: 0,
+            });
+          }
+          setEditServiceLines(lines);
+        },
+      )
       .catch(() => {
-        /* fall back to manual edit */
+        /* fall back to empty list — admin can repopulate via the picker */
       });
   };
 
   const saveEdit = async () => {
     if (!editingId) return;
+    if (editServiceLines.length === 0) {
+      setToast({ type: "error", message: "Add at least one service before saving." });
+      return;
+    }
+    // Bail if any line has bad numbers — the per-input clamp should
+    // already prevent this, but a defensive check beats a 500 from the
+    // backend zod schema.
+    for (const line of editServiceLines) {
+      if (!Number.isFinite(line.duration) || line.duration < 1) {
+        setToast({ type: "error", message: `Duration for "${line.name}" must be at least 1 min.` });
+        return;
+      }
+      if (!Number.isFinite(line.price_min) || line.price_min < 0) {
+        setToast({ type: "error", message: `Price for "${line.name}" must be a non-negative number.` });
+        return;
+      }
+    }
+    const payload: Record<string, unknown> = {
+      date: editFields.date,
+      start_time: editFields.start_time,
+      end_time: editFields.end_time,
+      staff_notes: editFields.staff_notes,
+      services: editServiceLines.map((l, i) => ({
+        service_id: l.service_id,
+        price_min: Math.round(l.price_min),
+        duration: Math.round(l.duration),
+        sort_order: i,
+      })),
+    };
+    // Only send stylist_id when it's a real UUID. Sending an empty
+    // string here would trip the backend schema's z.string().uuid().
+    if (editFields.stylist_id) payload.stylist_id = editFields.stylist_id;
     try {
       setPendingStatusId(editingId);
       const res = await fetch(`/api/admin/appointments/${editingId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editFields),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        setToast({ type: "error", message: "Failed to update appointment." });
+        const data = await res.json().catch(() => ({}));
+        setToast({
+          type: "error",
+          message: data.error || "Failed to update appointment.",
+        });
         return;
       }
       setToast({ type: "success", message: "Appointment updated." });
       setEditingId(null);
+      setEditServiceLines([]);
       refresh();
     } finally {
       setPendingStatusId(null);
@@ -895,8 +990,44 @@ export default function AppointmentsPage() {
               </div>
 
               {/* Edit form */}
-              {editingId === appt.id && (
+              {editingId === appt.id && (() => {
+                const totalDuration = editServiceLines.reduce((sum, l) => sum + (l.duration || 0), 0);
+                const totalPriceCents = editServiceLines.reduce((sum, l) => sum + (l.price_min || 0), 0);
+                // Services that aren't already on the appointment, so
+                // the "Add service" dropdown only offers genuinely new
+                // line items.
+                const availableServices = services.filter(
+                  (s) => s.active !== false && !editServiceLines.some((l) => l.service_id === s.id),
+                );
+                return (
                 <div className="mt-3 p-4 bg-cream/50 border border-navy/10 space-y-3">
+                  {/* Stylist */}
+                  <div>
+                    <label className="block text-xs font-body text-navy/40 mb-1 flex items-center flex-wrap gap-2">
+                      <span>Stylist</span>
+                      {appt.requested_stylist === false && (
+                        <span className="text-[10px] font-body text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded normal-case tracking-normal">
+                          Booked as Any — pick who actually does the service
+                        </span>
+                      )}
+                    </label>
+                    <select
+                      value={editFields.stylist_id}
+                      onChange={(e) => setEditFields({ ...editFields, stylist_id: e.target.value })}
+                      className="border border-navy/20 px-2 py-1.5 text-sm font-body bg-white w-full sm:w-auto"
+                    >
+                      {!stylists.some((s) => s.id === editFields.stylist_id) && editFields.stylist_id && (
+                        <option value={editFields.stylist_id}>{appt.stylistName} (current)</option>
+                      )}
+                      {stylists
+                        .filter((s) => s.active !== false)
+                        .map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                    </select>
+                  </div>
+
+                  {/* Date / Start / End */}
                   <div className="flex flex-wrap gap-3">
                     <div>
                       <label className="block text-xs font-body text-navy/40 mb-1">Date</label>
@@ -909,15 +1040,17 @@ export default function AppointmentsPage() {
                         value={editFields.start_time}
                         onChange={(e) => {
                           const next = e.target.value;
-                          // Auto-shift End by the cached total duration so a
-                          // single edit keeps the slot length intact. Admin can
-                          // still override End by editing it directly afterwards.
+                          // Auto-shift End by the live total-duration of
+                          // the editServiceLines so a single Start edit
+                          // keeps the slot length intact. We skip the
+                          // recompute once the admin has manually edited
+                          // End — they signalled an intentional override.
                           setEditFields((f) => {
-                            if (editTotalMinutes && editTotalMinutes > 0 && next) {
+                            if (!editEndOverridden && totalDuration > 0 && next) {
                               return {
                                 ...f,
                                 start_time: next,
-                                end_time: minutesToTime(timeToMinutes(next) + editTotalMinutes),
+                                end_time: minutesToTime(timeToMinutes(next) + totalDuration),
                               };
                             }
                             return { ...f, start_time: next };
@@ -928,15 +1061,170 @@ export default function AppointmentsPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-body text-navy/40 mb-1">End</label>
-                      <input type="time" value={editFields.end_time} onChange={(e) => setEditFields({ ...editFields, end_time: e.target.value })} className="border border-navy/20 px-2 py-1.5 text-sm font-body" />
+                      <input
+                        type="time"
+                        value={editFields.end_time}
+                        onChange={(e) => {
+                          setEditEndOverridden(true);
+                          setEditFields({ ...editFields, end_time: e.target.value });
+                        }}
+                        className="border border-navy/20 px-2 py-1.5 text-sm font-body"
+                      />
                     </div>
                   </div>
-                  {editTotalMinutes !== null && editTotalMinutes > 0 && (
+                  {totalDuration > 0 && !editEndOverridden && (
                     <p className="text-[11px] font-body text-navy/50 -mt-1">
-                      Auto-set from {editServiceCount} service{editServiceCount === 1 ? "" : "s"} ·{" "}
-                      {formatDurationLabel(editTotalMinutes)} total. Edit End to override.
+                      Auto-set from {editServiceLines.length} service{editServiceLines.length === 1 ? "" : "s"} ·{" "}
+                      {formatDurationLabel(totalDuration)} total. Edit End to override.
                     </p>
                   )}
+                  {totalDuration > 0 && editEndOverridden && (
+                    <p className="text-[11px] font-body text-navy/50 -mt-1">
+                      End time manually overridden ({formatDurationLabel(totalDuration)} of services).
+                    </p>
+                  )}
+
+                  {/* Services list */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-body text-navy/40">Services</label>
+                    {editServiceLines.length === 0 && (
+                      <p className="text-[11px] font-body text-amber-700 bg-amber-50 px-2 py-1.5 border border-amber-200">
+                        No services on this appointment yet. Add at least one before saving.
+                      </p>
+                    )}
+                    {editServiceLines.map((line, idx) => (
+                      <div key={`${line.service_id}-${idx}`} className="flex flex-wrap items-end gap-2 bg-white border border-navy/10 px-3 py-2">
+                        <div className="flex-1 min-w-[180px]">
+                          <p className="text-sm font-body text-navy">{line.name}</p>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-body text-navy/40 mb-0.5">Price ($)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={Math.round(line.price_min / 100)}
+                            onChange={(e) => {
+                              const dollars = parseInt(e.target.value, 10);
+                              const cents = Number.isFinite(dollars) ? Math.max(0, dollars) * 100 : 0;
+                              setEditServiceLines((prev) =>
+                                prev.map((l, i) => (i === idx ? { ...l, price_min: cents } : l)),
+                              );
+                            }}
+                            className="w-24 border border-navy/20 px-2 py-1 text-sm font-body"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-body text-navy/40 mb-0.5">Duration (min)</label>
+                          <input
+                            type="number"
+                            min={1}
+                            step={5}
+                            value={line.duration}
+                            onChange={(e) => {
+                              const next = parseInt(e.target.value, 10);
+                              const safe = Number.isFinite(next) && next > 0 ? next : 1;
+                              setEditServiceLines((prev) => {
+                                const updated = prev.map((l, i) =>
+                                  i === idx ? { ...l, duration: safe } : l,
+                                );
+                                // Recompute End from the new total duration
+                                // unless admin manually overrode it.
+                                if (!editEndOverridden && editFields.start_time) {
+                                  const newTotal = updated.reduce((sum, l) => sum + (l.duration || 0), 0);
+                                  if (newTotal > 0) {
+                                    setEditFields((f) => ({
+                                      ...f,
+                                      end_time: minutesToTime(timeToMinutes(f.start_time) + newTotal),
+                                    }));
+                                  }
+                                }
+                                return updated;
+                              });
+                            }}
+                            className="w-20 border border-navy/20 px-2 py-1 text-sm font-body"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditServiceLines((prev) => {
+                              const updated = prev.filter((_, i) => i !== idx);
+                              if (!editEndOverridden && editFields.start_time) {
+                                const newTotal = updated.reduce((sum, l) => sum + (l.duration || 0), 0);
+                                setEditFields((f) => ({
+                                  ...f,
+                                  end_time: newTotal > 0
+                                    ? minutesToTime(timeToMinutes(f.start_time) + newTotal)
+                                    : f.end_time,
+                                }));
+                              }
+                              return updated;
+                            });
+                          }}
+                          className="text-xs font-body text-red-600 border border-red-200 px-2 py-1 hover:bg-red-50"
+                          aria-label={`Remove ${line.name}`}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    {availableServices.length > 0 && (
+                      <div className="flex flex-wrap items-end gap-2">
+                        <select
+                          value={editAddServiceId}
+                          onChange={(e) => setEditAddServiceId(e.target.value)}
+                          className="border border-navy/20 px-2 py-1.5 text-sm font-body bg-white"
+                        >
+                          <option value="">+ Add service…</option>
+                          {availableServices.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          disabled={!editAddServiceId}
+                          onClick={() => {
+                            const svc = services.find((s) => s.id === editAddServiceId);
+                            if (!svc) return;
+                            setEditServiceLines((prev) => {
+                              const next: InlineServiceLine = {
+                                service_id: svc.id,
+                                name: svc.name,
+                                price_min: Number.isFinite(svc.price_min) ? Number(svc.price_min) : 0,
+                                duration: Number.isFinite(svc.duration) && (svc.duration as number) > 0
+                                  ? Number(svc.duration)
+                                  : 30,
+                                sort_order: prev.length,
+                              };
+                              const updated = [...prev, next];
+                              if (!editEndOverridden && editFields.start_time) {
+                                const newTotal = updated.reduce((sum, l) => sum + (l.duration || 0), 0);
+                                setEditFields((f) => ({
+                                  ...f,
+                                  end_time: minutesToTime(timeToMinutes(f.start_time) + newTotal),
+                                }));
+                              }
+                              return updated;
+                            });
+                            setEditAddServiceId("");
+                          }}
+                          className="text-xs font-body text-navy border border-navy/20 px-3 py-1.5 hover:bg-navy/5 disabled:opacity-50"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    )}
+                    {editServiceLines.length > 0 && (
+                      <p className="text-[11px] font-body text-navy/60 pt-1">
+                        Total: ${(totalPriceCents / 100).toFixed(2)} · {formatDurationLabel(totalDuration)}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Staff notes + save row, kept inside the same panel
+                      so the inline edit reads as one cream-coloured
+                      card instead of two stacked boxes. */}
                   <div>
                     <label className="block text-xs font-body text-navy/40 mb-1">Staff Notes</label>
                     <textarea value={editFields.staff_notes} onChange={(e) => setEditFields({ ...editFields, staff_notes: e.target.value })} rows={2} placeholder="Internal notes (not visible to client)" className="w-full border border-navy/20 px-3 py-2 text-sm font-body resize-none" />
@@ -950,7 +1238,8 @@ export default function AppointmentsPage() {
                     </button>
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* Staff notes display */}
               {appt.staff_notes && editingId !== appt.id && (
@@ -1152,7 +1441,11 @@ export default function AppointmentsPage() {
           await saveEditFromModal(id, fields);
           setSelectedAppt(null);
         }}
-        stylists={stylists}
+        stylists={stylists.map((s) => ({
+          id: s.id,
+          name: s.name,
+          active: s.active === false ? false : true,
+        }))}
       />
 
       <ClearHistoryModal

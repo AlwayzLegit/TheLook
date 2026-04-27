@@ -113,6 +113,18 @@ export const depositRuleSchema = z.object({
   sort_order: z.number().int().min(0).max(10_000).optional(),
 });
 
+// Single line item on an appointment when the admin replaces the
+// services list inline. Snapshotted price / duration override the
+// services-table defaults so historical totals stay stable when an
+// admin re-prices the underlying service later.
+export const adminAppointmentServiceLineSchema = z.object({
+  service_id: z.string().uuid(),
+  // price_min stored in cents, matching appointment_services.price_min.
+  price_min: z.number().int().min(0).max(10_000_000),
+  duration: z.number().int().min(1).max(600),
+  sort_order: z.number().int().min(0).max(100).optional(),
+});
+
 export const adminAppointmentPatchSchema = z.object({
   status: z.string().trim().min(1).max(20).optional(),
   staff_notes: z.string().max(2000).nullable().optional(),
@@ -124,5 +136,9 @@ export const adminAppointmentPatchSchema = z.object({
   // the service, OR when the assigned stylist needs to be swapped due
   // to a schedule change.
   stylist_id: z.string().uuid().optional(),
+  // When provided, replaces every appointment_services row for this
+  // booking. Each entry carries the snapshotted price + duration the
+  // admin wants on the row; absent → existing services stay untouched.
+  services: z.array(adminAppointmentServiceLineSchema).min(1).max(20).optional(),
 });
 
