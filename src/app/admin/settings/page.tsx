@@ -137,11 +137,12 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
-    // Round-9 RBAC fix — settings (branding, SMS toggles, security
-    // TTL, notifications) is admin-only. Managers were previously
-    // able to read AND modify these via this page.
-    if (status === "authenticated" && role && role !== "admin") router.push("/admin");
-  }, [status, router, role]);
+    // Round-10 follow-up: managers used to redirect to /admin here,
+    // which clobbered the in-page "This page is for salon admins."
+    // message. We now let the render branch below show the message —
+    // bookmark / direct-link visitors see why they're blocked instead
+    // of bouncing back to the dashboard with no explanation.
+  }, [status, router]);
 
   useEffect(() => {
     if (status !== "authenticated" || role !== "admin") return;

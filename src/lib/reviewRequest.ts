@@ -149,6 +149,21 @@ export async function sendReviewRequest(
   const emailSubject = renderTemplate(overrides.emailSubject || emailSubjTpl, vars);
   const emailBodyRendered = renderTemplate(overrides.emailBody || emailBodyTpl, vars);
 
+  // Pre-stamp `review_request_sent_at` BEFORE firing the SMS / email
+  // sends. Round-10 QA caught a race: when the auto-trigger fired
+  // from a "mark complete" PATCH, SMS + email could take 5-90s on
+  // a cold start, and the timestamp wasn't written until afterwards.
+  // A manual click during that window saw a null sent_at, the
+  // cooldown returned empty, and the customer received two of each.
+  // Stamping up-front means the very next call inside the cooldown
+  // window — manual or auto — bails immediately. Channel results
+  // (smsOk / emailOk) are still reported so the audit row doesn't
+  // pretend a failure was a success.
+  await supabase
+    .from("appointments")
+    .update({ review_request_sent_at: new Date().toISOString() })
+    .eq("id", appointmentId);
+
   let smsOk = false;
   let emailOk = false;
 
@@ -183,14 +198,6 @@ export async function sendReviewRequest(
       return false;
     });
   }
-
-  // Stamp the row regardless of channel success — second call to this
-  // function (manual or auto) won't re-fire unless the operator passes
-  // trigger:"manual". Keeps "auto" idempotent.
-  await supabase
-    .from("appointments")
-    .update({ review_request_sent_at: new Date().toISOString() })
-    .eq("id", appointmentId);
 
   return { ok: true, smsOk, emailOk, reviewUrl };
 }

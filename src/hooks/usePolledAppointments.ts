@@ -74,7 +74,27 @@ export function usePolledAppointments(options: UsePolledAppointmentsOptions = {}
       } else if (fromDate !== "") {
         params.set("from", fromDate);
       }
-      const res = await fetch(`/api/admin/appointments?${params.toString()}`);
+      // Wrap the fetch itself — round-10 QA caught a `TypeError:
+      // Failed to fetch` flooding Sentry from one mobile device. The
+      // 15s polling interval kept firing across sleep/wake transitions
+      // when the network was momentarily unreachable, the fetch threw,
+      // and React surfaced the unhandled rejection. Treat a network
+      // throw the same as a non-2xx response: surface the error
+      // string locally for the next tick to retry, but don't bubble
+      // out of the polling loop.
+      let res: Response;
+      try {
+        res = await fetch(`/api/admin/appointments?${params.toString()}`);
+      } catch {
+        // Silent failures on background ticks; visible "couldn't
+        // reach server" only on the foreground load so the admin
+        // sees something actionable.
+        if (!silent) {
+          setError("Couldn't reach the server. Retrying…");
+          setLoading(false);
+        }
+        return;
+      }
       if (!res.ok) {
         setError("Failed to fetch appointments.");
         if (!silent) setLoading(false);
