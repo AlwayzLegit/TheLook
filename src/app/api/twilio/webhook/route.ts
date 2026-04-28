@@ -12,23 +12,61 @@ import { NextRequest } from "next/server";
  *   1. Incoming SMS from clients — watch for STOP/UNSUBSCRIBE/START keywords
  *      and update sms_optouts accordingly.
  *   2. Status callbacks on outbound messages — update the matching sms_log
- *      row's status + failure_reason.
+ *      row's status + failure_reason and mirror terminal states into
+ *      admin_log so /admin/activity surfaces undelivered messages.
  *
  * Configure the URL in the Twilio console:
  *   Messaging → Services → Integration → "A message comes in" webhook
  *   → https://www.thelookhairsalonla.com/api/twilio/webhook
  *   Also set the same URL as the status callback for outbound messages.
+ *
+ * SECURITY — every request is verified against TWILIO_AUTH_TOKEN via
+ * the X-Twilio-Signature header. Without verification, anyone could
+ * POST to this URL and forge delivery states / opt-outs / pollute the
+ * audit feed. We skip verification only when TWILIO_AUTH_TOKEN isn't
+ * configured (e.g. local dev), so production with envs set is always
+ * locked down.
  */
+async function isFromTwilio(request: NextRequest, rawBody: string): Promise<boolean> {
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  // Without an auth token configured we can't verify — and rejecting
+  // every webhook in that mode would break the dev / preview path
+  // where Twilio isn't wired up at all. Production sets the token.
+  if (!authToken) return true;
+  const signature = request.headers.get("x-twilio-signature");
+  if (!signature) return false;
+  // Twilio signs the full URL it called us at, including query string.
+  // Vercel preserves the original URL in NextRequest.url.
+  const url = request.url;
+  // Twilio's helper takes the form-encoded params as a plain object
+  // for signing. Re-parse here so we don't depend on the caller
+  // having already done it.
+  const params: Record<string, string> = {};
+  for (const [key, value] of new URLSearchParams(rawBody)) params[key] = value;
+  try {
+    const { default: twilio } = await import("twilio");
+    return twilio.validateRequest(authToken, signature, url, params);
+  } catch (err) {
+    logError("twilio webhook signature verify", err);
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest) {
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
-  let form: URLSearchParams;
+  let raw: string;
   try {
-    const raw = await request.text();
-    form = new URLSearchParams(raw);
+    raw = await request.text();
   } catch {
     return apiError("Invalid form body.", 400);
   }
+
+  if (!(await isFromTwilio(request, raw))) {
+    return apiError("Invalid signature.", 403);
+  }
+
+  const form = new URLSearchParams(raw);
 
   const messageStatus = form.get("MessageStatus") || form.get("SmsStatus");
   const messageSid = form.get("MessageSid");
