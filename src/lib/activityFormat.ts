@@ -100,19 +100,30 @@ export function formatActivity(action: string, details: string | null): Activity
     return { title: `Imported clients${parts.length ? ` · ${parts.join(" · ")}` : ""}`, category: "client" };
   }
 
-  // SMS delivery callbacks (Twilio status webhook → admin_log)
+  // SMS events. Two write-paths land here:
+  //   - Send-time: /api/admin/sms/test writes "sms.test" with
+  //     {recipient, event, ok}. Old rows used "phone" instead of
+  //     "recipient" — fall back so legacy entries still render.
+  //   - Callback-time: /api/twilio/webhook writes "sms.delivered" /
+  //     "sms.undelivered" / "sms.failed" with {to, event, error,
+  //     messageSid, bodyPreview}.
   if (action.startsWith("sms.")) {
-    const to = d?.to ? ` to ${d.to}` : "";
+    const to = d?.to || d?.recipient || d?.phone;
+    const recipient = to ? ` to ${to}` : "";
     const event = d?.event ? ` · ${d.event}` : "";
     const err = d?.error ? ` · ${d.error}` : "";
+    if (action === "sms.test") {
+      const status = d?.ok === false ? "Twilio rejected" : "queued";
+      return { title: `Test SMS${recipient} · ${status}`, category: "sms" };
+    }
     if (action === "sms.delivered") {
-      return { title: `SMS delivered${to}${event}`, category: "sms" };
+      return { title: `SMS delivered${recipient}${event}`, category: "sms" };
     }
     if (action === "sms.undelivered") {
-      return { title: `SMS not delivered${to}${event}${err}`, category: "sms" };
+      return { title: `SMS not delivered${recipient}${event}${err}`, category: "sms" };
     }
     if (action === "sms.failed") {
-      return { title: `SMS failed${to}${event}${err}`, category: "sms" };
+      return { title: `SMS failed${recipient}${event}${err}`, category: "sms" };
     }
     return { title: action.replace(/^sms\./, "SMS: "), category: "sms" };
   }

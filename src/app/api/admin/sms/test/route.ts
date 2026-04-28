@@ -27,7 +27,22 @@ export async function POST(request: NextRequest) {
 
   try {
     const ok = await sendAdminTestSMS(phone);
-    await logAdminAction("sms.test", JSON.stringify({ phone, ok }));
+    // Include the canonical detail keys (`recipient`, `event`) so SQL
+    // queries that filter sms.* rows can use the same column path
+    // regardless of whether the row came from this send-time write
+    // or the Twilio status-callback mirror. Round-11 QA flagged the
+    // shape mismatch as a P3.
+    await logAdminAction(
+      "sms.test",
+      JSON.stringify({
+        recipient: phone,
+        event: "admin.test",
+        ok,
+        // `phone` retained for backwards-compat with any saved query
+        // that already reads off the old key.
+        phone,
+      }),
+    );
     if (!ok) return apiError("Twilio rejected the message. Check the SMS log for the failure reason.", 502);
     return apiSuccess({ ok: true });
   } catch (err) {
