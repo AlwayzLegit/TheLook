@@ -21,6 +21,14 @@ export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
 if (dsn) {
   Sentry.init({
     dsn,
+    // Tunnel through our own domain so ad-blockers (Brave shields,
+    // uBlock, Ghostery, AdGuard) don't filter the ingest. Round-10
+    // confirmed that #418 hydration capture was working but
+    // *.sentry.io was being blocked at the network layer for many
+    // visitors, so the symbolicated stack frames never reached
+    // Sentry. /api/monitoring proxies the envelope to ingest after
+    // verifying the DSN belongs to this project.
+    tunnel: "/monitoring",
     tracesSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
     replaysSessionSampleRate: 0.0,
