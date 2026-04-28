@@ -1,5 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, logError } from "@/lib/apiResponse";
+import { logAdminAction } from "@/lib/auditLog";
 import { NextRequest } from "next/server";
 
 /**
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
   try {
     // ---- Delivery status callback path ----
     if (messageSid && messageStatus) {
+      const rawStatus = messageStatus.toLowerCase();
       const statusMap: Record<string, string> = {
         queued: "queued",
         sending: "queued",
@@ -47,15 +49,56 @@ export async function POST(request: NextRequest) {
         undelivered: "failed",
         failed: "failed",
       };
-      const mapped = statusMap[messageStatus.toLowerCase()] || messageStatus.toLowerCase();
-      await supabase
+      const mapped = statusMap[rawStatus] || rawStatus;
+      const reason = errorCode ? `${errorCode}${errorMessage ? `: ${errorMessage}` : ""}` : null;
+      const now = new Date().toISOString();
+
+      const { data: updated } = await supabase
         .from("sms_log")
         .update({
           status: mapped,
-          failure_reason: errorCode ? `${errorCode}${errorMessage ? `: ${errorMessage}` : ""}` : null,
-          updated_at: new Date().toISOString(),
+          provider_status: rawStatus,
+          last_status_at: now,
+          // Stamp delivered_at exactly once — when the carrier
+          // confirms the handset received the message. Don't
+          // clobber with a later "sending" event from a stuck
+          // queue retry on Twilio's side.
+          ...(rawStatus === "delivered" ? { delivered_at: now } : {}),
+          failure_reason: reason,
+          updated_at: now,
         })
-        .eq("provider_sid", messageSid);
+        .eq("provider_sid", messageSid)
+        .select("id, to_phone, event, appointment_id, client_email, body")
+        .maybeSingle();
+
+      // Mirror final-state events into admin_log so /admin/activity
+      // shows "delivered" / "undelivered" rows alongside our other
+      // audit trail. We only write for terminal states (delivered /
+      // failed / undelivered) to avoid spamming the feed with
+      // intermediate "sending"/"sent" hops.
+      if (updated && (rawStatus === "delivered" || rawStatus === "undelivered" || rawStatus === "failed")) {
+        const action =
+          rawStatus === "delivered" ? "sms.delivered" :
+          rawStatus === "undelivered" ? "sms.undelivered" : "sms.failed";
+        const detailsObj: Record<string, unknown> = {
+          messageSid,
+          to: updated.to_phone,
+          event: updated.event,
+          providerStatus: rawStatus,
+        };
+        if (reason) detailsObj.error = reason;
+        if (updated.client_email) detailsObj.clientEmail = updated.client_email;
+        // Truncate body in the audit feed — full text already lives
+        // in sms_log.body if the operator needs to read it.
+        if (typeof updated.body === "string") {
+          detailsObj.bodyPreview = updated.body.length > 80 ? `${updated.body.slice(0, 77)}…` : updated.body;
+        }
+        await logAdminAction(
+          action,
+          JSON.stringify(detailsObj),
+          updated.appointment_id || undefined,
+        ).catch(() => {});
+      }
     }
 
     // ---- Inbound message path (STOP / START) ----

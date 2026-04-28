@@ -2,7 +2,7 @@
 // feed. Each action type gets a short verb phrase + optional icon category
 // so entries are scannable at a glance.
 
-export type ActivityCategory = "booking" | "service" | "stylist" | "schedule" | "user" | "settings" | "client" | "auth" | "other";
+export type ActivityCategory = "booking" | "service" | "stylist" | "schedule" | "user" | "settings" | "client" | "auth" | "sms" | "other";
 
 export interface ActivityView {
   title: string;
@@ -100,6 +100,23 @@ export function formatActivity(action: string, details: string | null): Activity
     return { title: `Imported clients${parts.length ? ` · ${parts.join(" · ")}` : ""}`, category: "client" };
   }
 
+  // SMS delivery callbacks (Twilio status webhook → admin_log)
+  if (action.startsWith("sms.")) {
+    const to = d?.to ? ` to ${d.to}` : "";
+    const event = d?.event ? ` · ${d.event}` : "";
+    const err = d?.error ? ` · ${d.error}` : "";
+    if (action === "sms.delivered") {
+      return { title: `SMS delivered${to}${event}`, category: "sms" };
+    }
+    if (action === "sms.undelivered") {
+      return { title: `SMS not delivered${to}${event}${err}`, category: "sms" };
+    }
+    if (action === "sms.failed") {
+      return { title: `SMS failed${to}${event}${err}`, category: "sms" };
+    }
+    return { title: action.replace(/^sms\./, "SMS: "), category: "sms" };
+  }
+
   // Discounts / products / misc
   if (action.startsWith("discount.")) return { title: action.replace(/^discount\./, "Discount: "), category: "other" };
   if (action.startsWith("product.")) return { title: action.replace(/^product\./, "Product: "), category: "other" };
@@ -118,5 +135,6 @@ export const CATEGORY_COLORS: Record<ActivityCategory, string> = {
   settings: "bg-navy/10 text-navy",
   client: "bg-teal-100 text-teal-800",
   auth: "bg-slate-200 text-slate-800",
+  sms: "bg-indigo-100 text-indigo-800",
   other: "bg-navy/5 text-navy/70",
 };

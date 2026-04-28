@@ -151,10 +151,26 @@ export async function sendSMS(args: SendSMSArgs): Promise<boolean> {
   const attemptDelays = [0, 400, 1200]; // ~0ms, ~0.4s, ~1.2s — 3 attempts total
   let lastErr: unknown = null;
 
+  // Tell Twilio where to POST delivery status updates. Round-11 fix:
+  // before this, we recorded only the submission status ("sent" =
+  // Twilio accepted the request), which made carrier-blocked
+  // messages indistinguishable from delivered ones in admin_log.
+  // The /api/twilio/webhook route already handles incoming status
+  // callbacks (it just wasn't being told to send them). Skip the
+  // callback URL when NEXTAUTH_URL is missing so local dev still
+  // works without a public host.
+  const baseUrl = (process.env.NEXTAUTH_URL || "").replace(/\/$/, "");
+  const statusCallback = baseUrl ? `${baseUrl}/api/twilio/webhook` : undefined;
+
   for (let i = 0; i < attemptDelays.length; i++) {
     if (attemptDelays[i] > 0) await new Promise((r) => setTimeout(r, attemptDelays[i]));
     try {
-      const msg = await client.messages.create({ body: args.body, from, to });
+      const msg = await client.messages.create({
+        body: args.body,
+        from,
+        to,
+        ...(statusCallback ? { statusCallback } : {}),
+      });
       await logOutbound({
         ...args, to, from,
         status: msg.status === "failed" || msg.status === "undelivered" ? "failed" : "sent",

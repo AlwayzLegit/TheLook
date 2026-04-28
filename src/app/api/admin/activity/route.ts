@@ -21,6 +21,10 @@ const CATEGORY_PREFIX: Record<string, string[]> = {
   user: ["user."],
   client: ["client.", "clients."],
   auth: ["auth."],
+  // Round-11: SMS delivery status callbacks land here as
+  // sms.delivered / sms.undelivered / sms.failed so admins can spot
+  // carrier-blocked messages without leaving the activity feed.
+  sms: ["sms."],
 };
 
 export async function GET(request: NextRequest) {

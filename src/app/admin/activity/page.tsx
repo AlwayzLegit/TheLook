@@ -29,6 +29,7 @@ const CATEGORIES = [
   { id: "settings", label: "Settings" },
   { id: "user", label: "Users" },
   { id: "auth", label: "Auth / sign-in" },
+  { id: "sms", label: "SMS delivery" },
   { id: "other", label: "Other" },
 ];
 
