@@ -27,8 +27,10 @@ if (dsn) {
     // *.sentry.io was being blocked at the network layer for many
     // visitors, so the symbolicated stack frames never reached
     // Sentry. /api/monitoring proxies the envelope to ingest after
-    // verifying the DSN belongs to this project.
-    tunnel: "/monitoring",
+    // verifying the DSN belongs to this project. Path matches the
+    // route handler at src/app/api/monitoring/route.ts — the
+    // round-12 QA caught this missing the /api prefix.
+    tunnel: "/api/monitoring",
     tracesSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
     replaysSessionSampleRate: 0.0,

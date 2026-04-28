@@ -48,7 +48,10 @@ export async function POST(request: NextRequest) {
   } catch {
     return new Response("Invalid envelope", { status: 400 });
   }
-  if (!envelope) return new Response(null, { status: 400 });
+  // Round-12 QA found the empty-body path silently returned an empty
+  // 400 — match the other rejection paths so on-call sees a clear
+  // log line if this fires.
+  if (!envelope) return new Response("Invalid envelope", { status: 400 });
 
   // First line of every Sentry envelope is a JSON header containing
   // the originating DSN. Parse it to figure out which project this
