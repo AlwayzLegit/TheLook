@@ -192,7 +192,24 @@ export default function AppointmentActionsModal({
         <div className="p-5 space-y-4">
           <div className="space-y-1">
             <p className="font-body text-sm text-navy/80">{appointment.serviceName}</p>
-            <p className="font-body text-xs text-navy/50">with {appointment.stylistName}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-body text-xs text-navy/50">with {appointment.stylistName}</p>
+              {/* Mirror the inline-list badge so admins can tell at a
+                  glance whether the customer asked for this stylist
+                  specifically (Requested) or whether they picked
+                  "Any" and we filled the slot. requested_stylist is
+                  null on legacy rows that pre-date the column —
+                  show nothing in that case. */}
+              {appointment.requested_stylist === false ? (
+                <span className="text-[10px] uppercase tracking-widest font-body bg-amber-100 text-amber-800 px-1.5 py-0.5">
+                  Any stylist
+                </span>
+              ) : appointment.requested_stylist === true ? (
+                <span className="text-[10px] uppercase tracking-widest font-body bg-emerald-100 text-emerald-800 px-1.5 py-0.5">
+                  Requested
+                </span>
+              ) : null}
+            </div>
             <p className="font-body text-sm text-navy mt-2">
               {formatDate(appointment.date)}
             </p>

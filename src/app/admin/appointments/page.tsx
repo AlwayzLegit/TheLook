@@ -970,11 +970,15 @@ export default function AppointmentsPage() {
                   <p className="text-navy/50 text-xs font-body">{appt.client_email} {appt.client_phone && `| ${appt.client_phone}`}</p>
                   <p className="text-navy/60 text-sm font-body mt-1 flex items-center gap-2 flex-wrap">
                     <span>{appt.serviceName} with {appt.stylistName}</span>
-                    {appt.requested_stylist === false && (
+                    {appt.requested_stylist === false ? (
                       <span className="text-[10px] uppercase tracking-widest font-body bg-amber-100 text-amber-800 px-1.5 py-0.5">
                         Any stylist
                       </span>
-                    )}
+                    ) : appt.requested_stylist === true ? (
+                      <span className="text-[10px] uppercase tracking-widest font-body bg-emerald-100 text-emerald-800 px-1.5 py-0.5">
+                        Requested
+                      </span>
+                    ) : null}
                   </p>
                   {appt.notes && <p className="text-navy/40 text-xs font-body mt-1 italic">&ldquo;{appt.notes}&rdquo;</p>}
                 </div>
