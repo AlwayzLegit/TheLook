@@ -2,7 +2,10 @@ import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { requireAdminOrManager } from "@/lib/apiAuth";
 import { logAdminAction } from "@/lib/auditLog";
-import { BRANDING_CACHE_TAG, BRANDING_IMAGE_KEYS, type BrandingImageKey } from "@/lib/branding";
+import {
+  BRANDING_CACHE_TAG,
+  BRANDING_WRITE_KEYS,
+} from "@/lib/branding";
 import { revalidateTag } from "next/cache";
 import { revalidatePath } from "next/cache";
 import { NextRequest } from "next/server";
@@ -25,7 +28,7 @@ import { NextRequest } from "next/server";
 // branding endpoint just whitelists a different (smaller, image-
 // only) key set.
 
-const ALLOWED_KEYS = new Set<BrandingImageKey>(BRANDING_IMAGE_KEYS);
+const ALLOWED_KEYS = new Set<string>(BRANDING_WRITE_KEYS);
 
 export async function GET() {
   const gate = await requireAdminOrManager();
@@ -35,7 +38,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("salon_settings")
     .select("key, value")
-    .in("key", BRANDING_IMAGE_KEYS as unknown as string[]);
+    .in("key", BRANDING_WRITE_KEYS as unknown as string[]);
   if (error) {
     logError("admin/branding GET", error);
     return apiError("Failed to load branding.", 500);
@@ -56,7 +59,7 @@ export async function PATCH(request: NextRequest) {
   const updates = body as Record<string, string | null>;
   const rows: Array<{ key: string; value: string; updated_at: string }> = [];
   for (const [key, value] of Object.entries(updates)) {
-    if (!ALLOWED_KEYS.has(key as BrandingImageKey)) continue;
+    if (!ALLOWED_KEYS.has(key)) continue;
     rows.push({
       key,
       // Empty / null clears the override → component falls back to

@@ -82,6 +82,30 @@ const PREVIEW_CLASS: Record<Slot["preview"], string> = {
   portrait: "aspect-[4/5]",
 };
 
+// Review-badge counts shown on the public homepage (the "4.2 ★ ·
+// 830+ Yelp reviews" card pair). Owner pastes the current numbers
+// from Yelp Biz / Google Business once a month. Persisted via the
+// same /api/admin/branding endpoint as the image slots — no need
+// for a separate API.
+interface ReviewBadgeField {
+  key: string;
+  label: string;
+  hint?: string;
+  kind: "rating" | "total";
+  source: "Yelp" | "Google";
+}
+const REVIEW_KEYS = ["yelp_rating", "yelp_total", "google_rating", "google_total"];
+const REVIEW_FIELDS: ReviewBadgeField[] = [
+  { key: "yelp_rating",   label: "Yelp rating",        kind: "rating", source: "Yelp",
+    hint: "0-5, one decimal place. Read off your Yelp Biz dashboard." },
+  { key: "yelp_total",    label: "Yelp review count",  kind: "total",  source: "Yelp",
+    hint: "Total reviews shown on your Yelp listing." },
+  { key: "google_rating", label: "Google rating",       kind: "rating", source: "Google",
+    hint: "0-5, one decimal place. Read off your Google Business app." },
+  { key: "google_total",  label: "Google review count", kind: "total",  source: "Google",
+    hint: "Total reviews shown on your Google Business profile." },
+];
+
 export default function BrandingPage() {
   const { status } = useSession();
   const router = useRouter();
@@ -104,6 +128,13 @@ export default function BrandingPage() {
         const cleaned: Record<string, string> = {};
         for (const slot of SLOTS) {
           cleaned[slot.key] = (data[slot.key] || "").trim();
+        }
+        // Review badge counts share the same /api/admin/branding
+        // endpoint. Pull them out alongside the image slots so
+        // the bottom card on this page can render their current
+        // values without a second round-trip.
+        for (const k of REVIEW_KEYS) {
+          cleaned[k] = (data[k] || "").trim();
         }
         setValues(cleaned);
         setDraft(cleaned);
@@ -255,15 +286,72 @@ export default function BrandingPage() {
         </div>
       )}
 
-      {/* Pointer to /admin/services for the home-page gallery
-          photos. Round-13 follow-up — the home gallery sections
-          now read directly from the services table's image_url
-          column rather than a parallel "section gallery" list, so
-          there's a single place to manage everything (and clicking
-          a photo on the public site goes straight to /book with
-          that exact service preselected). */}
+      {/* Owner-curated review badge counts. Yelp Fusion + Google
+          Places APIs are paid / quota-throttled, so instead of
+          syncing live we let the owner paste fresh values from
+          their Biz / Business dashboards into these inputs once a
+          month. The public homepage badge cards render whatever's
+          stored. Each input persists individually on Save so
+          partial updates don't lose the others. */}
       {!loading && (
         <div className="mt-12">
+          <div className="mb-3">
+            <Eyebrow>Review badges</Eyebrow>
+            <h2 className="mt-1 font-heading text-2xl text-[var(--color-text)]">
+              Yelp + Google rating &amp; review count
+            </h2>
+            <p className="text-[0.8125rem] text-[var(--color-text-muted)] mt-2 max-w-2xl">
+              These show on the public home page next to the badge cards (e.g.
+              <em> 4.2 ★ · 830+ Yelp reviews</em>). Open Yelp Biz or your Google
+              Business app, copy the current rating + review count, and paste
+              them here. Empty falls back to the prior built-in value.
+            </p>
+          </div>
+          <div className="bg-white border border-[var(--color-border)] p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
+            {REVIEW_FIELDS.map((field) => {
+              const current = values[field.key] || "";
+              const draftValue = draft[field.key] ?? "";
+              const dirty = (draftValue || "") !== (current || "");
+              const placeholder = field.kind === "rating" ? "4.2" : "830";
+              return (
+                <div key={field.key}>
+                  <label className="block text-[0.75rem] uppercase tracking-[0.1em] text-[var(--color-text-subtle)] mb-1">
+                    {field.label}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step={field.kind === "rating" ? "0.1" : "1"}
+                      min="0"
+                      max={field.kind === "rating" ? "5" : "100000"}
+                      value={draftValue}
+                      placeholder={placeholder}
+                      onChange={(e) =>
+                        setDraft((prev) => ({ ...prev, [field.key]: e.target.value }))
+                      }
+                      className="flex-1 border border-[var(--color-border)] px-3 py-2 text-sm font-body bg-white"
+                    />
+                    {dirty && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        loading={savingKey === field.key}
+                        onClick={() => saveSlot(field.key)}
+                      >
+                        Save
+                      </Button>
+                    )}
+                  </div>
+                  {field.hint && (
+                    <p className="text-[0.6875rem] text-[var(--color-text-subtle)] mt-1">
+                      {field.hint}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
           <div className="bg-[var(--color-cream-50)] border border-[var(--color-border)] rounded-md p-5 sm:p-6">
             <Eyebrow>Home page service photos</Eyebrow>
             <h2 className="mt-1 font-heading text-2xl text-[var(--color-text)]">

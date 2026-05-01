@@ -7,31 +7,6 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 
-interface CacheRow {
-  source: "google" | "yelp";
-  rating: number | null;
-  total_count: number | null;
-  reviews_count: number;
-  fetched_at: string | null;
-  last_success_at: string | null;
-  last_error: string | null;
-  last_error_at: string | null;
-}
-
-function formatRelative(iso: string | null): string {
-  if (!iso) return "never";
-  const ms = Date.now() - new Date(iso).getTime();
-  if (Number.isNaN(ms) || ms < 0) return "just now";
-  const sec = Math.floor(ms / 1000);
-  if (sec < 60) return `${sec}s ago`;
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const d = Math.floor(hr / 24);
-  return `${d}d ago`;
-}
-
 interface ApiReview {
   author: string;
   authorPhoto?: string | null;
@@ -75,11 +50,6 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | Source | "low">("all");
   const [copied, setCopied] = useState(false);
-  // Sync-status rows from external_reviews_cache, used for the "last
-  // refreshed N minutes ago" line + the per-source error badge.
-  const [cacheRows, setCacheRows] = useState<CacheRow[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshResult, setRefreshResult] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userRole = (session?.user as any)?.role;
   // Google Review URL from /admin/settings (key: google_review_url).
@@ -99,22 +69,22 @@ export default function AdminReviewsPage() {
       // would 403 here. Skip it cleanly — googleReviewUrl just falls
       // back to the internal /review wrapper for managers.
       const settingsFetch = userRole === "admin" ? fetch("/api/admin/settings") : Promise.resolve(null);
-      const [gRes, yRes, sRes, cRes] = await Promise.all([
-        fetch("/api/google-reviews"),
-        fetch("/api/yelp-reviews"),
+      const [bRes, sRes] = await Promise.all([
+        fetch("/api/admin/branding"),
         settingsFetch,
-        fetch("/api/admin/reviews/external"),
       ]);
-      const merged: FeedItem[] = [];
-      if (gRes.ok) {
-        const g: Payload = await gRes.json();
-        setGoogleStats(g);
-        for (const r of g.reviews || []) merged.push({ ...r, source: "Google" });
-      }
-      if (yRes.ok) {
-        const y: Payload = await yRes.json();
-        setYelpStats(y);
-        for (const r of y.reviews || []) merged.push({ ...r, source: "Yelp" });
+      // Owner-curated badge values from /admin/branding power both
+      // the public homepage and the Stats cards on this page now —
+      // we no longer hit the paid Yelp Fusion / quota'd Google
+      // Places APIs at all.
+      if (bRes.ok) {
+        const b = (await bRes.json().catch(() => ({}))) as Record<string, string | null>;
+        const yelpRating = parseFloat((b["yelp_rating"] || "").trim() || "0") || null;
+        const yelpTotal = parseInt((b["yelp_total"] || "").trim() || "0", 10) || null;
+        const googleRating = parseFloat((b["google_rating"] || "").trim() || "0") || null;
+        const googleTotal = parseInt((b["google_total"] || "").trim() || "0", 10) || null;
+        setGoogleStats({ rating: googleRating, total: googleTotal, reviews: [] });
+        setYelpStats({ rating: yelpRating, total: yelpTotal, reviews: [] });
       }
       if (sRes && sRes.ok) {
         const s = (await sRes.json().catch(() => ({}))) as { google_review_url?: string };
@@ -122,12 +92,10 @@ export default function AdminReviewsPage() {
           setGoogleReviewUrl(s.google_review_url.trim());
         }
       }
-      if (cRes.ok) {
-        const c = (await cRes.json().catch(() => ({}))) as { rows?: CacheRow[] };
-        if (Array.isArray(c.rows)) setCacheRows(c.rows);
-      }
-      merged.sort((a, b) => (b.time || 0) - (a.time || 0));
-      setItems(merged);
+      // Curated reviews list for the feed — same set rendered in
+      // the public homepage carousel. We don't pull live reviews
+      // anymore (paid APIs / minimal value-add).
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -137,33 +105,6 @@ export default function AdminReviewsPage() {
     if (status !== "authenticated") return;
     loadAll();
   }, [status, loadAll]);
-
-  const refreshExternal = async () => {
-    setRefreshing(true);
-    setRefreshResult(null);
-    try {
-      const res = await fetch("/api/admin/reviews/external", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setRefreshResult(data.error || `Refresh failed (HTTP ${res.status}).`);
-        return;
-      }
-      const failed = (data.results || []).filter((r: { ok: boolean }) => !r.ok);
-      if (failed.length > 0) {
-        setRefreshResult(
-          `Partial refresh — ${failed.map((r: { source: string; error?: string }) => `${r.source}: ${r.error || "error"}`).join(" · ")}`,
-        );
-      } else {
-        setRefreshResult("Refreshed Google + Yelp.");
-      }
-      // Re-pull everything so the badges + last-synced timestamps
-      // update immediately.
-      await loadAll();
-    } finally {
-      setRefreshing(false);
-      setTimeout(() => setRefreshResult(null), 4000);
-    }
-  };
 
   if (status !== "authenticated") return null;
 
@@ -202,59 +143,27 @@ export default function AdminReviewsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 className="font-heading text-3xl">Reviews</h1>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Refresh is admin-only — managers can read sync status
-              but not burn the Google API quota. The button hides for
-              non-admins to keep the UI honest. */}
-          {userRole === "admin" && (
-            <Button variant="secondary" size="sm" onClick={refreshExternal} disabled={refreshing} title="Hit Google + Yelp now and update the cache">
-              {refreshing ? "Refreshing..." : "Refresh Google + Yelp"}
-            </Button>
-          )}
           <Button variant="secondary" size="sm" onClick={copyLink} title={reviewLink}>
             {copied ? "Copied!" : buttonLabel}
           </Button>
         </div>
       </div>
 
-      {/* Sync-status row. Renders empty until the first cron run / manual
-          refresh seeds external_reviews_cache; before that there's
-          nothing useful to show. */}
-      {(cacheRows.length > 0 || refreshResult) && (
-        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {(["google", "yelp"] as const).map((src) => {
-            const row = cacheRows.find((r) => r.source === src);
-            const label = src === "google" ? "Google" : "Yelp";
-            if (!row) {
-              return (
-                <div key={src} className="bg-cream/40 border border-navy/10 px-3 py-2 text-xs font-body text-navy/60">
-                  <span className="font-medium text-navy/80">{label}:</span> not synced yet — set the API env vars in Vercel and click Refresh.
-                </div>
-              );
-            }
-            return (
-              <div key={src} className="bg-white border border-navy/10 px-3 py-2 text-xs font-body text-navy/70 flex items-start justify-between gap-3">
-                <div>
-                  <span className="font-medium text-navy/80">{label}:</span>{" "}
-                  Last synced {formatRelative(row.last_success_at)}
-                  {row.last_success_at && (
-                    <span className="text-navy/40"> ({new Date(row.last_success_at).toLocaleString()})</span>
-                  )}
-                </div>
-                {row.last_error && (
-                  <span className="text-red-600 text-[11px] truncate" title={row.last_error}>
-                    Last error {formatRelative(row.last_error_at)}: {row.last_error}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-          {refreshResult && (
-            <div className="sm:col-span-2 px-3 py-2 text-xs font-body bg-emerald-50 border border-emerald-200 text-emerald-900">
-              {refreshResult}
-            </div>
-          )}
-        </div>
-      )}
+      {/* Pointer to /admin/branding for the homepage badge counts.
+          The earlier sync-status panel + "Refresh Google + Yelp"
+          button (round-10 work) targeted Yelp Fusion + Google
+          Places APIs, both of which turned out to be paid /
+          quota-throttled. Owner instead curates the badge values
+          manually from /admin/branding. */}
+      <div className="mb-6 bg-[var(--color-cream-50)] border border-[var(--color-border)] rounded-md px-4 py-3 text-[0.8125rem] font-body text-navy/70">
+        <span className="font-medium text-navy/85">Homepage badge numbers:</span>{" "}
+        the rating + review count shown on the public site are
+        owner-curated. Update them from{" "}
+        <a href="/admin/branding" className="underline text-[var(--color-crimson-600)]">
+          Branding → Review badges
+        </a>
+        .
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">

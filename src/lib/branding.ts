@@ -18,6 +18,20 @@ export interface BrandingImages {
   catTreatments: string;
 }
 
+// Owner-curated review-badge values rendered on the public homepage
+// (the "4.2 ★ · 830+ Yelp reviews" card pair). Manually updated from
+// /admin/branding because the upstream APIs are paid (Yelp Fusion
+// $229+/mo) or quota-gated (Google Places). Both fields default to
+// the prior hardcoded values via fallbackReviewBadges below — the
+// public site renders the same as before until the owner saves
+// fresh numbers.
+export interface BrandingReviewBadges {
+  yelpRating: number;
+  yelpTotal: number;
+  googleRating: number;
+  googleTotal: number;
+}
+
 export interface Branding {
   name: string;
   tagline: string;
@@ -25,6 +39,7 @@ export interface Branding {
   phone: string;
   email: string;
   images: BrandingImages;
+  reviewBadges: BrandingReviewBadges;
 }
 
 // Fallback image URLs match what each component used to hardcode
@@ -42,6 +57,18 @@ const fallbackImages: BrandingImages = {
   catTreatments:"/images/Treatments.jpg",
 };
 
+// Fallback badge numbers — the round-9 hardcoded values that lived
+// in YelpReviews.tsx before /admin/branding could override them.
+// Owner pastes fresher numbers from their Yelp Biz / Google Business
+// dashboards into /admin/branding once a month; these are what the
+// public site shows in the meantime.
+const fallbackReviewBadges: BrandingReviewBadges = {
+  yelpRating:   4.2,
+  yelpTotal:    830,
+  googleRating: 4.1,
+  googleTotal:  200,
+};
+
 // Defaults mirror src/lib/strings.ts so every consumer gets a usable value
 // even before the owner has saved anything, and even when Supabase is down.
 const fallback: Branding = {
@@ -51,6 +78,7 @@ const fallback: Branding = {
   phone: strings.salonPhone,
   email: strings.salonEmail,
   images: fallbackImages,
+  reviewBadges: fallbackReviewBadges,
 };
 
 const BRAND_KEYS = ["brand_name", "brand_tagline", "brand_address", "brand_phone", "brand_email"] as const;
@@ -67,9 +95,42 @@ export const BRANDING_IMAGE_KEYS = [
   "cat_treatments_hero_url",
 ] as const;
 
-export type BrandingImageKey = (typeof BRANDING_IMAGE_KEYS)[number];
+// Manually-curated review badge counts. Same /admin/branding write
+// surface; rendered on the public homepage badge cards. Strings on
+// the wire (salon_settings.value is text); the public Branding
+// type parses them to numbers in fetchBranding below.
+export const BRANDING_REVIEW_KEYS = [
+  "yelp_rating",
+  "yelp_total",
+  "google_rating",
+  "google_total",
+] as const;
 
-const ALL_BRANDING_KEYS = [...BRAND_KEYS, ...BRANDING_IMAGE_KEYS] as const;
+export type BrandingImageKey = (typeof BRANDING_IMAGE_KEYS)[number];
+export type BrandingReviewKey = (typeof BRANDING_REVIEW_KEYS)[number];
+
+// Whitelist used by the /admin/branding endpoint. Everything the
+// owner can save from that page lives in this set.
+export const BRANDING_WRITE_KEYS = [
+  ...BRANDING_IMAGE_KEYS,
+  ...BRANDING_REVIEW_KEYS,
+] as const;
+
+const ALL_BRANDING_KEYS = [
+  ...BRAND_KEYS,
+  ...BRANDING_IMAGE_KEYS,
+  ...BRANDING_REVIEW_KEYS,
+] as const;
+
+// Helpers to coerce text values from salon_settings to numbers
+// when reading badge counts. Reject NaN / negative / empty so a
+// typo in admin doesn't render "NaN ★" on the public site.
+function pickNumber(raw: string | undefined, fallback: number): number {
+  if (!raw) return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return n;
+}
 
 // Server helper: fetch branding from salon_settings KV with strings.ts
 // fallbacks. Cached for 60s by Next's data cache (and invalidated on
@@ -100,6 +161,12 @@ async function fetchBranding(): Promise<Branding> {
         catColor:      map.get("cat_color_hero_url")     ?? fallbackImages.catColor,
         catStyling:    map.get("cat_styling_hero_url")   ?? fallbackImages.catStyling,
         catTreatments: map.get("cat_treatments_hero_url")?? fallbackImages.catTreatments,
+      },
+      reviewBadges: {
+        yelpRating:   pickNumber(map.get("yelp_rating"),   fallbackReviewBadges.yelpRating),
+        yelpTotal:    pickNumber(map.get("yelp_total"),    fallbackReviewBadges.yelpTotal),
+        googleRating: pickNumber(map.get("google_rating"), fallbackReviewBadges.googleRating),
+        googleTotal:  pickNumber(map.get("google_total"),  fallbackReviewBadges.googleTotal),
       },
     };
   } catch {
@@ -133,6 +200,12 @@ export function brandingFromSettings(raw: Record<string, string | null | undefin
       catColor:      pick("cat_color_hero_url", fallbackImages.catColor),
       catStyling:    pick("cat_styling_hero_url", fallbackImages.catStyling),
       catTreatments: pick("cat_treatments_hero_url", fallbackImages.catTreatments),
+    },
+    reviewBadges: {
+      yelpRating:   pickNumber(raw["yelp_rating"]   ?? undefined, fallbackReviewBadges.yelpRating),
+      yelpTotal:    pickNumber(raw["yelp_total"]    ?? undefined, fallbackReviewBadges.yelpTotal),
+      googleRating: pickNumber(raw["google_rating"] ?? undefined, fallbackReviewBadges.googleRating),
+      googleTotal:  pickNumber(raw["google_total"]  ?? undefined, fallbackReviewBadges.googleTotal),
     },
   };
 }

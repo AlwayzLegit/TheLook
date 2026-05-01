@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedSection from "./AnimatedSection";
 import LeaveReviewCTA from "./LeaveReviewCTA";
+import { useBranding } from "./BrandingProvider";
 
 export type ReviewSource = "Google" | "Yelp" | "Curated";
 
@@ -83,21 +84,6 @@ const curatedReviews: Review[] = [
   },
 ];
 
-interface ApiReview {
-  author: string;
-  authorPhoto?: string | null;
-  rating: number;
-  text: string;
-  time: number;
-  relative: string;
-  url?: string;
-}
-interface ApiPayload {
-  reviews: ApiReview[];
-  rating: number | null;
-  total: number | null;
-}
-
 function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex gap-1" aria-label={`${rating} out of 5 stars`}>
@@ -174,9 +160,15 @@ const GOOGLE_MAPS_URL =
   "https://www.google.com/maps/search/?api=1&query=The+Look+Hair+Salon+Glendale+CA";
 
 export default function YelpReviews() {
-  const [reviews, setReviews] = useState<Review[]>(curatedReviews);
-  const [googleStats, setGoogleStats] = useState<{ rating: number; total: number } | null>(null);
-  const [yelpStats, setYelpStats] = useState<{ rating: number; total: number } | null>(null);
+  // Carousel reviews are the curated set in this file. The live
+  // Yelp/Google APIs are paid (Yelp Fusion $229+/mo, Google
+  // Places quota-throttled), and surfacing real review text from
+  // them adds little because each only returns 3-5 with truncated
+  // bodies. The curated set is editorially controlled so we
+  // showcase the strongest reviews instead of whatever the
+  // platforms randomly sampled.
+  const [reviews] = useState<Review[]>(curatedReviews);
+  const branding = useBranding();
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   // Mount flag — framer-motion's AnimatePresence serialises the initial
@@ -186,74 +178,6 @@ export default function YelpReviews() {
   // cleanly, then swap to the animated version after mount.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    async function load() {
-      const merged: Review[] = [];
-
-      try {
-        const res = await fetch("/api/google-reviews");
-        if (res.ok) {
-          const data: ApiPayload = await res.json();
-          if (data.rating != null && data.total != null) {
-            setGoogleStats({ rating: data.rating, total: data.total });
-          }
-          for (const r of data.reviews || []) {
-            merged.push({
-              name: r.author,
-              rating: r.rating,
-              text: r.text,
-              source: "Google",
-              date: r.relative,
-              url: r.url,
-              authorPhoto: r.authorPhoto ?? null,
-            });
-          }
-        }
-      } catch {}
-
-      try {
-        const res = await fetch("/api/yelp-reviews");
-        if (res.ok) {
-          const data: ApiPayload = await res.json();
-          if (data.rating != null && data.total != null) {
-            setYelpStats({ rating: data.rating, total: data.total });
-          }
-          for (const r of data.reviews || []) {
-            merged.push({
-              name: r.author,
-              rating: r.rating,
-              text: r.text,
-              source: "Yelp",
-              date: r.relative,
-              url: r.url,
-              authorPhoto: r.authorPhoto ?? null,
-            });
-          }
-        }
-      } catch {}
-
-      // Pad with curated reviews so we always have enough to fill the
-      // carousel — dedupe by both name and text prefix so if the live API
-      // returns the same reviewer we curated, we don't render it twice.
-      const fingerprint = (r: Review) => `${r.name.trim().toLowerCase()}|${r.text.slice(0, 40)}`;
-      const existing = new Set(merged.map(fingerprint));
-      const padding = curatedReviews.filter((r) => !existing.has(fingerprint(r)));
-      // Final dedupe pass over the whole carousel in case an API returns
-      // the same review from two different sources (it happens on Yelp +
-      // Google cross-posts).
-      const seen = new Set<string>();
-      const final = [...merged, ...padding].filter((r) => {
-        const k = fingerprint(r);
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      });
-
-      if (final.length > 0) setReviews(final);
-    }
-    load();
-  }, []);
 
   const next = useCallback(() => {
     setCurrent((prev) => (prev + 1) % reviews.length);
@@ -281,13 +205,13 @@ export default function YelpReviews() {
     return visible;
   };
 
-  // Use live stats when present; fall back to prior hardcoded numbers so badges
-  // still look right before API keys are configured. Google fallback was
-  // 146 — bumped to 200 after owner pointed out the real count is 200+.
-  const yelpRating = yelpStats?.rating ?? 4.2;
-  const yelpTotal = yelpStats?.total ?? 830;
-  const googleRating = googleStats?.rating ?? 4.1;
-  const googleTotal = googleStats?.total ?? 200;
+  // Owner-curated badge values from /admin/branding. Each falls
+  // back to the hardcoded round-9 numbers when the owner hasn't
+  // saved fresh values yet, so the public page is never blank.
+  const yelpRating   = branding.reviewBadges.yelpRating;
+  const yelpTotal    = branding.reviewBadges.yelpTotal;
+  const googleRating = branding.reviewBadges.googleRating;
+  const googleTotal  = branding.reviewBadges.googleTotal;
 
   return (
     <section className="py-24 md:py-32 bg-charcoal relative overflow-hidden">

@@ -39,7 +39,16 @@ export type SettingsKey =
   | "cat_haircuts_hero_url"
   | "cat_color_hero_url"
   | "cat_styling_hero_url"
-  | "cat_treatments_hero_url";
+  | "cat_treatments_hero_url"
+  // Review-badge counts (Phase 3 of /admin/branding). The Google
+  // Places + Yelp Fusion APIs are paid / quota-throttled; the
+  // owner instead reads the live numbers off the Google Business
+  // and Yelp Biz dashboards once a month and pastes them here.
+  // Public homepage badge cards render whatever's stored.
+  | "yelp_rating"
+  | "yelp_total"
+  | "google_rating"
+  | "google_total";
 
 const cache = new Map<string, { value: string | null; ts: number }>();
 const TTL_MS = 30_000;
