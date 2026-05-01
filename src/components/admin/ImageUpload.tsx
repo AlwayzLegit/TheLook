@@ -6,9 +6,14 @@ interface Props {
   value: string;
   onChange: (url: string) => void;
   name?: string;
+  // Override the Supabase Storage folder used for the uploaded path.
+  // Defaults to "stylists" to preserve historical placement; admin
+  // surfaces with their own organisation (gallery, before-after,
+  // inspiration, services, staff) can pass an explicit folder.
+  folder?: "stylists" | "gallery" | "before-after" | "inspiration" | "services" | "staff";
 }
 
-export default function ImageUpload({ value, onChange, name }: Props) {
+export default function ImageUpload({ value, onChange, name, folder = "stylists" }: Props) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,27 +23,70 @@ export default function ImageUpload({ value, onChange, name }: Props) {
     setError(null);
     setUploading(true);
 
-    const formData = new FormData();
-    formData.append("file", file);
-    if (name) formData.append("name", name);
-
     try {
-      const res = await fetch("/api/admin/upload", {
+      const ext = (file.name.split(".").pop() || "").toLowerCase();
+
+      // Step 1 — ask our server for a short-lived signed upload URL.
+      // This is auth-gated and validates the extension + size before
+      // handing out a token. Body is small (JSON metadata only), so
+      // it sails under the Vercel 4.5 MB limit.
+      const signRes = await fetch("/api/admin/upload/sign", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ext, name: name || "upload", folder, size: file.size }),
       });
-      const data = await res.json();
-      if (res.ok && data.url) {
-        onChange(data.url);
-      } else {
-        setError(data.error || "Upload failed.");
+      if (!signRes.ok) {
+        const ctype = signRes.headers.get("content-type") || "";
+        let msg = `Couldn't get upload URL (HTTP ${signRes.status}).`;
+        if (ctype.includes("application/json")) {
+          const d = await signRes.json().catch(() => ({}));
+          if (d?.error) msg = d.error;
+        }
+        setError(msg);
+        return;
       }
-    } catch {
-      setError("Upload failed. Please try again.");
+      const sign = (await signRes.json()) as {
+        signedUrl: string;
+        token: string;
+        path: string;
+        publicUrl: string;
+      };
+
+      // Step 2 — PUT the file directly to Supabase Storage. Goes
+      // browser → Supabase, never through Vercel, so the 4.5 MB cap
+      // doesn't apply. Use the official SDK so headers + cache-
+      // control match what Supabase's signed-upload endpoint
+      // expects.
+      const { createClient } = await import("@supabase/supabase-js");
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+      if (!url || !anonKey) {
+        setError("Supabase public env vars not configured (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY).");
+        return;
+      }
+      const client = createClient(url, anonKey);
+      const { error: uploadError } = await client.storage
+        .from("photos")
+        .uploadToSignedUrl(sign.path, sign.token, file, {
+          contentType: file.type || "application/octet-stream",
+          upsert: false,
+        });
+      if (uploadError) {
+        setError(`Upload failed: ${uploadError.message}`);
+        return;
+      }
+
+      onChange(sign.publicUrl);
+    } catch (err) {
+      // Surface the underlying error rather than the generic
+      // "try again" — round-12 caught the silent-fetch-throw
+      // pattern was opaque to the operator.
+      const detail = err instanceof Error ? err.message : "unknown error";
+      setError(`Upload failed: ${detail}`);
     } finally {
       setUploading(false);
     }
-  }, [name, onChange]);
+  }, [name, folder, onChange]);
 
   // Accept common camera formats in addition to the web-native trio. The
   // server mirrors this list + falls back to the filename extension when a
