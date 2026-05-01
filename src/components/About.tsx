@@ -19,7 +19,7 @@ export default function About() {
             <div className="relative">
               <div className="aspect-[4/5] relative overflow-hidden rounded-sm shadow-[0_20px_60px_rgba(40,41,54,0.15)]">
                 <Image
-                  src="/images/our-story.png"
+                  src={brand.images.aboutImage}
                   alt={`Balayage hair styling at ${brand.name}`}
                   fill
                   className="object-cover"

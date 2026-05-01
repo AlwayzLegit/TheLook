@@ -60,7 +60,7 @@ export default function Hero() {
       {/* Parallax Background */}
       <motion.div className="absolute inset-0" style={{ y }}>
         <Image
-          src="/images/hero/salon-main.jpg"
+          src={brand.images.homeHero}
           alt={brand.name}
           fill
           className="object-cover scale-105"

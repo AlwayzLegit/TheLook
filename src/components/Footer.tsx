@@ -27,7 +27,7 @@ export default function Footer() {
     <footer className="bg-charcoal relative overflow-hidden">
       <div className="absolute inset-0">
         <Image
-          src="/images/footer-hair-bg.png"
+          src={brand.images.footerBg}
           alt=""
           fill
           loading="lazy"

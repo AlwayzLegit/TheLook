@@ -5,6 +5,24 @@ import Link from "next/link";
 import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
 import { SERVICE_CATEGORIES, type ServiceCategoryMeta } from "@/lib/service-categories";
+import { useBranding } from "./BrandingProvider";
+import type { BrandingImages } from "@/lib/branding";
+
+// Map a category slug to the BrandingImages slot owner-controllable
+// from /admin/branding. Anything not in this map falls back to the
+// static heroImage from SERVICE_CATEGORIES, so a future category
+// added in code without a settings key still renders.
+const HERO_BRANDING_SLOT: Record<string, keyof BrandingImages | undefined> = {
+  haircuts: "catHaircuts",
+  color: "catColor",
+  styling: "catStyling",
+  treatments: "catTreatments",
+};
+
+function brandedHeroFor(slug: string, branding: ReturnType<typeof useBranding>, fallback: string): string {
+  const slot = HERO_BRANDING_SLOT[slug];
+  return slot ? branding.images[slot] || fallback : fallback;
+}
 
 interface ApiService {
   id: string;
@@ -21,6 +39,8 @@ interface ServiceCategoryProps {
 }
 
 export default function ServiceCategory({ category }: ServiceCategoryProps) {
+  const branding = useBranding();
+  const heroImage = brandedHeroFor(category.slug, branding, category.heroImage);
   const [services, setServices] = useState<ApiService[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +83,7 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
       {/* Hero Banner */}
       <div className="relative h-[340px] md:h-[420px] overflow-hidden">
         <Image
-          src={category.heroImage}
+          src={heroImage}
           alt={category.title}
           fill
           className="object-cover"
@@ -221,7 +241,7 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
                 >
                   <div className="relative aspect-[4/3] overflow-hidden">
                     <Image
-                      src={cat.heroImage}
+                      src={brandedHeroFor(cat.slug, branding, cat.heroImage)}
                       alt={cat.title}
                       fill
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"

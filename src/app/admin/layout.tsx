@@ -77,6 +77,16 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    label: "Brand",
+    items: [
+      // Visible to managers + admins. /admin/branding is the
+      // operational image-swap surface — replacing the home hero
+      // or a service-category banner. /admin/settings stays
+      // admin-only for the security-sensitive toggles below.
+      { href: "/admin/branding", label: "Branding" },
+    ],
+  },
+  {
     label: "System",
     items: [
       { href: "/admin/settings", label: "Settings",     adminOnly: true },

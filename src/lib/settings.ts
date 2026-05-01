@@ -26,7 +26,20 @@ export type SettingsKey =
   // Admin UX
   | "idle_timeout_minutes"
   // Booking — credit-card processing surcharge (percentage, e.g. "4")
-  | "deposit_cc_fee_pct";
+  | "deposit_cc_fee_pct"
+  // Branding — image overrides written from /admin/branding. Each
+  // null falls back to the hardcoded /public/images/... path the
+  // public site used before this surface shipped. Single endpoint
+  // is admin-or-manager (vs /admin/settings which is admin-only)
+  // because swapping a hero photo is operational, not security-
+  // sensitive.
+  | "home_hero_url"
+  | "about_image_url"
+  | "footer_bg_url"
+  | "cat_haircuts_hero_url"
+  | "cat_color_hero_url"
+  | "cat_styling_hero_url"
+  | "cat_treatments_hero_url";
 
 const cache = new Map<string, { value: string | null; ts: number }>();
 const TTL_MS = 30_000;
