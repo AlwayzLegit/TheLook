@@ -35,6 +35,10 @@ interface Appointment {
   card_brand?: string | null;
   card_last4?: string | null;
   cancellation_fee_charged_cents?: number | null;
+  // Required deposit in cents (0 / null = no deposit requested at
+  // booking time). Combined with stripe_customer_id below to render
+  // the "$X deposit paid" pill on the modal.
+  deposit_required_cents?: number | null;
   review_request_sent_at?: string | null;
 }
 
@@ -216,7 +220,7 @@ export default function AppointmentActionsModal({
             <p className="font-body text-sm text-navy">
               {formatTime(appointment.start_time)} – {formatTime(appointment.end_time)}
             </p>
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-2 pt-1 flex-wrap">
               <span className={`inline-block text-xs font-body px-2 py-0.5 ${
                 appointment.status === "confirmed" ? "bg-green-100 text-green-700" :
                 appointment.status === "cancelled" ? "bg-red-100 text-red-700" :
@@ -229,6 +233,20 @@ export default function AppointmentActionsModal({
               {isArchived && (
                 <span className="inline-block text-xs font-body bg-navy/5 text-navy/60 px-2 py-0.5">
                   archived
+                </span>
+              )}
+              {/* Deposit-paid pill — true when the booking required a
+                  deposit AND a Stripe customer was created (which
+                  only happens on successful payment-intent capture).
+                  Tells the front desk at a glance whether the
+                  customer has skin in the game without bouncing
+                  out to Stripe. Amount shown is the required value
+                  in dollars; for the rare CC-surcharge case the
+                  customer paid a few dollars more, but what they
+                  owe for the service itself is what matters here. */}
+              {appointment.stripe_customer_id && (appointment.deposit_required_cents ?? 0) > 0 && (
+                <span className="inline-block text-xs font-body bg-emerald-100 text-emerald-700 px-2 py-0.5">
+                  ${Math.round((appointment.deposit_required_cents ?? 0) / 100)} deposit paid
                 </span>
               )}
             </div>
