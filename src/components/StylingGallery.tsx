@@ -5,10 +5,14 @@ import ServiceGallery from "./ServiceGallery";
 // public/images/services/Styling/ in case they get swapped for
 // real photos and re-added later. Add the lines back to this array
 // when newer ones are dropped in.
+//
+// Each photo links to the Styling category page so the customer can
+// pick the exact styling service + book.
+const HREF = "/services/styling";
 const stylingImages = [
-  { src: "/images/services/Styling/Blow-Out.jpg", alt: "Blowout styling" },
-  { src: "/images/services/Styling/Thermal Styling.jpg", alt: "Thermal styling" },
-  { src: "/images/services/Styling/Individual Extensions.jpg", alt: "Individual extensions" },
+  { src: "/images/services/Styling/Blow-Out.jpg", alt: "Blowout styling", href: HREF },
+  { src: "/images/services/Styling/Thermal Styling.jpg", alt: "Thermal styling", href: HREF },
+  { src: "/images/services/Styling/Individual Extensions.jpg", alt: "Individual extensions", href: HREF },
 ];
 
 export default function StylingGallery() {

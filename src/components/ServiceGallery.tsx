@@ -2,11 +2,18 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import AnimatedSection from "./AnimatedSection";
 
 interface GalleryImage {
   src: string;
   alt: string;
+  // Optional destination — when set, the photo becomes a clickable
+  // link (typically to the matching service category page or service
+  // detail page so the customer can book) instead of opening the
+  // lightbox. Owner asked for this on the home-page galleries so
+  // every photo doubles as a CTA.
+  href?: string;
 }
 
 interface ServiceGalleryProps {
@@ -95,27 +102,45 @@ export default function ServiceGallery({
           {/* Featured Image */}
           <AnimatedSection delay={0.1} className={reversed ? "lg:order-1" : ""}>
             <div className="relative">
-              <div
-                className="aspect-[4/3] relative overflow-hidden rounded-sm shadow-[0_20px_60px_rgba(40,41,54,0.12)] cursor-pointer group bg-gradient-to-br from-navy/5 to-gold/10"
-                onClick={() => setSelectedImage(images[0]?.src)}
-              >
-                <Image
-                  src={images[0]?.src}
-                  alt={images[0]?.alt}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                {/* Overlay on hover */}
-                <div className="absolute inset-0 bg-navy/0 group-hover:bg-navy/10 transition-colors duration-300" />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                    </svg>
+              {(() => {
+                // Hero overlay icon + classes shared between the
+                // Link (book-CTA) and div (lightbox) variants.
+                const inner = (
+                  <>
+                    <Image
+                      src={images[0]?.src}
+                      alt={images[0]?.alt}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      className="object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-navy/0 group-hover:bg-navy/10 transition-colors duration-300" />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
+                        {images[0]?.href ? (
+                          <svg className="w-6 h-6 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                          </svg>
+                        ) : (
+                          <svg className="w-6 h-6 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                );
+                const className = "aspect-[4/3] relative overflow-hidden rounded-sm shadow-[0_20px_60px_rgba(40,41,54,0.12)] cursor-pointer group bg-gradient-to-br from-navy/5 to-gold/10 block";
+                return images[0]?.href ? (
+                  <Link href={images[0].href} className={className} aria-label={`View ${images[0].alt}`}>
+                    {inner}
+                  </Link>
+                ) : (
+                  <div className={className} onClick={() => setSelectedImage(images[0]?.src)}>
+                    {inner}
                   </div>
-                </div>
-              </div>
+                );
+              })()}
               {/* Corner accents */}
               <div className="absolute -top-3 -left-3 w-20 h-20 border-t-2 border-l-2 border-gold/30 rounded-tl-sm" />
               <div className="absolute -bottom-3 -right-3 w-20 h-20 border-b-2 border-r-2 border-gold/30 rounded-br-sm" />
@@ -126,31 +151,50 @@ export default function ServiceGallery({
         {/* Image Grid */}
         <AnimatedSection delay={0.2}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {images.slice(1).map((image, index) => (
-              <div
-                key={index}
-                className="relative aspect-square overflow-hidden rounded-sm cursor-pointer group bg-gradient-to-br from-navy/5 to-gold/10"
-                onClick={() => setSelectedImage(image.src)}
-              >
-                <Image
-                  src={image.src}
-                  alt={image.alt}
-                  fill
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                  className="object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-navy/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                {/* Hover icon */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
+            {images.slice(1).map((image, index) => {
+              const inner = (
+                <>
+                  <Image
+                    src={image.src}
+                    alt={image.alt}
+                    fill
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-navy/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
+                      {/* Arrow icon when the photo is a link to a
+                          service page; plus icon when it's just a
+                          lightbox preview. */}
+                      {image.href ? (
+                        <svg className="w-4 h-4 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      )}
+                    </div>
                   </div>
+                </>
+              );
+              const className = "relative aspect-square overflow-hidden rounded-sm cursor-pointer group bg-gradient-to-br from-navy/5 to-gold/10 block";
+              return image.href ? (
+                <Link key={index} href={image.href} className={className} aria-label={`View ${image.alt}`}>
+                  {inner}
+                </Link>
+              ) : (
+                <div
+                  key={index}
+                  className={className}
+                  onClick={() => setSelectedImage(image.src)}
+                >
+                  {inner}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </AnimatedSection>
       </div>

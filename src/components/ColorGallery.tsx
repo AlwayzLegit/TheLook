@@ -1,14 +1,18 @@
 import ServiceGallery from "./ServiceGallery";
 
+// Each photo links to the Color category page where the customer
+// picks an exact color service (balayage / highlights / single
+// process / etc.) and books from there.
+const HREF = "/services/color";
 const colorImages = [
-  { src: "/images/gallery/color/color-01.jpg", alt: "Blonde balayage" },
-  { src: "/images/gallery/color/color-02.jpg", alt: "Warm highlights" },
-  { src: "/images/gallery/color/color-03.jpg", alt: "Dimensional color" },
-  { src: "/images/gallery/color/color-04.jpg", alt: "Sun-kissed balayage" },
-  { src: "/images/gallery/color/color-05.jpg", alt: "Ash blonde tones" },
-  { src: "/images/gallery/color/color-06.jpg", alt: "Golden highlights" },
-  { src: "/images/gallery/color/color-07.jpg", alt: "Platinum blonde" },
-  { src: "/images/gallery/color/color-08.jpg", alt: "Root smudge blend" },
+  { src: "/images/gallery/color/color-01.jpg", alt: "Blonde balayage", href: HREF },
+  { src: "/images/gallery/color/color-02.jpg", alt: "Warm highlights", href: HREF },
+  { src: "/images/gallery/color/color-03.jpg", alt: "Dimensional color", href: HREF },
+  { src: "/images/gallery/color/color-04.jpg", alt: "Sun-kissed balayage", href: HREF },
+  { src: "/images/gallery/color/color-05.jpg", alt: "Ash blonde tones", href: HREF },
+  { src: "/images/gallery/color/color-06.jpg", alt: "Golden highlights", href: HREF },
+  { src: "/images/gallery/color/color-07.jpg", alt: "Platinum blonde", href: HREF },
+  { src: "/images/gallery/color/color-08.jpg", alt: "Root smudge blend", href: HREF },
 ];
 
 export default function ColorGallery() {
