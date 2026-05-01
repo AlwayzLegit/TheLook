@@ -194,13 +194,13 @@ export default function Services() {
                           />
                         </div>
                       ) : null}
-                      <span className="text-gold font-heading text-base shrink-0 group-hover:text-rose transition-colors duration-200 w-20 text-left">
+                      <span className="text-gold font-heading text-lg shrink-0 group-hover:text-rose transition-colors duration-200 w-20 text-left">
                         {item.price_text}
                       </span>
-                      <span className="text-navy/70 text-[14px] font-body group-hover:text-navy transition-colors duration-200 flex-1 min-w-0">
+                      <span className="text-navy/70 text-[15px] font-body group-hover:text-navy transition-colors duration-200 flex-1 min-w-0">
                         {item.name}
                       </span>
-                      <span className="text-navy/60 text-xs font-body shrink-0">
+                      <span className="text-navy/60 text-sm font-body shrink-0">
                         {item.duration} min
                       </span>
                     </div>

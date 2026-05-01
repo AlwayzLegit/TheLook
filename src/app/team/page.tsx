@@ -138,8 +138,64 @@ export default async function TeamPage() {
             </p>
           </div>
 
+          {/* Round-13 reorder: Stylists section moved above
+              Management at the owner's request — customers
+              browsing for a stylist shouldn't have to scroll
+              past the manager card first. Management retained
+              below as a smaller secondary section so visitors
+              still see who runs the salon. */}
+          <section className={staff.length > 0 ? "mb-20" : ""}>
+            {staff.length > 0 && (
+              <h2 className="font-heading text-2xl md:text-3xl mb-8 text-center">
+                Stylists
+              </h2>
+            )}
+
+            {stylists.length === 0 ? (
+              <p className="text-navy/60 text-center font-body">Our stylists are being featured here soon.</p>
+            ) : (
+              // Circular tiles match the Management section above so the
+              // whole /team page feels uniform. Flex-wrap keeps any count
+              // (2, 3, 4, 5…) centered on the row instead of jamming at
+              // the left edge of a fixed grid.
+              <div className="flex flex-wrap justify-center gap-10 md:gap-12 max-w-5xl mx-auto">
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {stylists.map((s: any) => (
+                  <Link key={s.id} href={`/team/${s.slug}`} className="group block text-center w-full sm:w-60">
+                    <div className="relative aspect-square overflow-hidden bg-cream-dark rounded-full max-w-[220px] mx-auto mb-4">
+                      <StylistImage
+                        src={s.image_url}
+                        alt={s.name}
+                        initial={s.name.charAt(0).toUpperCase()}
+                        initialClass="font-heading text-6xl text-navy/25"
+                        sizes="220px"
+                        className="group-hover:scale-105 transition-transform duration-500"
+                      />
+                    </div>
+                    <h3 className="font-heading text-2xl group-hover:text-rose transition-colors">{s.name}</h3>
+                    {(() => {
+                      // Prefer service categories the stylist is mapped
+                      // to (real, source-of-truth); fall back to legacy
+                      // free-text specialties when nothing is mapped
+                      // yet so a fresh stylist record still has SOMETHING
+                      // under their name on the listing.
+                      const tags: string[] = (s.categories?.length ? s.categories : s.specialties) || [];
+                      if (tags.length === 0) return null;
+                      return (
+                        <p className="text-xs font-body text-navy/50 mt-2">
+                          {tags.slice(0, 3).join(" · ")}
+                        </p>
+                      );
+                    })()}
+                    {s.bio && <p className="text-navy/50 text-sm font-body mt-3 line-clamp-2 max-w-xs mx-auto">{s.bio}</p>}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+
           {staff.length > 0 && (
-            <section className="mb-20">
+            <section>
               <h2 className="font-heading text-2xl md:text-3xl mb-8 text-center">
                 Management
               </h2>
@@ -193,56 +249,6 @@ export default async function TeamPage() {
               </div>
             </section>
           )}
-
-          <section>
-            {staff.length > 0 && (
-              <h2 className="font-heading text-2xl md:text-3xl mb-8 text-center">
-                Stylists
-              </h2>
-            )}
-
-            {stylists.length === 0 ? (
-              <p className="text-navy/60 text-center font-body">Our stylists are being featured here soon.</p>
-            ) : (
-              // Circular tiles match the Management section above so the
-              // whole /team page feels uniform. Flex-wrap keeps any count
-              // (2, 3, 4, 5…) centered on the row instead of jamming at
-              // the left edge of a fixed grid.
-              <div className="flex flex-wrap justify-center gap-10 md:gap-12 max-w-5xl mx-auto">
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {stylists.map((s: any) => (
-                  <Link key={s.id} href={`/team/${s.slug}`} className="group block text-center w-full sm:w-60">
-                    <div className="relative aspect-square overflow-hidden bg-cream-dark rounded-full max-w-[220px] mx-auto mb-4">
-                      <StylistImage
-                        src={s.image_url}
-                        alt={s.name}
-                        initial={s.name.charAt(0).toUpperCase()}
-                        initialClass="font-heading text-6xl text-navy/25"
-                        sizes="220px"
-                        className="group-hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-                    <h3 className="font-heading text-2xl group-hover:text-rose transition-colors">{s.name}</h3>
-                    {(() => {
-                      // Prefer service categories the stylist is mapped
-                      // to (real, source-of-truth); fall back to legacy
-                      // free-text specialties when nothing is mapped
-                      // yet so a fresh stylist record still has SOMETHING
-                      // under their name on the listing.
-                      const tags: string[] = (s.categories?.length ? s.categories : s.specialties) || [];
-                      if (tags.length === 0) return null;
-                      return (
-                        <p className="text-xs font-body text-navy/50 mt-2">
-                          {tags.slice(0, 3).join(" · ")}
-                        </p>
-                      );
-                    })()}
-                    {s.bio && <p className="text-navy/50 text-sm font-body mt-3 line-clamp-2 max-w-xs mx-auto">{s.bio}</p>}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
         </div>
       </main>
       <Footer />
