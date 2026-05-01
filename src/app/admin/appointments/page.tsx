@@ -77,6 +77,11 @@ interface EnrichedAppointment {
   card_brand?: string | null;
   card_last4?: string | null;
   cancellation_fee_charged_cents?: number | null;
+  // Deposit display state computed by /api/admin/appointments —
+  // "none" hides the pill; "paid" / "refunded" / "pending" pick
+  // the colour and label.
+  deposit_required_cents?: number | null;
+  deposit_status?: "none" | "paid" | "refunded" | "pending";
   review_request_sent_at?: string | null;
 }
 
@@ -990,6 +995,35 @@ export default function AppointmentsPage() {
                       {appt.status.replace("_", " ")}
                     </Badge>
                   </div>
+                  {/* Deposit pill — only shown when a deposit was
+                      required. Mirrors the modal so the front desk
+                      can spot a "$X deposit pending" row at a
+                      glance without opening the row. */}
+                  {(appt.deposit_status === "paid" ||
+                    appt.deposit_status === "refunded" ||
+                    appt.deposit_status === "pending") &&
+                    (appt.deposit_required_cents ?? 0) > 0 && (
+                      <div className="mt-1">
+                        <span
+                          className={
+                            "inline-block text-[10px] font-body px-1.5 py-0.5 " +
+                            (appt.deposit_status === "paid"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : appt.deposit_status === "refunded"
+                                ? "bg-slate-100 text-slate-600"
+                                : "bg-amber-100 text-amber-800")
+                          }
+                        >
+                          ${Math.round((appt.deposit_required_cents ?? 0) / 100)}
+                          {" "}deposit{" "}
+                          {appt.deposit_status === "paid"
+                            ? "paid"
+                            : appt.deposit_status === "refunded"
+                              ? "refunded"
+                              : "pending"}
+                        </span>
+                      </div>
+                    )}
                 </div>
               </div>
 

@@ -36,9 +36,12 @@ interface Appointment {
   card_last4?: string | null;
   cancellation_fee_charged_cents?: number | null;
   // Required deposit in cents (0 / null = no deposit requested at
-  // booking time). Combined with stripe_customer_id below to render
-  // the "$X deposit paid" pill on the modal.
+  // booking time). Combined with deposit_status from the API to
+  // render the "$X deposit paid / refunded / pending" pill.
   deposit_required_cents?: number | null;
+  // Server-derived state: "none" | "paid" | "refunded" | "pending".
+  // "none" hides the pill; the others control its label + colour.
+  deposit_status?: "none" | "paid" | "refunded" | "pending";
   review_request_sent_at?: string | null;
 }
 
@@ -235,20 +238,38 @@ export default function AppointmentActionsModal({
                   archived
                 </span>
               )}
-              {/* Deposit-paid pill — true when the booking required a
-                  deposit AND a Stripe customer was created (which
-                  only happens on successful payment-intent capture).
-                  Tells the front desk at a glance whether the
-                  customer has skin in the game without bouncing
-                  out to Stripe. Amount shown is the required value
-                  in dollars; for the rare CC-surcharge case the
-                  customer paid a few dollars more, but what they
-                  owe for the service itself is what matters here. */}
-              {appointment.stripe_customer_id && (appointment.deposit_required_cents ?? 0) > 0 && (
-                <span className="inline-block text-xs font-body bg-emerald-100 text-emerald-700 px-2 py-0.5">
-                  ${Math.round((appointment.deposit_required_cents ?? 0) / 100)} deposit paid
-                </span>
-              )}
+              {/* Deposit pill — three variants driven by the
+                  server-computed deposit_status (which folds in the
+                  charges ledger so refunds read distinctly):
+                    paid     → emerald, "$X deposit paid"
+                    refunded → slate,  "$X deposit refunded"
+                    pending  → amber,  "$X deposit pending"
+                  none → no pill (booking didn't need a deposit).
+                  Amount shown is the required value in dollars;
+                  CC-surcharge overage is intentionally omitted. */}
+              {(appointment.deposit_status === "paid" ||
+                appointment.deposit_status === "refunded" ||
+                appointment.deposit_status === "pending") &&
+                (appointment.deposit_required_cents ?? 0) > 0 && (
+                  <span
+                    className={
+                      "inline-block text-xs font-body px-2 py-0.5 " +
+                      (appointment.deposit_status === "paid"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : appointment.deposit_status === "refunded"
+                          ? "bg-slate-100 text-slate-600"
+                          : "bg-amber-100 text-amber-800")
+                    }
+                  >
+                    ${Math.round((appointment.deposit_required_cents ?? 0) / 100)}
+                    {" "}deposit{" "}
+                    {appointment.deposit_status === "paid"
+                      ? "paid"
+                      : appointment.deposit_status === "refunded"
+                        ? "refunded"
+                        : "pending"}
+                  </span>
+                )}
             </div>
           </div>
 

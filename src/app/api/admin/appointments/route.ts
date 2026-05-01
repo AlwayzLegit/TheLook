@@ -78,6 +78,38 @@ export async function GET(request: NextRequest) {
         .order("sort_order", { ascending: true })
     : { data: [] };
 
+  // Pull deposit charge state for the listed appointments so the
+  // modal + inline list can show "$X deposit paid" vs "$X deposit
+  // refunded" / "$X deposit pending". Prefer the most-recent
+  // refunded row when both refunded and succeeded exist for the
+  // same appointment (rare — only happens during a partial-refund
+  // window before the webhook reconciles).
+  const { data: depositCharges } = apptIds.length > 0
+    ? await supabase
+        .from("charges")
+        .select("appointment_id, status, amount, updated_at")
+        .in("appointment_id", apptIds)
+        .eq("type", "deposit")
+    : { data: [] };
+  const chargeByAppt = new Map<string, { status: string; amount: number }>();
+  for (const c of (depositCharges || []) as Array<{
+    appointment_id: string;
+    status: string;
+    amount: number;
+    updated_at: string | null;
+  }>) {
+    const existing = chargeByAppt.get(c.appointment_id);
+    if (!existing) {
+      chargeByAppt.set(c.appointment_id, { status: c.status, amount: c.amount });
+      continue;
+    }
+    // Refunded wins over succeeded so the UI never says "paid" for
+    // a refunded booking. Beyond that, a later updated_at wins.
+    if (c.status === "refunded" && existing.status !== "refunded") {
+      chargeByAppt.set(c.appointment_id, { status: c.status, amount: c.amount });
+    }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const serviceMap = Object.fromEntries((allServices || []).map((s: any) => [s.id, s]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -120,6 +152,19 @@ export async function GET(request: NextRequest) {
       // to fold price_min/duration themselves.
       totalPriceMin: priceMinSnapshot,
       stylistName: stylistMap[a.stylist_id]?.name,
+      // Render-friendly deposit state. "none" when the booking
+      // didn't require a deposit; "paid" / "refunded" / "pending"
+      // otherwise. Computed from the charges ledger so partial
+      // refunds (still "paid") read the same as full payments,
+      // and full refunds read distinctly.
+      deposit_status: (() => {
+        const required = a.deposit_required_cents || 0;
+        if (required <= 0) return "none";
+        const charge = chargeByAppt.get(a.id);
+        if (charge?.status === "refunded") return "refunded";
+        if (a.stripe_customer_id || charge?.status === "succeeded") return "paid";
+        return "pending";
+      })(),
     };
   });
 
