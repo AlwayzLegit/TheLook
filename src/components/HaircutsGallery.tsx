@@ -22,7 +22,14 @@ export default async function HaircutsGallery() {
         src: s.image_url,
         alt: s.name,
         caption: s.name,
-        href: `/book?service=${s.id}`,
+        // Land on the service detail page so the customer can read
+        // about it (description, products used, what to expect)
+        // before booking. Detail page's "Book this service" button
+        // forwards to /book?service=<id> which preselects via the
+        // useEffect added in 52d123f. Falls back to direct booking
+        // if a service somehow has no slug (legacy / null-slug
+        // rows) so the photo never lands on a 404.
+        href: s.slug ? `/services/item/${s.slug}` : `/book?service=${s.id}`,
       }))
     : fallbackImages.map((img) => ({ ...img, href: "/services/haircuts" }));
 

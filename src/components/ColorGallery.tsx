@@ -19,7 +19,7 @@ export default async function ColorGallery() {
         src: s.image_url,
         alt: s.name,
         caption: s.name,
-        href: `/book?service=${s.id}`,
+        href: s.slug ? `/services/item/${s.slug}` : `/book?service=${s.id}`,
       }))
     : fallbackImages.map((img) => ({ ...img, href: "/services/color" }));
 

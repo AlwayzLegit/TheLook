@@ -205,7 +205,7 @@ export default async function ServiceDetailPage(
 
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/book"
+                href={`/book?service=${service.id}`}
                 className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-xs tracking-[0.2em] uppercase font-body px-7 py-3 transition-colors"
               >
                 Book this service
