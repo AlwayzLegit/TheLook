@@ -21,6 +21,15 @@ export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
 if (dsn) {
   Sentry.init({
     dsn,
+    // Pin the release to the deploy commit SHA so the events Sentry
+    // receives are tagged with the SAME identifier the build-time
+    // sourcemap upload uses. Round-13 QA caught events arriving with
+    // a stale release (07ec06dc — round-8 era) while production was
+    // running 4d6c52b — so symbolication couldn't match the new
+    // bundle's chunk filenames against the old release's maps.
+    // VERCEL_GIT_COMMIT_SHA is auto-injected by Vercel on every
+    // build; falls back to undefined locally where it doesn't matter.
+    release: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA,
     // Tunnel through our own domain so ad-blockers (Brave shields,
     // uBlock, Ghostery, AdGuard) don't filter the ingest. Round-10
     // confirmed that #418 hydration capture was working but

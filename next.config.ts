@@ -56,6 +56,16 @@ export default shouldWrapSentry
   ? withSentryConfig(nextConfig, {
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
+      // Pin the source-map-upload release to the deploy commit SHA.
+      // Round-13 QA caught events arriving with a stale release tag
+      // (round-8 era 07ec06dc...) while production was running
+      // 4d6c52b — Sentry couldn't symbolicate because the uploaded
+      // maps belonged to a different chunk-filename set. Setting
+      // release here makes withSentryConfig export SENTRY_RELEASE
+      // into the bundle's env so the runtime SDK auto-tags events
+      // with the same value, keeping client + server + maps lined
+      // up automatically.
+      release: { name: process.env.VERCEL_GIT_COMMIT_SHA },
       // silent:true was hiding the source-map upload status in build
       // logs, which made it impossible to tell from CI whether the
       // upload step actually ran. Now visible.

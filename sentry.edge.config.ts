@@ -10,6 +10,9 @@ const dsn = (process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN || "")
 if (dsn) {
   Sentry.init({
     dsn,
+    // Match instrumentation-client.ts + sentry.server.config.ts so
+    // every runtime tags the same release as the source-map upload.
+    release: process.env.VERCEL_GIT_COMMIT_SHA,
     tracesSampleRate: 0.05,
     environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "development",
   });
