@@ -199,6 +199,53 @@ export default function ServicesPage() {
     }
   };
 
+  // Reorder handler — swaps a service with its neighbour within
+  // the same category (per-category list passed in by the caller),
+  // updates local state optimistically, and PATCHes the new order
+  // server-side via /api/admin/services/reorder. Reverts via a
+  // refetch if the server rejects.
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const handleMove = async (
+    categoryItems: Service[],
+    index: number,
+    direction: "up" | "down",
+  ) => {
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= categoryItems.length) return;
+
+    const reordered = [...categoryItems];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+
+    const newOrders = new Map(reordered.map((s, i) => [s.id, i]));
+    setServices((prev) =>
+      prev.map((s) =>
+        newOrders.has(s.id) ? { ...s, sort_order: newOrders.get(s.id) ?? s.sort_order } : s,
+      ),
+    );
+
+    setReorderingId(categoryItems[index].id);
+    try {
+      const res = await fetch("/api/admin/services/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: reordered.map((s) => s.id) }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setToast({ type: "error", message: data.error || "Reorder failed. Refreshing." });
+        fetchServices();
+      }
+    } catch (err) {
+      setToast({
+        type: "error",
+        message: err instanceof Error ? err.message : "Reorder failed. Refreshing.",
+      });
+      fetchServices();
+    } finally {
+      setReorderingId(null);
+    }
+  };
+
   const handleAddNew = () => {
     setEditing(null);
     setFormData({
@@ -456,9 +503,36 @@ export default function ServicesPage() {
                 <h3 className="font-heading text-lg">{category}</h3>
               </div>
               <div className="divide-y divide-navy/5">
-                {items.map((service) => (
+                {items.map((service, idx) => (
                   <div key={service.id} className="px-6 py-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
+                      {/* Up / down arrow column. Disabled at the
+                          boundaries of the category list. Owner asked
+                          for a way to rearrange services without
+                          opening each row to edit sort_order, so the
+                          arrows call /api/admin/services/reorder
+                          which bulk-updates sort_order to match the
+                          new index. */}
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleMove(items, idx, "up")}
+                          disabled={idx === 0 || reorderingId === service.id}
+                          aria-label={`Move ${service.name} up`}
+                          className="text-navy/40 hover:text-navy hover:bg-navy/5 px-1.5 py-0.5 text-xs leading-none disabled:opacity-25 disabled:hover:bg-transparent"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMove(items, idx, "down")}
+                          disabled={idx === items.length - 1 || reorderingId === service.id}
+                          aria-label={`Move ${service.name} down`}
+                          className="text-navy/40 hover:text-navy hover:bg-navy/5 px-1.5 py-0.5 text-xs leading-none disabled:opacity-25 disabled:hover:bg-transparent"
+                        >
+                          ▼
+                        </button>
+                      </div>
                       {service.image_url ? (
                         <div className="w-12 h-12 rounded overflow-hidden shrink-0 bg-cream/40 relative">
                           <Image src={service.image_url} alt={service.name} fill sizes="48px" className="object-cover" unoptimized />
