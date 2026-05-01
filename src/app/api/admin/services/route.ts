@@ -1,6 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
-import { requireAdmin } from "@/lib/apiAuth";
+import { requireAdminOrManager } from "@/lib/apiAuth";
 import { adminServiceSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
@@ -40,9 +40,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  // Creating new services is admin-only. Managers can re-price /
-  // re-photograph existing services through the per-id PATCH.
-  const gate = await requireAdmin(request);
+  // Round-13: managers can create services too. Round-9 had this
+  // locked to admin-only based on a strict QA interpretation, but
+  // adding new menu items is a routine ops task the salon manager
+  // does without needing the owner online. Editing + deleting via
+  // the per-id route stays at the existing isAdminOrManager gate.
+  const gate = await requireAdminOrManager(request);
   if (!gate.ok) return gate.response;
 
   const body = await request.json();
