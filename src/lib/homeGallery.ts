@@ -1,54 +1,92 @@
 import { unstable_cache } from "next/cache";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 
-// Server-side helper for the four home-page gallery sections. Each
-// of the four wrapper components (HaircutsGallery, ColorGallery,
-// StylingGallery, TreatmentsGallery) calls getHomeSectionImages()
-// at request time to fetch the owner-managed photos.
+// Public-facing service summary used by the home-page gallery
+// sections (HaircutsGallery, ColorGallery, etc). One row per
+// service that should appear in its category's grid; consumers
+// derive the photo URL + booking link from each row.
 //
-// Cached via unstable_cache + a tag the admin write paths can bust
-// (HOME_GALLERY_CACHE_TAG). Same shape as getBranding() so the home
-// page renders without per-section round trips.
+// Single source of truth: the services table the owner already
+// manages at /admin/services. When the admin uploads / replaces /
+// reorders a service photo there, the home page reflects it on
+// the next render — no separate "section gallery" to keep in
+// sync.
 
-export const HOME_GALLERY_CACHE_TAG = "home-gallery";
+export const HOME_SERVICE_GALLERY_CACHE_TAG = "home-service-gallery";
 
 export type HomeSection = "haircuts" | "color" | "styling" | "treatments";
 
-export interface HomeSectionImage {
+export interface HomeServicePhoto {
   id: string;
-  section: HomeSection;
+  slug: string | null;
+  name: string;
   image_url: string;
-  alt: string | null;
   sort_order: number;
-  active: boolean;
 }
 
-async function fetchAllHomeSectionImages(): Promise<HomeSectionImage[]> {
+// Maps the home-page section to the DB category name. Service
+// rows store category as the human-readable label ("Color",
+// "Haircuts", etc.) — same vocabulary the admin form's category
+// dropdown uses, kept in lib/service-categories.ts.
+const SECTION_TO_CATEGORY: Record<HomeSection, string> = {
+  haircuts:   "Haircuts",
+  color:      "Color",
+  styling:    "Styling",
+  treatments: "Treatments",
+};
+
+async function fetchAllHomeSectionServices(): Promise<HomeServicePhoto[]> {
   if (!hasSupabaseConfig) return [];
   try {
     const { data, error } = await supabase
-      .from("home_section_images")
-      .select("id, section, image_url, alt, sort_order, active")
+      .from("services")
+      .select("id, slug, name, image_url, category, sort_order, active")
       .eq("active", true)
-      .order("section", { ascending: true })
+      .not("image_url", "is", null)
+      .order("category", { ascending: true })
       .order("sort_order", { ascending: true });
     if (error || !data) return [];
-    return data as HomeSectionImage[];
+    // Trim to fields we want to expose. category is used for
+    // server-side filtering only; consumers don't need it.
+    return (data as Array<{
+      id: string;
+      slug: string | null;
+      name: string;
+      image_url: string | null;
+      category: string;
+      sort_order: number;
+    }>)
+      .filter((row) => typeof row.image_url === "string" && row.image_url.trim().length > 0)
+      .map((row) => ({
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        image_url: row.image_url as string,
+        sort_order: row.sort_order,
+        // Stash category on the row so the public helper can
+        // filter without re-querying. Hidden from the exported
+        // type via the surrounding map().
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ...({ _category: row.category } as any),
+      }));
   } catch {
     return [];
   }
 }
 
-const cachedFetch = unstable_cache(fetchAllHomeSectionImages, ["home-section-images"], {
-  revalidate: 60,
-  tags: [HOME_GALLERY_CACHE_TAG],
-});
+const cachedFetch = unstable_cache(
+  fetchAllHomeSectionServices,
+  ["home-service-gallery"],
+  { revalidate: 60, tags: [HOME_SERVICE_GALLERY_CACHE_TAG] },
+);
 
 // Public fetch helper used by the section wrappers. Returns the
-// rows already filtered to one section, in sort order. Rows with
-// no alt text get an empty string (component-side knows how to
-// handle it).
-export async function getHomeSectionImages(section: HomeSection): Promise<HomeSectionImage[]> {
+// services in the requested section (filtered + ordered), already
+// stripped of rows missing a photo.
+export async function getServicesForHomeSection(section: HomeSection): Promise<HomeServicePhoto[]> {
   const all = await cachedFetch();
-  return all.filter((r) => r.section === section);
+  const want = SECTION_TO_CATEGORY[section];
+  return (all as Array<HomeServicePhoto & { _category?: string }>)
+    .filter((row) => row._category === want)
+    .map(({ id, slug, name, image_url, sort_order }) => ({ id, slug, name, image_url, sort_order }));
 }

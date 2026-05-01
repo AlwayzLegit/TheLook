@@ -1,14 +1,6 @@
 import ServiceGallery from "./ServiceGallery";
-import { getHomeSectionImages } from "@/lib/homeGallery";
+import { getServicesForHomeSection } from "@/lib/homeGallery";
 
-// Each photo links to the Color category page where the customer
-// picks an exact color service (balayage / highlights / single
-// process / etc.) and books from there.
-const HREF = "/services/color";
-
-// Hardcoded fallback used when home_section_images has no rows
-// for "color" yet. Renders the same set the home page shipped
-// with prior to /admin/branding.
 const fallbackImages = [
   { src: "/images/gallery/color/color-01.jpg", alt: "Blonde balayage" },
   { src: "/images/gallery/color/color-02.jpg", alt: "Warm highlights" },
@@ -21,10 +13,15 @@ const fallbackImages = [
 ];
 
 export default async function ColorGallery() {
-  const dbImages = await getHomeSectionImages("color");
-  const images = dbImages.length > 0
-    ? dbImages.map((row) => ({ src: row.image_url, alt: row.alt || "Color", href: HREF }))
-    : fallbackImages.map((img) => ({ ...img, href: HREF }));
+  const services = await getServicesForHomeSection("color");
+  const images = services.length > 0
+    ? services.map((s) => ({
+        src: s.image_url,
+        alt: s.name,
+        caption: s.name,
+        href: `/book?service=${s.id}`,
+      }))
+    : fallbackImages.map((img) => ({ ...img, href: "/services/color" }));
 
   return (
     <ServiceGallery

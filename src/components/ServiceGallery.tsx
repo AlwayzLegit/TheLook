@@ -9,11 +9,16 @@ interface GalleryImage {
   src: string;
   alt: string;
   // Optional destination — when set, the photo becomes a clickable
-  // link (typically to the matching service category page or service
-  // detail page so the customer can book) instead of opening the
-  // lightbox. Owner asked for this on the home-page galleries so
-  // every photo doubles as a CTA.
+  // link (typically /book?service=<id> so the customer lands on
+  // booking with that exact service preselected) instead of opening
+  // the lightbox. Owner asked for this on the home-page galleries
+  // so every photo doubles as a 1-click book CTA.
   href?: string;
+  // Optional caption rendered as a subtle bottom-of-image label.
+  // Used on the home-page galleries to show each service's name
+  // ("Wash + Cut + Style", "Single Process Color", etc.) so the
+  // customer knows what they're clicking before they click.
+  caption?: string;
 }
 
 interface ServiceGalleryProps {
@@ -128,6 +133,13 @@ export default function ServiceGallery({
                         )}
                       </div>
                     </div>
+                    {images[0]?.caption && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-navy/90 via-navy/55 to-transparent px-5 pt-12 pb-4 pointer-events-none">
+                        <p className="text-white font-body font-medium text-[0.95rem] tracking-wide truncate">
+                          {images[0].caption}
+                        </p>
+                      </div>
+                    )}
                   </>
                 );
                 const className = "aspect-[4/3] relative overflow-hidden rounded-sm shadow-[0_20px_60px_rgba(40,41,54,0.12)] cursor-pointer group bg-gradient-to-br from-navy/5 to-gold/10 block";
@@ -161,12 +173,20 @@ export default function ServiceGallery({
                     sizes="(max-width: 768px) 50vw, 25vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-navy/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  {/* Persistent gradient at the bottom carries the
+                      caption (service name). Always visible — no
+                      hover gymnastics on mobile — but subtle enough
+                      that the photo stays the focal point. */}
+                  {image.caption && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-navy/90 via-navy/45 to-transparent px-3 pt-10 pb-2.5 pointer-events-none">
+                      <p className="text-white font-body font-medium text-[0.78rem] tracking-wide leading-tight line-clamp-2">
+                        {image.caption}
+                      </p>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-navy/0 group-hover:bg-navy/15 transition-colors duration-300" />
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
-                      {/* Arrow icon when the photo is a link to a
-                          service page; plus icon when it's just a
-                          lightbox preview. */}
                       {image.href ? (
                         <svg className="w-4 h-4 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />

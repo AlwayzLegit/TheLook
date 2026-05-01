@@ -1,9 +1,5 @@
 import ServiceGallery from "./ServiceGallery";
-import { getHomeSectionImages } from "@/lib/homeGallery";
-
-// Each photo links to the Treatments category page so the customer
-// picks the right treatment and books from there.
-const HREF = "/services/treatments";
+import { getServicesForHomeSection } from "@/lib/homeGallery";
 
 const fallbackImages = [
   { src: "/images/services/Treatments/Keratin Straightening.jpg", alt: "Keratin treatment" },
@@ -14,10 +10,15 @@ const fallbackImages = [
 ];
 
 export default async function TreatmentsGallery() {
-  const dbImages = await getHomeSectionImages("treatments");
-  const images = dbImages.length > 0
-    ? dbImages.map((row) => ({ src: row.image_url, alt: row.alt || "Treatments", href: HREF }))
-    : fallbackImages.map((img) => ({ ...img, href: HREF }));
+  const services = await getServicesForHomeSection("treatments");
+  const images = services.length > 0
+    ? services.map((s) => ({
+        src: s.image_url,
+        alt: s.name,
+        caption: s.name,
+        href: `/book?service=${s.id}`,
+      }))
+    : fallbackImages.map((img) => ({ ...img, href: "/services/treatments" }));
 
   return (
     <ServiceGallery

@@ -292,6 +292,29 @@ export default function BookPage() {
     }
   }, [searchParams]);
 
+  // /book?service=<id> support — used by the home-page gallery
+  // photos so clicking any photo lands the customer on booking
+  // with that exact service already selected. The lookup runs
+  // every time the services map changes (fires once after the
+  // initial load completes) so we only preselect once we actually
+  // have the catalog. No-op if the id doesn't match anything.
+  useEffect(() => {
+    const preId = searchParams?.get("service");
+    if (!preId) return;
+    const allRows = Object.values(services).flat();
+    if (allRows.length === 0) return;
+    const match = allRows.find((s) => s.id === preId && !s.variantId);
+    if (!match) return;
+    setSelectedServices((prev) => {
+      // Don't double-add if the customer already toggled it (e.g.
+      // they navigated back/forward).
+      const already = prev.find(
+        (s) => s.id === match.id && !s.variantId,
+      );
+      return already ? prev : [...prev, match];
+    });
+  }, [searchParams, services]);
+
   useEffect(() => {
     (async () => {
       try {
