@@ -40,6 +40,17 @@ if (dsn) {
     // route handler at src/app/api/monitoring/route.ts — the
     // round-12 QA caught this missing the /api prefix.
     tunnel: "/api/monitoring",
+    // Force keepalive on every envelope POST. Round-15 retest found
+    // hydration captures (the original target) reached the tunnel
+    // but never landed at Sentry — the most likely cause is React
+    // unmounting / re-rendering immediately after #418 fires, which
+    // cancels in-flight fetches. keepalive:true tells the browser to
+    // let the request finish even after the document is gone. Same
+    // flag the DB-fallback (/api/internal/hydration-error) already
+    // uses for the same reason.
+    transportOptions: {
+      fetchOptions: { keepalive: true },
+    },
     tracesSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
     replaysSessionSampleRate: 0.0,
@@ -138,19 +149,48 @@ if (typeof window !== "undefined") {
   function deliver(source: "console.error" | "window.error", payload: Record<string, unknown>, rawArgs: unknown[]) {
     payload.captureSource = source;
 
-    // Send to Sentry first (best-effort).
+    // Send to Sentry first (best-effort). Round-15 retest found
+    // captures reached the tunnel but never appeared in the Sentry
+    // UI — root cause was that every synthetic Error has the SAME
+    // message + stack frame (this file, this line), so Sentry's
+    // grouping algorithm collapsed every capture across every
+    // release into ONE long-lived issue, and the QA's
+    // `lastSeen:-15m` searches missed updates to that old issue.
+    // Setting an explicit fingerprint ties the issue to a stable
+    // key we can search for directly, and capturing the returned
+    // eventId lets us correlate client-side captures with Sentry
+    // ingest 1:1.
+    let sentryEventId: string | undefined;
     if (dsn) {
       try {
         const err = buildException(source, rawArgs);
-        Sentry.captureException(err, {
-          level: "error",
-          tags: { hydration: "true", captureSource: source },
-          extra: payload,
+        sentryEventId = Sentry.withScope((scope) => {
+          scope.setFingerprint(["react-hydration-error", "418", source]);
+          scope.setLevel("error");
+          scope.setTag("hydration", "true");
+          scope.setTag("captureSource", source);
+          scope.setExtras(payload);
+          return Sentry.captureException(err);
         });
+        if (sentryEventId) {
+          // Echo to console so QA can confirm SDK acceptance without
+          // depending on Sentry's UI search filters. Search for
+          // "[hydration-capture]" in the browser console to verify.
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[hydration-capture] Sentry accepted eventId=${sentryEventId} source=${source}`,
+          );
+        }
       } catch {
         // never let Sentry path crash the diagnostic
       }
     }
+
+    // Stash the Sentry eventId in the DB-fallback payload so
+    // admin_log rows correlate 1:1 with Sentry events — makes it
+    // easy to confirm "saw this in admin_log → does Sentry have it?"
+    // by literal eventId lookup instead of timestamp guessing.
+    if (sentryEventId) payload.sentryEventId = sentryEventId;
 
     // Mirror to our admin_log via the dedicated capture endpoint.
     // Uses fetch with keepalive:true so the request survives a page
