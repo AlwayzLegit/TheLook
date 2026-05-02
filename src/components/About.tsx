@@ -68,17 +68,22 @@ export default function About() {
               styling. Walk-ins are always welcome!
             </p>
 
-            {/* Stats — refined with subtle backgrounds */}
+            {/* Stats — Yelp count + rating shared with the bottom
+                badge cards via getBranding() so the owner only
+                updates one place (/admin/branding → Review badges)
+                and both surfaces stay in sync. Photo count stays
+                hardcoded for now; the owner can swap it manually
+                here when it materially changes. */}
             <div className="flex gap-6 lg:gap-10 pt-7 border-t border-navy/10">
               <div className="text-center px-3">
-                <p className="font-heading text-3xl text-navy">830+</p>
+                <p className="font-heading text-3xl text-navy">{brand.reviewBadges.yelpTotal}+</p>
                 <p className="text-navy/60 text-[10px] tracking-wider uppercase font-body mt-1">
                   Yelp Reviews
                 </p>
               </div>
               <div className="w-[1px] bg-navy/10" />
               <div className="text-center px-3">
-                <p className="font-heading text-3xl text-navy">4.2</p>
+                <p className="font-heading text-3xl text-navy">{brand.reviewBadges.yelpRating.toFixed(1)}</p>
                 <p className="text-navy/60 text-[10px] tracking-wider uppercase font-body mt-1">
                   Star Rating
                 </p>

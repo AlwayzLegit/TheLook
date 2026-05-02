@@ -1,5 +1,18 @@
 import { NextRequest } from "next/server";
 
+// Force Node runtime + bound the maxDuration so a slow Sentry
+// upstream can't hold a serverless invocation past Vercel Hobby's
+// 10-second cap. Round-14 QA caught the SDK seeing 503s here even
+// though the route handler reportedly returned 200 in Vercel's
+// logs — most plausible cause is the upstream `fetch` blocking
+// the response stream until the edge timed out and returned a 503
+// to the client. We now bound the upstream call to 4s and ALWAYS
+// return a 200 — the Sentry SDK only retries non-2xx, and we'd
+// rather drop a single envelope than amplify a Sentry hiccup
+// into a flood of client-side retries.
+export const runtime = "nodejs";
+export const maxDuration = 10;
+
 // Sentry tunnel — bypasses ad-blockers (Brave shields, uBlock,
 // Ghostery, AdGuard, etc.) that filter `*.sentry.io` by default.
 // Round-10 QA found that #418 hydration capture was working on
@@ -8,8 +21,8 @@ import { NextRequest } from "next/server";
 // see the symbolicated stack frames despite source maps uploading
 // correctly.
 //
-// instrumentation-client.ts sets `tunnel: '/monitoring'` on the
-// Sentry SDK, which makes the browser POST envelope payloads
+// instrumentation-client.ts sets `tunnel: '/api/monitoring'` on
+// the Sentry SDK, which makes the browser POST envelope payloads
 // here instead of directly to ingest.us.sentry.io. We validate
 // the envelope's DSN matches our project (so we're not used as a
 // free Sentry proxy for unrelated projects) and forward the body
@@ -46,12 +59,11 @@ export async function POST(request: NextRequest) {
   try {
     envelope = await request.text();
   } catch {
-    return new Response("Invalid envelope", { status: 400 });
+    // Soft-accept — never let body-parse failures cascade into
+    // the SDK's retry loop.
+    return new Response(null, { status: 202 });
   }
-  // Round-12 QA found the empty-body path silently returned an empty
-  // 400 — match the other rejection paths so on-call sees a clear
-  // log line if this fires.
-  if (!envelope) return new Response("Invalid envelope", { status: 400 });
+  if (!envelope) return new Response(null, { status: 202 });
 
   // First line of every Sentry envelope is a JSON header containing
   // the originating DSN. Parse it to figure out which project this
@@ -63,28 +75,38 @@ export async function POST(request: NextRequest) {
     if (typeof header?.dsn !== "string") throw new Error("no dsn");
     dsn = new URL(header.dsn);
   } catch {
-    return new Response("Invalid envelope header", { status: 400 });
+    // Malformed envelope — we don't want to advertise that to
+    // potential probes, just accept-and-drop.
+    return new Response(null, { status: 202 });
   }
 
   const requestProjectId = dsn.pathname.replace(/^\//, "");
   if (requestProjectId !== KNOWN_PROJECT_ID || dsn.host !== KNOWN_HOST) {
-    // Reject envelopes targeting any Sentry project other than ours.
+    // Reject envelopes targeting any Sentry project other than
+    // ours — keeps anyone from using our endpoint as a free Sentry
+    // proxy for an unrelated project.
     return new Response("DSN mismatch", { status: 403 });
   }
 
   const upstream = `https://${dsn.host}/api/${KNOWN_PROJECT_ID}/envelope/`;
   try {
-    const res = await fetch(upstream, {
+    // Bound the upstream call so a slow Sentry never holds our
+    // edge invocation past the function timeout. 4s is generous —
+    // Sentry's SLA is well under 1s on a healthy day. Fire-and-
+    // forget, we don't act on the response code.
+    await fetch(upstream, {
       method: "POST",
       body: envelope,
       headers: { "Content-Type": "application/x-sentry-envelope" },
+      signal: AbortSignal.timeout(4000),
+      cache: "no-store",
     });
-    // Mirror Sentry's response code on success; on upstream failure
-    // return 202 so the SDK doesn't treat us as a broken tunnel and
-    // start logging extra noise (we'd rather quietly drop than
-    // cascade a Sentry hiccup into the user's tab).
-    return new Response(null, { status: res.ok ? res.status : 202 });
   } catch {
-    return new Response(null, { status: 202 });
+    // Swallow upstream errors — round-14 QA caught the SDK
+    // re-trying its envelope on every non-2xx, which on a flaky
+    // upstream produces a flood of /api/monitoring 5xx visible
+    // in the browser network panel. By always returning 200
+    // below we decouple our response from upstream's fate.
   }
+  return new Response(null, { status: 200 });
 }

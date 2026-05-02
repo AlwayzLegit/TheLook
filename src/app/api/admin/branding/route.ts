@@ -58,14 +58,44 @@ export async function PATCH(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const updates = body as Record<string, string | null>;
   const rows: Array<{ key: string; value: string; updated_at: string }> = [];
+  // Per-key validation. Round-14 QA caught the four review-badge
+  // keys accepting negative numbers + non-numeric strings — the
+  // public render path's `pickNumber` filter masked it but the
+  // DB was left holding garbage. We now reject at write time so
+  // the next reader (admin UI, future migration, etc.) doesn't
+  // have to know about the trap. Image keys stay loose because
+  // an empty string clears the override and any other string is
+  // treated as a URL the consumer renders inside <Image>.
+  const ratingKeys = new Set(["yelp_rating", "google_rating"]);
+  const countKeys = new Set(["yelp_total", "google_total"]);
   for (const [key, value] of Object.entries(updates)) {
     if (!ALLOWED_KEYS.has(key)) continue;
+    const raw = value == null ? "" : String(value).trim();
+    // Empty always clears (lets the owner reset to fallback).
+    if (raw !== "") {
+      if (ratingKeys.has(key)) {
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n < 0 || n > 5) {
+          return apiError(
+            `Invalid value for ${key}: must be a number between 0 and 5 (got "${raw}").`,
+            400,
+          );
+        }
+      } else if (countKeys.has(key)) {
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+          return apiError(
+            `Invalid value for ${key}: must be a non-negative whole number (got "${raw}").`,
+            400,
+          );
+        }
+      }
+      // Image-URL keys: keep the loose check from before. Any
+      // other value just stores as-is.
+    }
     rows.push({
       key,
-      // Empty / null clears the override → component falls back to
-      // the hardcoded path. Stored as empty string so the row exists
-      // (lets the GET return predictable shape).
-      value: value == null ? "" : String(value),
+      value: raw,
       updated_at: new Date().toISOString(),
     });
   }

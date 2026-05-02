@@ -312,7 +312,13 @@ export default function BrandingPage() {
               const current = values[field.key] || "";
               const draftValue = draft[field.key] ?? "";
               const dirty = (draftValue || "") !== (current || "");
-              const placeholder = field.kind === "rating" ? "4.2" : "830";
+              // Per-source placeholders mirror the actual public-
+              // site fallback values for that source so the hint
+              // matches reality. Round-14 QA flagged this as P3.
+              const placeholder =
+                field.source === "Yelp"
+                  ? field.kind === "rating" ? "4.2" : "830"
+                  : field.kind === "rating" ? "4.1" : "200";
               return (
                 <div key={field.key}>
                   <label className="block text-[0.75rem] uppercase tracking-[0.1em] text-[var(--color-text-subtle)] mb-1">
