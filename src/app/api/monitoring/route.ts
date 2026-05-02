@@ -2,14 +2,12 @@ import { NextRequest } from "next/server";
 
 // Force Node runtime + bound the maxDuration so a slow Sentry
 // upstream can't hold a serverless invocation past Vercel Hobby's
-// 10-second cap. Round-14 QA caught the SDK seeing 503s here even
-// though the route handler reportedly returned 200 in Vercel's
-// logs — most plausible cause is the upstream `fetch` blocking
-// the response stream until the edge timed out and returned a 503
-// to the client. We now bound the upstream call to 4s and ALWAYS
-// return a 200 — the Sentry SDK only retries non-2xx, and we'd
-// rather drop a single envelope than amplify a Sentry hiccup
-// into a flood of client-side retries.
+// 10-second cap. We always return 200 to the SDK so a flaky
+// upstream doesn't trigger the SDK's retry loop (which floods the
+// browser network panel with /api/monitoring 5xx). Forwarding
+// failures are logged via console.error so they're visible in
+// Vercel logs — the round-15 silent-swallow regression came from
+// an empty catch hiding upstream timeouts.
 export const runtime = "nodejs";
 export const maxDuration = 10;
 
@@ -90,23 +88,35 @@ export async function POST(request: NextRequest) {
 
   const upstream = `https://${dsn.host}/api/${KNOWN_PROJECT_ID}/envelope/`;
   try {
-    // Bound the upstream call so a slow Sentry never holds our
-    // edge invocation past the function timeout. 4s is generous —
-    // Sentry's SLA is well under 1s on a healthy day. Fire-and-
-    // forget, we don't act on the response code.
-    await fetch(upstream, {
+    // No AbortSignal here — round-15 QA found the previous 4s
+    // bound was tripping on slow Sentry days and silently
+    // dropping every envelope (zero events landed despite 200s
+    // on the tunnel). The maxDuration=10 export already caps the
+    // serverless invocation, so worst case we lose a single
+    // envelope at the function boundary instead of every envelope
+    // that happens to take >4s upstream.
+    const upstreamRes = await fetch(upstream, {
       method: "POST",
       body: envelope,
       headers: { "Content-Type": "application/x-sentry-envelope" },
-      signal: AbortSignal.timeout(4000),
       cache: "no-store",
     });
-  } catch {
-    // Swallow upstream errors — round-14 QA caught the SDK
-    // re-trying its envelope on every non-2xx, which on a flaky
-    // upstream produces a flood of /api/monitoring 5xx visible
-    // in the browser network panel. By always returning 200
-    // below we decouple our response from upstream's fate.
+    if (!upstreamRes.ok) {
+      // Surface forwarding failures so they show up in Vercel
+      // logs instead of vanishing into a silent always-200.
+      // We still return 200 below — the SDK retries non-2xx in
+      // a tight loop that floods the browser network panel —
+      // this is purely for observability when Sentry rejects an
+      // envelope (rate limit, disabled DSN, etc.).
+      console.error(
+        `[sentry-tunnel] upstream rejected envelope: ${upstreamRes.status} ${upstreamRes.statusText}`,
+      );
+    }
+  } catch (err) {
+    // Round-15 P1: empty catch was hiding the fact that envelopes
+    // never reached Sentry. Log the failure so we can SEE it.
+    // We still always-200 below to keep the SDK's retry loop calm.
+    console.error("[sentry-tunnel] upstream forward failed:", err);
   }
   return new Response(null, { status: 200 });
 }

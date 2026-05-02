@@ -182,8 +182,13 @@ export async function sendSMS(args: SendSMSArgs): Promise<boolean> {
       const reason = err instanceof Error ? err.message : String(err);
       // Retry on plainly-transient conditions; treat anything else as
       // a permanent failure (invalid number, unverified trial dest, etc.)
-      // and bail early so we don't waste attempts.
-      const transient = /hang up|ECONN|ETIMEDOUT|network|socket|503|504|rate/i.test(reason);
+      // and bail early so we don't waste attempts. Round-15 P2 added
+      // /timeout/ — Twilio's HTTP client surfaces request timeouts as
+      // "timeout of 30000ms exceeded", which doesn't match any of the
+      // node-level patterns above; the first reschedule SMS attempt
+      // failed with that exact message and got swallowed instead of
+      // retried.
+      const transient = /hang up|ECONN|ETIMEDOUT|timeout|network|socket|503|504|rate/i.test(reason);
       if (!transient || i === attemptDelays.length - 1) {
         await logOutbound({ ...args, from, to, status: "failed", failureReason: reason });
         console.error("SMS send failed:", err);
