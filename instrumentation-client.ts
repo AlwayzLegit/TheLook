@@ -65,6 +65,50 @@ if (dsn) {
       /extension:\/\//i,
       /chrome-extension:\/\//i,
     ],
+    // Drop the default Dedupe integration only for hydration captures.
+    // Round-15 QA caught the SDK accepting captureException (returning
+    // a truthy eventId) but Sentry never receiving the event; the
+    // synthetic error has identical message + top stack frame across
+    // every #418, which is exactly the shape Dedupe collapses. Other
+    // (non-hydration) events still benefit from Dedupe so a real loop
+    // doesn't flood the project.
+    integrations: (defaults) =>
+      defaults.map((integration) => {
+        if (integration.name !== "Dedupe") return integration;
+        const original = integration.processEvent?.bind(integration);
+        if (!original) return integration;
+        return {
+          ...integration,
+          processEvent(event: Sentry.Event, ...rest: unknown[]) {
+            // Pass hydration-tagged events through untouched so Dedupe
+            // can't collapse them. Everything else still goes through
+            // the normal dedupe pipeline.
+            if (event.tags?.hydration === "true") return event;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return (original as any)(event, ...rest);
+          },
+        };
+      }),
+    // Diagnostic beforeSend: log every hydration-tagged event right
+    // before transport so we can confirm the SDK is actually sending
+    // it (vs being filtered post-captureException by an integration).
+    // Round-15 QA established three checkpoints — captureException
+    // returns an eventId, admin_log records it, beforeSend logs it,
+    // Sentry receives it — and any gap between two of those isolates
+    // the failure. Always returns the event unchanged; pure diagnostic.
+    beforeSend(event) {
+      if (event.tags?.hydration === "true") {
+        const msg =
+          event.exception?.values?.[0]?.value ||
+          event.message ||
+          "(no message)";
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[hydration-capture] beforeSend eventId=${event.event_id} fp=${JSON.stringify(event.fingerprint)} msg=${msg}`,
+        );
+      }
+      return event;
+    },
   });
 }
 
