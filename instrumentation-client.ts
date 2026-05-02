@@ -176,12 +176,27 @@ if (typeof window !== "undefined") {
   // round-9 QA confirmed that captureMessage() with a stack stuffed
   // into `extras` will NOT symbolicate even when source maps are
   // uploaded (which they are, via the build-time Sentry plugin).
+  //
+  // Round-15 QA isolated a silent drop: Sentry's GlobalHandlers
+  // integration captures the window.error first and stamps the
+  // Error object with __sentry_captured__. When our listener then
+  // calls Sentry.captureException(event.error), the SDK
+  // short-circuits at the marker, returns the cached eventId, and
+  // never invokes the rest of the pipeline (beforeSend, transport).
+  // Cloning the Error into a fresh instance — same message, same
+  // stack — strips the marker so our hydration-tagged capture goes
+  // through cleanly.
   function buildException(
     source: "console.error" | "window.error",
     rawArgs: unknown[],
   ): Error {
     const directError = rawArgs.find((a) => a instanceof Error) as Error | undefined;
-    if (directError) return directError;
+    if (directError) {
+      const cloned = new Error(directError.message);
+      if (directError.stack) cloned.stack = directError.stack;
+      if (directError.name) cloned.name = directError.name;
+      return cloned;
+    }
     const stackArg = rawArgs.find(
       (a) => typeof a === "object" && a !== null && typeof (a as { stack?: unknown }).stack === "string",
     ) as { stack?: string; message?: string } | undefined;
