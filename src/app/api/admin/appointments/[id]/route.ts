@@ -4,7 +4,7 @@ import { adminAppointmentPatchSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { sendStatusChangeEmail } from "@/lib/email";
-import { sendStatusChangeSMS } from "@/lib/sms";
+import { sendStatusChangeSMS, sendRescheduleSMS } from "@/lib/sms";
 import { NextRequest } from "next/server";
 
 export async function PATCH(
@@ -24,6 +24,18 @@ export async function PATCH(
     return apiError("Database not configured.", 503);
   }
   const payload = parsed.data;
+
+  // Snapshot the row before we update it so we can detect what
+  // actually changed and decide whether to fire the
+  // "appointment updated" SMS + email. Only fires for confirmed
+  // appointments — pending ones haven't been promised to the
+  // customer yet so a 5-minute admin twiddle doesn't need to
+  // reach their phone.
+  const { data: priorRow } = await supabase
+    .from("appointments")
+    .select("date, start_time, stylist_id, status, client_name, client_email, client_phone, cancel_token, requested_stylist, service_id")
+    .eq("id", id)
+    .maybeSingle();
 
   const updateData: Record<string, unknown> = {};
 
@@ -204,6 +216,74 @@ export async function PATCH(
 
     // Stylist-targeted dashboard notification is off until stylist accounts
     // come back. Admins see every status change via the admin bell already.
+  }
+
+  // Round-15: notify the client when ANY material detail of an
+  // already-confirmed appointment changes (date, start time,
+  // stylist, services). The owner's example: a stylist swap on
+  // a confirmed booking would silently update the row but the
+  // client wouldn't know to ask for the new person — they'd show
+  // up expecting Jasmine. Status transitions to confirmed /
+  // cancelled are already handled above; this branch covers the
+  // "still confirmed but the details moved" case.
+  //
+  // We only fire when the booking was confirmed BEFORE this PATCH
+  // (so a series of pending-row tweaks before approval doesn't
+  // spam the client) AND the status didn't transition (otherwise
+  // the status_change branch already handled it).
+  const wasConfirmed = priorRow?.status === "confirmed";
+  const stillConfirmed = !newStatus || newStatus === "confirmed";
+  const dateChanged = !!payload.date && payload.date !== priorRow?.date;
+  const startChanged = !!payload.start_time && payload.start_time !== priorRow?.start_time;
+  const stylistChanged = !!payload.stylist_id && payload.stylist_id !== priorRow?.stylist_id;
+  const servicesChanged = !!(payload.services && payload.services.length > 0);
+  const materialChange = dateChanged || startChanged || stylistChanged || servicesChanged;
+
+  if (data && wasConfirmed && stillConfirmed && newStatus !== "cancelled" && materialChange) {
+    const { data: mappingsAfter } = await supabase
+      .from("appointment_services")
+      .select("service_id, sort_order")
+      .eq("appointment_id", id)
+      .order("sort_order", { ascending: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const idsAfter = (mappingsAfter || []).map((m: any) => m.service_id);
+    const lookupIdsAfter = idsAfter.length > 0 ? idsAfter : [data.service_id];
+    const { data: servicesAfter } = await supabase
+      .from("services")
+      .select("id, name")
+      .in("id", lookupIdsAfter);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const byIdAfter = Object.fromEntries((servicesAfter || []).map((s: any) => [s.id, s.name]));
+    const serviceNameAfter = lookupIdsAfter.map((sid: string) => byIdAfter[sid]).filter(Boolean).join(", ") || "Your Service";
+    const { data: stylistAfter } = await supabase
+      .from("stylists")
+      .select("name")
+      .eq("id", data.stylist_id)
+      .single();
+
+    sendStatusChangeEmail({
+      clientName: data.client_name,
+      clientEmail: data.client_email,
+      serviceName: serviceNameAfter,
+      stylistName: stylistAfter?.name || "Your Stylist",
+      date: data.date,
+      startTime: data.start_time,
+      newStatus: "updated",
+      cancelToken: data.cancel_token,
+      anyStylist: data.requested_stylist === false,
+    }).catch((err) => logError("status-email-updated", err));
+
+    if (data.client_phone) {
+      sendRescheduleSMS({
+        phone: data.client_phone,
+        clientName: data.client_name,
+        serviceName: serviceNameAfter,
+        date: data.date,
+        time: data.start_time,
+        appointmentId: id,
+        clientEmail: data.client_email,
+      }).catch((err) => logError("reschedule-sms", err));
+    }
   }
 
   // Auto-fire the review request whenever an appointment flips to

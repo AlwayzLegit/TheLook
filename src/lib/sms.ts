@@ -224,6 +224,17 @@ function smsShortName(name: string): string {
   return first.length > 20 ? first.slice(0, 20).trim() : first;
 }
 
+// Trim the salon address to "street, city" so it stays clickable
+// (iOS / Android SMS clients linkify a "123 Main St, Glendale CA"
+// pattern as a directions tap) without spilling SMS into a third
+// segment when combined with phone + service name. Stylists +
+// QA confirmed in round-15 chat that just street + city is what
+// customers actually want for click-to-directions.
+function smsShortAddress(addr: string): string {
+  const parts = (addr || "").split(",").map((s) => s.trim()).filter(Boolean);
+  return parts.slice(0, 2).join(", ");
+}
+
 export async function sendBookingConfirmationSMS(
   phone: string,
   clientName: string,
@@ -235,12 +246,21 @@ export async function sendBookingConfirmationSMS(
 ) {
   const brand = await getBranding();
   const shortName = smsShortName(brand.name);
+  const shortAddr = smsShortAddress(brand.address);
+  // Round-15: customer reported the booking-confirm SMS used to
+  // say "is confirmed for…" the moment they submitted, even
+  // though every public booking lands as status='pending' until
+  // an admin reviews it. New wording makes it explicit that
+  // we've received the request and the real confirmation lands
+  // in a separate text. Salon name + address + phone are
+  // included so the customer can click-call or click-directions
+  // straight from the message.
   return sendSMS({
     to: phone,
     event: "booking.confirm",
     appointmentId: appointmentId || null,
     clientEmail: clientEmail || null,
-    body: `Hi ${clientName}! Your ${serviceName} at ${shortName} is confirmed for ${shortDate(date)} at ${pretty12h(time)}. Reply STOP to opt out.`,
+    body: `Hi ${clientName}! ${shortName} got your ${serviceName} request for ${shortDate(date)} at ${pretty12h(time)}. We'll text once it's confirmed. ${shortAddr} · ${brand.phone}. Reply STOP to opt out.`,
   });
 }
 
@@ -279,13 +299,19 @@ export async function sendStatusChangeSMS(args: {
   const { phone, clientName, serviceName, date, time, newStatus, appointmentId, clientEmail } = args;
   const brand = await getBranding();
   const shortName = smsShortName(brand.name);
+  const shortAddr = smsShortAddress(brand.address);
   let body: string;
+  // Round-15: distinct CONFIRMED wording so the post-admin-approval
+  // SMS reads differently from the booking-received SMS the
+  // customer got at submission time. Address + phone in every
+  // booking-related message so the customer can click-call /
+  // click-directions without leaving the SMS thread.
   switch (newStatus) {
     case "confirmed":
-      body = `Hi ${clientName}, your ${serviceName} at ${shortName} on ${shortDate(date)} at ${pretty12h(time)} is confirmed. See you then!`;
+      body = `${shortName}: Your ${serviceName} on ${shortDate(date)} at ${pretty12h(time)} is now CONFIRMED. See you then! ${shortAddr} · ${brand.phone}`;
       break;
     case "cancelled":
-      body = `Hi ${clientName}, your ${serviceName} at ${shortName} on ${shortDate(date)} has been cancelled. Call ${brand.phone} to rebook.`;
+      body = `Hi ${clientName}, your ${serviceName} at ${shortName} on ${shortDate(date)} at ${pretty12h(time)} has been cancelled. Call ${brand.phone} to rebook.`;
       break;
     case "completed":
       body = `Thanks for visiting ${shortName}, ${clientName}! We hope you loved your ${serviceName}. Leave us a review when you get a chance 💛`;
@@ -335,15 +361,25 @@ export async function sendRescheduleSMS(args: {
   appointmentId?: string;
   clientEmail?: string;
 }) {
-  const { phone, clientName, serviceName, date, time, appointmentId, clientEmail } = args;
+  // Round-15 wording opens with the salon name (e.g. "The Look:")
+  // rather than "Hi {clientName}" because the customer already
+  // knows it's about their booking from the salon name; saves
+  // characters and keeps the message in a single SMS segment.
+  const { phone, serviceName, date, time, appointmentId, clientEmail } = args;
   const brand = await getBranding();
   const shortName = smsShortName(brand.name);
+  const shortAddr = smsShortAddress(brand.address);
+  // Round-15 broadens the use of this event to any admin-side
+  // change (date / start time / stylist / services list) on a
+  // confirmed appointment, not just date+time edits. Wording
+  // says "updated" rather than "rescheduled" so it works in
+  // both the literal-reschedule and stylist-swap cases.
   return sendSMS({
     to: phone,
     event: "booking.reschedule",
     appointmentId: appointmentId || null,
     clientEmail: clientEmail || null,
-    body: `Hi ${clientName}, your ${serviceName} at ${shortName} has been rescheduled to ${shortDate(date)} at ${pretty12h(time)}.`,
+    body: `${shortName}: Your ${serviceName} appointment was updated. New details: ${shortDate(date)} at ${pretty12h(time)}. ${shortAddr} · ${brand.phone}. Reply STOP to opt out.`,
   });
 }
 

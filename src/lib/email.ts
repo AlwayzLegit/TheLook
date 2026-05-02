@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { brandedEmail, detailsTable, formatDate, formatTime } from "./emailTemplate";
-import { getBranding } from "./branding";
+import { getBranding, telHref } from "./branding";
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -147,6 +147,11 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
         Need to change something? Use the Reschedule link below, or call us — we&#39;re friendly
         on the phone.
       </p>
+      <p style="margin: 18px 0 0; font-size:13px; color:#5a5b66;">
+        ${brand.name} ·
+        <a href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(brand.address)}" style="color:inherit;">${brand.address}</a>
+        · <a href="${telHref(brand.phone)}" style="color:inherit;">${brand.phone}</a>
+      </p>
     `,
     ctaLabel: cancelUrl ? "Manage booking" : undefined,
     ctaUrl: rescheduleUrl,
@@ -292,6 +297,19 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
   const brand = await getBranding();
   const stylistDisplay = anyStylist ? "Any available stylist" : stylistName;
 
+  // Build click-to-call + click-for-directions snippets that
+  // every booking-related template can append. Round-15 owner
+  // ask: every appointment-event email should expose contact +
+  // location at one tap.
+  const telLink = `<a href="${telHref(brand.phone)}" style="color:inherit;">${brand.phone}</a>`;
+  const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(brand.address)}`;
+  const addrLink = `<a href="${mapsHref}" style="color:inherit;">${brand.address}</a>`;
+  const contactBlock = `
+    <p style="margin: 18px 0 0; font-size:13px; color:#5a5b66;">
+      ${brand.name} · ${addrLink} · ${telLink}
+    </p>
+  `;
+
   const detailRows = detailsTable([
     ["Service", serviceName],
     ["Stylist", stylistDisplay],
@@ -314,6 +332,7 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
           Come in with unwashed hair (1–2 days is ideal) for color work, and bring photos if
           you have a specific look in mind. See you soon!
         </p>
+        ${contactBlock}
       `,
       ctaLabel: cancelUrl ? "Reschedule" : undefined,
       ctaUrl: rescheduleUrl,
@@ -328,12 +347,34 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
         <p style="margin: 0 0 14px;">Hi ${clientName}, the following appointment has been cancelled:</p>
         ${detailRows}
         <p style="margin: 18px 0 0;">
-          If this was a mistake, please call us at ${brand.phone}. Otherwise we&#39;d love to
+          If this was a mistake, please call us at ${telLink}. Otherwise we&#39;d love to
           see you again whenever works for you.
         </p>
+        ${contactBlock}
       `,
       ctaLabel: "Book again",
       ctaUrl: `${SITE}/book`,
+    },
+    // Round-15 — fired from the admin PATCH route when an already-
+    // confirmed appointment's date / start time / stylist / service
+    // list changes. Status itself stays "confirmed"; we use
+    // newStatus="updated" as a synthetic dispatch key here.
+    updated: {
+      subject: `Your appointment was updated — ${formatDate(date)} at ${formatTime(startTime)}`,
+      kicker: "Appointment updated",
+      headline: "Your appointment was updated.",
+      body: `
+        <p style="margin: 0 0 14px;">Hi ${clientName}, ${brand.name} updated your upcoming appointment. New details:</p>
+        ${detailRows}
+        <p style="margin: 18px 0 0;">
+          If anything looks off, reply to this email or call ${telLink} — we&#39;ll sort it.
+        </p>
+        ${contactBlock}
+      `,
+      ctaLabel: cancelUrl ? "Reschedule" : undefined,
+      ctaUrl: rescheduleUrl,
+      secondaryLabel: cancelUrl ? "Cancel this appointment" : undefined,
+      secondaryUrl: cancelUrl,
     },
     completed: {
       subject: `We loved having you at ${brand.name}!`,
@@ -367,9 +408,10 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
           cancellation fee may be applied to the card on file.
         </p>
         <p style="margin: 0 0 0;">
-          If something came up we&#39;d love to rebook you. Call us at ${brand.phone} and we&#39;ll
+          If something came up we&#39;d love to rebook you. Call us at ${telLink} and we&#39;ll
           find another time.
         </p>
+        ${contactBlock}
       `,
       ctaLabel: "Book a new appointment",
       ctaUrl: `${SITE}/book`,
