@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import CalendarGrid from "./CalendarGrid";
 import TimeSlots from "./TimeSlots";
+import { BOOKING } from "@/lib/constants";
 
 interface Props {
   stylistId: string;
@@ -78,6 +79,11 @@ export default function DateTimePicker({
 
       <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
         <CalendarGrid
+          // Pass the picked stylist's id so the calendar can grey
+          // out their personal off-days. The "Any Stylist" sentinel
+          // is filtered out so the calendar falls back to salon-only
+          // closures (any-of-them-might-be-working logic).
+          stylistId={stylistId === BOOKING.ANY_STYLIST_ID ? null : stylistId}
           selectedDate={date}
           onSelectDate={(d) => {
             setDate(d);
