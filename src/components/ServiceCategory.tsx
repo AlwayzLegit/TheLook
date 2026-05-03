@@ -166,8 +166,11 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
                           <img
                             src={image}
                             alt={service.name}
+                            width={72}
+                            height={72}
                             className="w-full h-full object-cover"
                             loading="lazy"
+                            decoding="async"
                             onError={() =>
                               setFailedImages((prev) => ({
                                 ...prev,

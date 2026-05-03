@@ -183,8 +183,11 @@ export default function Services() {
                           <img
                             src={image}
                             alt={item.name}
+                            width={100}
+                            height={100}
                             className="w-full h-full object-cover"
                             loading="lazy"
+                            decoding="async"
                             onError={() =>
                               setFailedImages((prev) => ({
                                 ...prev,

@@ -63,6 +63,10 @@ export default function Hero() {
           src={brand.images.homeHero}
           alt={brand.name}
           fill
+          // Full-viewport hero — sizes hint lets next/image pick the
+          // right candidate from the AVIF/WebP set instead of the
+          // Lighthouse-flagged "fixed-size" oversized fallback.
+          sizes="100vw"
           className="object-cover scale-105"
           priority
         />

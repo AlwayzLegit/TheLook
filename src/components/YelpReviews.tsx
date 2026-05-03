@@ -120,7 +120,15 @@ function ReviewCard({ review }: { review: Review }) {
           <div className="w-9 h-9 rounded-full bg-navy-light flex items-center justify-center border border-gold/20 overflow-hidden">
             {review.authorPhoto ? (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={review.authorPhoto} alt={review.name} className="w-full h-full object-cover" />
+              <img
+                src={review.authorPhoto}
+                alt={review.name}
+                width={36}
+                height={36}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover"
+              />
             ) : (
               <span className="text-gold/80 font-heading text-sm">{review.name.charAt(0)}</span>
             )}
