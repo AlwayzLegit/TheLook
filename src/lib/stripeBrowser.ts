@@ -1,11 +1,18 @@
 "use client";
 
-import { loadStripe, type Stripe } from "@stripe/stripe-js";
+import type { Stripe } from "@stripe/stripe-js";
 
 // Shared loader for Stripe.js with a timeout + one retry. Without this,
 // Stripe.js can hang on flaky network or ad-blockers and leave the booking
 // page stuck on the spinner. We surface a clean failure path instead so the
 // fallback "call us" UI can render.
+//
+// Round-18 Lighthouse fix: the actual `loadStripe` import was pulling the
+// Stripe SDK into the shared route bundle, so /, /services, /team etc. all
+// downloaded ~224 KB of Stripe.js even though they never charge a card.
+// Lazy-import the SDK inside the loader so it only enters the bundle the
+// moment a caller actually invokes getStripeBrowser() — the booking-confirm
+// step is the only one that does.
 const TIMEOUT_MS = 10_000;
 
 let _promise: Promise<Stripe | null> | null = null;
@@ -21,6 +28,9 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 async function loadOnce(key: string): Promise<Stripe | null> {
+  // Dynamic import — keeps the Stripe SDK out of the route bundle until
+  // the booking-confirm step actually mounts.
+  const { loadStripe } = await import("@stripe/stripe-js");
   return await withTimeout(loadStripe(key), TIMEOUT_MS);
 }
 

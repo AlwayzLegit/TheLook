@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BookingProgress from "@/components/booking/BookingProgress";
@@ -10,7 +11,18 @@ import StylistPicker from "@/components/booking/StylistPicker";
 import DateTimePicker from "@/components/booking/DateTimePicker";
 import ClientInfoForm from "@/components/booking/ClientInfoForm";
 import BookingConfirmation from "@/components/booking/BookingConfirmation";
-import DepositForm from "@/components/booking/DepositForm";
+// Round-18 Lighthouse fix: DepositForm pulls in the @stripe/stripe-js +
+// @stripe/react-stripe-js SDKs (~224 KB of JS + a third-party cookie
+// from m.stripe.com). When statically imported here, those bytes were
+// being included in the /book route's shared chunk and downloaded by
+// every visitor — even ones who never reach the deposit step or whose
+// services don't require a deposit. Switch to next/dynamic with
+// ssr: false so the SDK only loads when the deposit form actually
+// mounts (step 4 + requiresDeposit + sub-threshold not skipped).
+const DepositForm = dynamic(
+  () => import("@/components/booking/DepositForm"),
+  { ssr: false, loading: () => <p className="text-navy/50 text-sm font-body">Loading payment form…</p> },
+);
 import { BOOKING } from "@/lib/constants";
 import { track, identify } from "@/lib/analytics";
 
