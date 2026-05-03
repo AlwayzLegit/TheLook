@@ -62,7 +62,7 @@ export default function TimeSlots({ slots, loading, selectedDate, selectedTime, 
   })();
   if (!selectedDate) {
     return (
-      <div className="flex items-center justify-center text-navy/50 font-body text-sm">
+      <div className="flex items-center justify-center text-navy/70 font-body text-sm">
         Select a date to see available times
       </div>
     );
@@ -70,7 +70,7 @@ export default function TimeSlots({ slots, loading, selectedDate, selectedTime, 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center text-navy/50 font-body text-sm">
+      <div className="flex items-center justify-center text-navy/70 font-body text-sm">
         Loading available times...
       </div>
     );
@@ -86,7 +86,7 @@ export default function TimeSlots({ slots, loading, selectedDate, selectedTime, 
 
   if (visibleSlots.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center text-navy/50 font-body text-sm text-center gap-3">
+      <div className="flex flex-col items-center justify-center text-navy/70 font-body text-sm text-center gap-3">
         <p>No available slots for this date. Try another day{onChangeStylist ? " — or pick a different stylist." : "."}</p>
         {onChangeStylist ? (
           <button
@@ -103,7 +103,7 @@ export default function TimeSlots({ slots, loading, selectedDate, selectedTime, 
 
   return (
     <div>
-      <p className="font-body text-sm text-navy/50 mb-3">Available times:</p>
+      <p className="font-body text-sm text-navy/70 mb-3">Available times:</p>
       <div className="grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
         {visibleSlots.map((slot) => (
           <button

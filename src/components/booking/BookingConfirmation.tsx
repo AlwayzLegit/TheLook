@@ -98,7 +98,7 @@ export default function BookingConfirmation({ result }: Props) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="text-navy/60 font-body text-sm mb-2 leading-relaxed"
+        className="text-navy/70 font-body text-sm mb-2 leading-relaxed"
       >
         Your booking request has been received. The salon will review your appointment
         and send a final confirmation by email shortly.
@@ -108,9 +108,9 @@ export default function BookingConfirmation({ result }: Props) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.55 }}
-          className="text-navy/60 font-body text-xs mb-8"
+          className="text-navy/70 font-body text-xs mb-8"
         >
-          Reference: <span className="font-mono text-navy/60">{result.id.slice(0, 8).toUpperCase()}</span>
+          Reference: <span className="font-mono text-navy/70">{result.id.slice(0, 8).toUpperCase()}</span>
         </motion.p>
       )}
 
@@ -121,7 +121,7 @@ export default function BookingConfirmation({ result }: Props) {
         className="bg-white border border-navy/10 p-8 text-left space-y-4 shadow-sm"
       >
         <div>
-          <p className="text-navy/50 text-sm font-body mb-2">
+          <p className="text-navy/70 text-sm font-body mb-2">
             {result.services && result.services.length > 1 ? "Services" : "Service"}
           </p>
           {result.services && result.services.length > 0 ? (
@@ -137,24 +137,24 @@ export default function BookingConfirmation({ result }: Props) {
           )}
         </div>
         <div className="flex justify-between">
-          <span className="text-navy/50 text-sm font-body">Stylist</span>
+          <span className="text-navy/70 text-sm font-body">Stylist</span>
           <span className="font-body font-bold text-sm">
             {result.anyStylist ? "Any available stylist" : result.stylist}
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-navy/50 text-sm font-body">Date</span>
+          <span className="text-navy/70 text-sm font-body">Date</span>
           <span className="font-body font-bold text-sm">{formatDate(result.date)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-navy/50 text-sm font-body">Time</span>
+          <span className="text-navy/70 text-sm font-body">Time</span>
           <span className="font-body font-bold text-sm">
             {formatTime(result.startTime)} – {formatTime(result.endTime)}
           </span>
         </div>
         <div className="border-t border-navy/10 pt-4 mt-4">
-          <p className="text-navy/50 text-xs font-body">{brand.address}</p>
-          <p className="text-navy/50 text-xs font-body">{brand.phone}</p>
+          <p className="text-navy/70 text-xs font-body">{brand.address}</p>
+          <p className="text-navy/70 text-xs font-body">{brand.phone}</p>
         </div>
       </motion.div>
 
@@ -162,7 +162,7 @@ export default function BookingConfirmation({ result }: Props) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8 }}
-        className="text-navy/50 text-xs font-body mt-6 mb-8"
+        className="text-navy/70 text-xs font-body mt-6 mb-8"
       >
         Need to cancel or reschedule? Check your confirmation email for links.
       </motion.p>

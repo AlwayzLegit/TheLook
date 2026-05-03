@@ -93,7 +93,7 @@ export default function InspirationGallery() {
             <span className="w-10 h-[1px] bg-gradient-to-l from-transparent to-gold" />
           </div>
           <h2 className="font-heading text-4xl md:text-5xl mb-4">Inspiration</h2>
-          <p className="text-navy/60 font-body max-w-xl mx-auto">
+          <p className="text-navy/70 font-body max-w-xl mx-auto">
             Browse the cuts, colors, and styles we love right now. Bring a favorite to your next appointment.
           </p>
         </AnimatedSection>
@@ -129,7 +129,7 @@ export default function InspirationGallery() {
                 className={`min-h-[36px] px-4 py-1.5 text-[11px] tracking-[0.2em] uppercase font-body border transition-colors ${
                   category === c.value
                     ? "bg-gold/90 text-navy border-gold/90"
-                    : "border-navy/15 text-navy/60 hover:border-navy/40"
+                    : "border-navy/15 text-navy/70 hover:border-navy/40"
                 }`}
               >
                 {c.label}
@@ -148,7 +148,7 @@ export default function InspirationGallery() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-navy/50 font-body text-sm">
+          <p className="text-center text-navy/70 font-body text-sm">
             Nothing matches these filters yet. Try a different combination.
           </p>
         ) : (

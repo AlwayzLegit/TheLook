@@ -74,7 +74,7 @@ export default function ServicesPreview() {
           <h2 className="font-heading text-4xl md:text-5xl mb-4">
             Our Services
           </h2>
-          <p className="text-navy/60 font-body font-light max-w-md mx-auto text-[15px]">
+          <p className="text-navy/70 font-body font-light max-w-md mx-auto text-[15px]">
             The highest quality hair services at unbeatable prices.
             Walk-ins always welcome.
           </p>
@@ -108,7 +108,7 @@ export default function ServicesPreview() {
                   <p className="text-gold font-heading text-lg mb-3">
                     {s.price}
                   </p>
-                  <p className="text-navy/55 font-body font-light text-sm">
+                  <p className="text-navy/70 font-body font-light text-sm">
                     {s.desc}
                   </p>
                 </div>
@@ -122,7 +122,7 @@ export default function ServicesPreview() {
         <AnimatedSection className="text-center">
           <Link
             href="/services"
-            className="inline-flex items-center gap-3 text-navy/60 hover:text-rose text-[11px] tracking-[0.2em] uppercase font-body transition-all duration-300 group"
+            className="inline-flex items-center gap-3 text-navy/70 hover:text-rose text-[11px] tracking-[0.2em] uppercase font-body transition-all duration-300 group"
           >
             View Full Menu &amp; Pricing
             <svg className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

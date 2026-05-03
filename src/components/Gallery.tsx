@@ -174,7 +174,7 @@ export default function Gallery({ items: itemsProp, heading }: GalleryProps = {}
             href="https://www.instagram.com/thelookhairsalon/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-navy/60 hover:text-rose transition-all duration-300 text-[11px] tracking-[0.2em] uppercase font-body group"
+            className="inline-flex items-center gap-2 text-navy/70 hover:text-rose transition-all duration-300 text-[11px] tracking-[0.2em] uppercase font-body group"
           >
             See more on Instagram
             <svg className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

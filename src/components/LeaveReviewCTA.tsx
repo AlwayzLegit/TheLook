@@ -26,7 +26,7 @@ export default function LeaveReviewCTA({ variant = "dark" }: Props) {
     ? "bg-navy/40 border border-white/8"
     : "bg-white border border-navy/10";
   const headingClass = isDark ? "text-white" : "text-navy";
-  const subheadClass = isDark ? "text-white/55" : "text-navy/60";
+  const subheadClass = isDark ? "text-white/55" : "text-navy/70";
   const googleBtn = isDark
     ? "bg-white text-navy hover:bg-white/90"
     : "bg-navy text-white hover:bg-navy/90";

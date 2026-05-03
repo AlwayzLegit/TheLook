@@ -115,7 +115,7 @@ export default function Services() {
           <h1 className="font-heading text-4xl md:text-5xl mb-6">
             Services &amp; Pricing
           </h1>
-          <p className="text-navy/60 font-body font-light max-w-lg mx-auto text-[15px]">
+          <p className="text-navy/70 font-body font-light max-w-lg mx-auto text-[15px]">
             The highest quality hair salon services in Glendale at unbeatable prices.
           </p>
         </AnimatedSection>
@@ -148,7 +148,7 @@ export default function Services() {
         </AnimatedSection>
 
         {loading ? (
-          <p className="text-center text-navy/50 font-body">Loading services...</p>
+          <p className="text-center text-navy/70 font-body">Loading services...</p>
         ) : error ? (
           <p className="text-center text-rose font-body text-sm">{error}</p>
         ) : (
@@ -203,7 +203,7 @@ export default function Services() {
                       <span className="text-navy/70 text-[15px] font-body group-hover:text-navy transition-colors duration-200 flex-1 min-w-0">
                         {item.name}
                       </span>
-                      <span className="text-navy/60 text-sm font-body shrink-0">
+                      <span className="text-navy/70 text-sm font-body shrink-0">
                         {item.duration} min
                       </span>
                     </div>
@@ -213,10 +213,10 @@ export default function Services() {
                     {item.variants && item.variants.length > 0 && (
                       <div className="mt-2 ml-6 pl-4 border-l border-gold/30 space-y-1.5">
                         {item.variants.map((v) => (
-                          <div key={v.id} className="flex items-center gap-3 text-[13px] font-body text-navy/60">
+                          <div key={v.id} className="flex items-center gap-3 text-[13px] font-body text-navy/70">
                             <span className="text-gold/80 font-heading text-sm w-20 text-left">{v.price_text}</span>
                             <span className="flex-1 min-w-0">— {v.name}</span>
-                            <span className="text-navy/60 text-xs shrink-0">{v.duration} min</span>
+                            <span className="text-navy/70 text-xs shrink-0">{v.duration} min</span>
                           </div>
                         ))}
                       </div>
@@ -232,7 +232,7 @@ export default function Services() {
         )}
 
         <AnimatedSection className="text-center mt-14">
-          <p className="text-navy/55 text-xs font-body max-w-xl mx-auto leading-relaxed">
+          <p className="text-navy/70 text-xs font-body max-w-xl mx-auto leading-relaxed">
             All prices are based upon consultation &amp; subject to change.
             Pricing depends on hair length, thickness &amp; texture. A $50
             deposit is taken at booking for appointments over $100 — it&apos;s

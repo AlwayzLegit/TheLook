@@ -31,7 +31,7 @@ export default async function ShopPage() {
           <h1 className="font-heading text-4xl md:text-5xl text-navy mb-6">
             Our Shop Is On The Way
           </h1>
-          <p className="text-navy/60 font-body font-light text-base md:text-lg leading-relaxed max-w-xl mx-auto">
+          <p className="text-navy/70 font-body font-light text-base md:text-lg leading-relaxed max-w-xl mx-auto">
             We&apos;re curating a selection of the professional-grade haircare
             products our stylists rely on — the same tools and treatments we
             use on you in the salon. Check back soon, or stop by and ask one
@@ -53,7 +53,7 @@ export default async function ShopPage() {
             </Link>
           </div>
 
-          <div className="mt-16 pt-10 border-t border-navy/10 text-navy/60 font-body text-xs tracking-wider">
+          <div className="mt-16 pt-10 border-t border-navy/10 text-navy/70 font-body text-xs tracking-wider">
             {brand.address} · {brand.phone}
           </div>
         </div>

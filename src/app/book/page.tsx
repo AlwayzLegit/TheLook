@@ -21,7 +21,7 @@ import BookingConfirmation from "@/components/booking/BookingConfirmation";
 // mounts (step 4 + requiresDeposit + sub-threshold not skipped).
 const DepositForm = dynamic(
   () => import("@/components/booking/DepositForm"),
-  { ssr: false, loading: () => <p className="text-navy/50 text-sm font-body">Loading payment form…</p> },
+  { ssr: false, loading: () => <p className="text-navy/70 text-sm font-body">Loading payment form…</p> },
 );
 import { BOOKING } from "@/lib/constants";
 import { track, identify } from "@/lib/analytics";
@@ -661,12 +661,12 @@ export default function BookPage() {
           {step === STEP_CONFIRM && selectedServices.length > 0 && selectedStylist && selectedDate && selectedTime && (
             <div className="max-w-lg mx-auto">
               <h2 className="font-heading text-3xl mb-2 text-center">Review &amp; Confirm</h2>
-              <p className="text-navy/50 font-body text-sm text-center mb-8">
+              <p className="text-navy/70 font-body text-sm text-center mb-8">
                 Please review your appointment details
               </p>
               <div className="bg-white border border-navy/10 p-8 space-y-4">
                 <div>
-                  <p className="text-navy/50 text-sm font-body mb-2">
+                  <p className="text-navy/70 text-sm font-body mb-2">
                     {selectedServices.length === 1 ? "Service" : "Services"}
                   </p>
                   <ul className="space-y-1.5">
@@ -679,36 +679,36 @@ export default function BookPage() {
                   </ul>
                 </div>
                 <div className="flex justify-between border-t border-navy/5 pt-3">
-                  <span className="text-navy/50 text-sm font-body">Total</span>
+                  <span className="text-navy/70 text-sm font-body">Total</span>
                   <span className="text-gold font-heading">{combinedPriceText}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-navy/50 text-sm font-body">Total duration</span>
+                  <span className="text-navy/70 text-sm font-body">Total duration</span>
                   <span className="font-body text-sm">{formatDuration(totalDuration)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-navy/50 text-sm font-body">Stylist</span>
+                  <span className="text-navy/70 text-sm font-body">Stylist</span>
                   <span className="font-body font-bold text-sm">{stylistDisplayName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-navy/50 text-sm font-body">Date</span>
+                  <span className="text-navy/70 text-sm font-body">Date</span>
                   <span className="font-body font-bold text-sm">{formatDate(selectedDate)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-navy/50 text-sm font-body">Time</span>
+                  <span className="text-navy/70 text-sm font-body">Time</span>
                   <span className="font-body font-bold text-sm">{formatTime(selectedTime)}</span>
                 </div>
                 <div className="border-t border-navy/10 pt-4">
-                  <p className="text-navy/50 text-sm font-body">{clientInfo.name}</p>
-                  <p className="text-navy/50 text-sm font-body">{clientInfo.email}</p>
-                  {clientInfo.phone && <p className="text-navy/50 text-sm font-body">{clientInfo.phone}</p>}
+                  <p className="text-navy/70 text-sm font-body">{clientInfo.name}</p>
+                  <p className="text-navy/70 text-sm font-body">{clientInfo.email}</p>
+                  {clientInfo.phone && <p className="text-navy/70 text-sm font-body">{clientInfo.phone}</p>}
                 </div>
                 {requiresDeposit && (
                   <div className="border-t border-navy/10 pt-4">
-                    <p className="text-navy/60 text-sm font-body mb-1">
+                    <p className="text-navy/70 text-sm font-body mb-1">
                       Required deposit — ${depositAmountCents / 100}
                     </p>
-                    <p className="text-navy/50 text-xs font-body mb-3 leading-relaxed">
+                    <p className="text-navy/70 text-xs font-body mb-3 leading-relaxed">
                       A <strong>${depositAmountCents / 100}</strong> deposit is required
                       for this booking. It&apos;s <strong>applied to your service total</strong>
                       at the appointment. If you no-show or cancel within 24&nbsp;hours, the
@@ -733,7 +733,7 @@ export default function BookPage() {
                         }}
                       />
                     ) : (
-                      <p className="text-navy/50 text-xs font-body">
+                      <p className="text-navy/70 text-xs font-body">
                         Fill in your info to pay the deposit.
                       </p>
                     )}
@@ -742,7 +742,7 @@ export default function BookPage() {
               </div>
 
               <div className="border-t border-navy/10 pt-4 mt-4">
-                <p className="text-navy/50 text-xs font-body mb-2">Have a discount code?</p>
+                <p className="text-navy/70 text-xs font-body mb-2">Have a discount code?</p>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -793,7 +793,7 @@ export default function BookPage() {
                 </div>
               )}
 
-              <p className="text-navy/60 text-xs font-body mt-4 text-center">
+              <p className="text-navy/70 text-xs font-body mt-4 text-center">
                 After you submit, your booking will be reviewed by the salon. You&apos;ll get an email
                 once it&apos;s approved.
               </p>
@@ -806,7 +806,7 @@ export default function BookPage() {
             <div className="flex justify-between max-w-2xl mx-auto mt-10">
               <button
                 onClick={prevStep}
-                className="border border-navy/20 text-navy/60 hover:text-navy hover:border-navy/40 tracking-widest uppercase text-sm px-8 py-3 transition-colors font-body"
+                className="border border-navy/20 text-navy/70 hover:text-navy hover:border-navy/40 tracking-widest uppercase text-sm px-8 py-3 transition-colors font-body"
               >
                 Back
               </button>

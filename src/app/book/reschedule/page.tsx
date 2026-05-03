@@ -83,11 +83,11 @@ function RescheduleInner() {
           <h1 className="font-heading text-4xl mb-2 text-center">Reschedule Appointment</h1>
 
           {loading ? (
-            <p className="text-navy/60 font-body text-sm text-center mt-10">Loading...</p>
+            <p className="text-navy/70 font-body text-sm text-center mt-10">Loading...</p>
           ) : error ? (
             <div className="mt-10 bg-white border border-red-200 p-8 text-center">
               <p className="text-red-600 font-body">{error}</p>
-              <Link href="/" className="inline-block mt-4 text-navy/50 text-xs font-body underline">Return Home</Link>
+              <Link href="/" className="inline-block mt-4 text-navy/70 text-xs font-body underline">Return Home</Link>
             </div>
           ) : success ? (
             <div className="mt-10 bg-white border border-navy/10 p-10 text-center">
@@ -97,20 +97,20 @@ function RescheduleInner() {
                 </svg>
               </div>
               <h2 className="font-heading text-2xl mb-3">Rescheduled!</h2>
-              <p className="text-navy/60 font-body text-sm mb-2">Your appointment is now:</p>
+              <p className="text-navy/70 font-body text-sm mb-2">Your appointment is now:</p>
               <p className="font-body font-bold text-navy">{formatDate(success.date)}</p>
               <p className="font-body text-navy">{formatTime(success.time)}</p>
-              <p className="text-navy/60 text-xs font-body mt-4">A confirmation email is on its way.</p>
+              <p className="text-navy/70 text-xs font-body mt-4">A confirmation email is on its way.</p>
               <Link href="/" className="inline-block mt-6 border border-navy/20 text-navy text-[11px] tracking-[0.2em] uppercase px-8 py-3 hover:border-navy">Return Home</Link>
             </div>
           ) : appointment ? (
             <>
-              <p className="text-navy/50 text-sm font-body text-center mb-8">
+              <p className="text-navy/70 text-sm font-body text-center mb-8">
                 Hi {appointment.clientName} — pick a new date and time for your {appointment.serviceName} with {appointment.stylistName}.
               </p>
 
               <div className="bg-white border border-navy/10 p-6 mb-6">
-                <p className="text-xs font-body text-navy/60 mb-1">Current:</p>
+                <p className="text-xs font-body text-navy/70 mb-1">Current:</p>
                 <p className="font-body text-sm">{formatDate(appointment.date)} at {formatTime(appointment.startTime)}</p>
               </div>
 

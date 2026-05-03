@@ -112,7 +112,7 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
 
       {/* Breadcrumb */}
       <div className="max-w-7xl mx-auto px-8 lg:px-12 pt-8">
-        <nav className="flex items-center gap-2 text-xs font-body text-navy/60">
+        <nav className="flex items-center gap-2 text-xs font-body text-navy/70">
           <Link href="/" className="hover:text-gold transition-colors">
             Home
           </Link>
@@ -128,7 +128,7 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
       {/* Intro + CTA */}
       <div className="max-w-7xl mx-auto px-8 lg:px-12 py-12 md:py-16">
         <AnimatedSection className="max-w-2xl mx-auto text-center mb-12">
-          <p className="text-navy/60 font-body font-light text-[15px] leading-relaxed mb-8">
+          <p className="text-navy/70 font-body font-light text-[15px] leading-relaxed mb-8">
             {category.description}
           </p>
           <Link
@@ -141,7 +141,7 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
 
         {/* Service List */}
         {loading ? (
-          <p className="text-center text-navy/50 font-body">
+          <p className="text-center text-navy/70 font-body">
             Loading services...
           </p>
         ) : error ? (
@@ -187,7 +187,7 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
                         <p className="text-navy/80 text-sm sm:text-[15px] font-body group-hover:text-navy transition-colors">
                           {service.name}
                         </p>
-                        <p className="text-navy/60 text-xs font-body mt-0.5">
+                        <p className="text-navy/70 text-xs font-body mt-0.5">
                           {service.duration} min
                         </p>
                       </div>
@@ -209,12 +209,12 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
               </div>
 
               {category.bookingNote && (
-                <p className="text-navy/60 text-xs font-body font-light text-center mt-6 leading-relaxed">
+                <p className="text-navy/70 text-xs font-body font-light text-center mt-6 leading-relaxed">
                   {category.bookingNote}
                 </p>
               )}
 
-              <p className="text-navy/60 text-xs font-body font-light text-center mt-4 leading-relaxed">
+              <p className="text-navy/70 text-xs font-body font-light text-center mt-4 leading-relaxed">
                 All prices are based upon consultation &amp; subject to change.
                 Pricing depends on hair length, thickness &amp; texture.
               </p>
@@ -230,7 +230,7 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
             <h2 className="font-heading text-2xl md:text-3xl mb-3">
               Explore More Services
             </h2>
-            <p className="text-navy/50 font-body font-light text-sm">
+            <p className="text-navy/70 font-body font-light text-sm">
               Browse our full range of professional hair services.
             </p>
           </AnimatedSection>
@@ -256,7 +256,7 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
                     <p className="font-heading text-lg group-hover:text-rose transition-colors duration-300">
                       {cat.title}
                     </p>
-                    <p className="text-navy/50 font-body font-light text-xs mt-1">
+                    <p className="text-navy/70 font-body font-light text-xs mt-1">
                       {cat.subtitle}
                     </p>
                   </div>
@@ -269,7 +269,7 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
           <AnimatedSection className="text-center mt-10">
             <Link
               href="/services"
-              className="inline-flex items-center gap-3 text-navy/60 hover:text-rose text-[11px] tracking-[0.2em] uppercase font-body transition-all duration-300 group"
+              className="inline-flex items-center gap-3 text-navy/70 hover:text-rose text-[11px] tracking-[0.2em] uppercase font-body transition-all duration-300 group"
             >
               View Full Menu &amp; Pricing
               <svg

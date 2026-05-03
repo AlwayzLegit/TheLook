@@ -83,7 +83,7 @@ export default function Team() {
             <span className="w-8 h-[1px] bg-gold" />
           </div>
           <h2 className="font-heading text-4xl md:text-5xl">Our Team</h2>
-          <p className="text-navy/50 font-body text-sm mt-3">
+          <p className="text-navy/70 font-body text-sm mt-3">
             Click any stylist to see their full portfolio and book with them directly.
           </p>
         </AnimatedSection>
@@ -104,7 +104,7 @@ export default function Team() {
 
                 <h3 className="font-heading text-xl mb-1 group-hover:text-rose transition-colors">{member.name}</h3>
                 {member.bio && (
-                  <p className="text-navy/60 text-sm font-body font-light leading-relaxed mb-5 max-w-xs mx-auto line-clamp-3">
+                  <p className="text-navy/70 text-sm font-body font-light leading-relaxed mb-5 max-w-xs mx-auto line-clamp-3">
                     {member.bio}
                   </p>
                 )}
@@ -114,7 +114,7 @@ export default function Team() {
                     been mapped yet, the legacy free-text specialty
                     tags fill the slot so the tile still reads. */}
                 {(member.categories.length > 0 ? member.categories : member.specialties).length > 0 && (
-                  <p className="text-xs font-body text-navy/50 tracking-wide">
+                  <p className="text-xs font-body text-navy/70 tracking-wide">
                     {(member.categories.length > 0 ? member.categories : member.specialties)
                       .slice(0, 3)
                       .join(" · ")}

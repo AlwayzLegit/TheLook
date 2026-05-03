@@ -42,10 +42,10 @@ export default function CompareServicesPage() {
       <Navbar />
       <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-6xl mx-auto px-6">
-          <Link href="/services" className="text-xs text-navy/60 hover:text-navy font-body mb-4 inline-block">&larr; All Services</Link>
+          <Link href="/services" className="text-xs text-navy/70 hover:text-navy font-body mb-4 inline-block">&larr; All Services</Link>
           <div className="text-center mb-10">
             <h1 className="font-heading text-4xl md:text-5xl mb-3">Compare Services</h1>
-            <p className="text-navy/50 font-body text-sm">Pick up to 3 services to compare side-by-side</p>
+            <p className="text-navy/70 font-body text-sm">Pick up to 3 services to compare side-by-side</p>
           </div>
 
           {/* Comparison table */}
@@ -54,7 +54,7 @@ export default function CompareServicesPage() {
               <table className="w-full text-sm font-body">
                 <thead className="bg-cream/50">
                   <tr>
-                    <th className="text-left p-4 text-navy/60 text-xs uppercase tracking-wide">Feature</th>
+                    <th className="text-left p-4 text-navy/70 text-xs uppercase tracking-wide">Feature</th>
                     {selected.map((s) => (
                       <th key={s.id} className="text-left p-4 font-heading text-base">
                         <div className="flex items-start justify-between gap-2">
@@ -67,15 +67,15 @@ export default function CompareServicesPage() {
                 </thead>
                 <tbody className="divide-y divide-navy/5">
                   <tr>
-                    <td className="p-4 text-navy/50">Category</td>
+                    <td className="p-4 text-navy/70">Category</td>
                     {selected.map((s) => <td key={s.id} className="p-4">{s.category}</td>)}
                   </tr>
                   <tr>
-                    <td className="p-4 text-navy/50">Starting Price</td>
+                    <td className="p-4 text-navy/70">Starting Price</td>
                     {selected.map((s) => <td key={s.id} className="p-4 font-heading text-rose">{s.price_text}</td>)}
                   </tr>
                   <tr>
-                    <td className="p-4 text-navy/50">Duration</td>
+                    <td className="p-4 text-navy/70">Duration</td>
                     {selected.map((s) => <td key={s.id} className="p-4">{s.duration} minutes</td>)}
                   </tr>
                   <tr>
@@ -93,7 +93,7 @@ export default function CompareServicesPage() {
 
           {/* Service picker */}
           {loading ? (
-            <p className="text-navy/60 text-center font-body">Loading...</p>
+            <p className="text-navy/70 text-center font-body">Loading...</p>
           ) : (
             <div className="space-y-8">
               {Object.entries(services).map(([category, items]) => (
@@ -120,7 +120,7 @@ export default function CompareServicesPage() {
                             <p className="font-body font-bold text-sm">{s.name}</p>
                             {isSelected && <span className="text-rose text-xs">✓</span>}
                           </div>
-                          <div className="flex items-center justify-between text-xs font-body text-navy/50">
+                          <div className="flex items-center justify-between text-xs font-body text-navy/70">
                             <span>{s.duration} min</span>
                             <span className="font-heading text-rose">{s.price_text}</span>
                           </div>

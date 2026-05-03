@@ -109,7 +109,7 @@ export default async function ServiceDetailPage(
       <Navbar />
       <main className="pt-20 pb-20 min-h-[100dvh] bg-cream">
         {/* Breadcrumbs */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 text-xs font-body text-navy/60">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 text-xs font-body text-navy/70">
           <Link href="/" className="hover:text-navy">Home</Link>
           <span className="mx-2">/</span>
           <Link href="/services" className="hover:text-navy">Services</Link>
@@ -153,7 +153,7 @@ export default async function ServiceDetailPage(
             </h1>
             <div className="flex items-center gap-4 mb-6">
               <span className="text-gold font-heading text-2xl">{service.price_text}</span>
-              <span className="text-navy/60 font-body text-sm">
+              <span className="text-navy/70 font-body text-sm">
                 {formatDuration(service.duration)}
               </span>
             </div>
@@ -163,7 +163,7 @@ export default async function ServiceDetailPage(
                 {service.description}
               </div>
             ) : (
-              <p className="text-navy/50 font-body font-light leading-relaxed mb-6">
+              <p className="text-navy/70 font-body font-light leading-relaxed mb-6">
                 Treat yourself to our {service.name.toLowerCase()} service. Our team takes the
                 time to understand your hair goals and delivers a personalized experience every
                 time. Book online or call us at {brand.phone} and we&apos;ll pair you with the
@@ -176,7 +176,7 @@ export default async function ServiceDetailPage(
                 <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-2">
                   Products we use
                 </p>
-                <p className="text-navy/60 font-body text-sm leading-relaxed whitespace-pre-wrap">
+                <p className="text-navy/70 font-body text-sm leading-relaxed whitespace-pre-wrap">
                   {service.products_used}
                 </p>
               </div>
@@ -192,7 +192,7 @@ export default async function ServiceDetailPage(
                     <li key={v.id} className="flex items-baseline justify-between py-2">
                       <span className="font-body text-sm text-navy">{v.name}</span>
                       <span className="flex items-baseline gap-3 shrink-0">
-                        <span className="text-navy/60 text-xs font-body">
+                        <span className="text-navy/70 text-xs font-body">
                           {formatDuration(v.duration)}
                         </span>
                         <span className="text-gold font-heading text-base">{v.price_text}</span>
@@ -218,7 +218,7 @@ export default async function ServiceDetailPage(
               </Link>
             </div>
 
-            <p className="text-navy/60 text-[11px] font-body mt-6">
+            <p className="text-navy/70 text-[11px] font-body mt-6">
               {brand.address} · {brand.phone}
             </p>
           </div>

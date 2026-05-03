@@ -51,7 +51,7 @@ export default function BeforeAfterCarousel({ pairs, title = "Before / After", s
             <span className="w-8 h-[1px] bg-gold" />
           </div>
           <h3 className="font-heading text-3xl md:text-4xl">{title}</h3>
-          {subtitle && <p className="text-navy/60 font-body text-sm mt-2">{subtitle}</p>}
+          {subtitle && <p className="text-navy/70 font-body text-sm mt-2">{subtitle}</p>}
         </div>
 
         <BeforeAfterSlider
@@ -61,7 +61,7 @@ export default function BeforeAfterCarousel({ pairs, title = "Before / After", s
           className="mb-4"
         />
 
-        <p className="text-center text-[11px] tracking-[0.2em] uppercase font-body text-navy/40 mb-4">
+        <p className="text-center text-[11px] tracking-[0.2em] uppercase font-body text-navy/65 mb-4">
           Drag to compare
         </p>
 
@@ -70,18 +70,18 @@ export default function BeforeAfterCarousel({ pairs, title = "Before / After", s
             type="button"
             onClick={prev}
             aria-label="Previous pair"
-            className="text-navy/50 hover:text-navy border border-navy/15 hover:border-navy/40 px-4 py-2 text-xs tracking-widest uppercase font-body transition-colors"
+            className="text-navy/70 hover:text-navy border border-navy/15 hover:border-navy/40 px-4 py-2 text-xs tracking-widest uppercase font-body transition-colors"
           >
             ← Prev
           </button>
-          <p className="text-navy/60 text-sm font-body text-center flex-1 px-4">
+          <p className="text-navy/70 text-sm font-body text-center flex-1 px-4">
             {pair.caption || <span className="text-navy/30">{i + 1} of {pairs.length}</span>}
           </p>
           <button
             type="button"
             onClick={next}
             aria-label="Next pair"
-            className="text-navy/50 hover:text-navy border border-navy/15 hover:border-navy/40 px-4 py-2 text-xs tracking-widest uppercase font-body transition-colors"
+            className="text-navy/70 hover:text-navy border border-navy/15 hover:border-navy/40 px-4 py-2 text-xs tracking-widest uppercase font-body transition-colors"
           >
             Next →
           </button>

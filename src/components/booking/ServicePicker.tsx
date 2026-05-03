@@ -65,7 +65,7 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
   return (
     <div>
       <h2 className="font-heading text-3xl mb-2 text-center">Choose Your Services</h2>
-      <p className="text-navy/55 font-body text-sm text-center mb-8">
+      <p className="text-navy/70 font-body text-sm text-center mb-8">
         Pick one or more — we&apos;ll book them back-to-back with your stylist.
       </p>
 
@@ -89,14 +89,14 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-navy/60 text-xs font-body">
+                  <span className="text-navy/70 text-xs font-body">
                     {services[cat].length} services
                   </span>
                   <motion.svg
                     animate={{ rotate: openCategory === cat ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
                     aria-hidden
-                    className="w-4 h-4 text-navy/60"
+                    className="w-4 h-4 text-navy/70"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -154,7 +154,7 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
                               <p className={`font-body text-sm ${isSelected ? "text-rose font-medium" : "text-navy"}`}>
                                 {service.name}
                               </p>
-                              <p className="font-body text-xs text-navy/60 mt-0.5">
+                              <p className="font-body text-xs text-navy/70 mt-0.5">
                                 {formatDuration(service.duration)}
                               </p>
                             </div>
@@ -175,10 +175,10 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
         <div className="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="min-w-0">
             {selected.length === 0 ? (
-              <p className="text-navy/50 text-sm font-body">No services selected yet</p>
+              <p className="text-navy/70 text-sm font-body">No services selected yet</p>
             ) : (
               <>
-                <p className="text-navy/50 text-xs font-body mb-0.5">
+                <p className="text-navy/70 text-xs font-body mb-0.5">
                   {selected.length} {selected.length === 1 ? "service" : "services"} · {formatDuration(totalDuration)}
                 </p>
                 <p className="font-heading text-xl text-gold truncate" title={selected.map((s) => s.name).join(", ")}>

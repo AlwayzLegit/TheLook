@@ -224,7 +224,7 @@ export default function DepositForm({
 
   if (stripe === "loading" || !clientSecret || !paymentIntentId) {
     return (
-      <div className="p-4 text-navy/50 font-body text-sm text-center">
+      <div className="p-4 text-navy/70 font-body text-sm text-center">
         Loading secure payment form…
       </div>
     );
@@ -248,7 +248,7 @@ export default function DepositForm({
             <span>Total charged now</span>
             <span>${(totalCents / 100).toFixed(2)}</span>
           </div>
-          <p className="text-[11px] text-navy/50 pt-1">
+          <p className="text-[11px] text-navy/70 pt-1">
             The deposit credits toward your service total at your appointment. The processing fee covers card-network costs and is non-refundable.
           </p>
         </div>

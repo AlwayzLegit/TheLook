@@ -109,7 +109,7 @@ export default function Contact() {
           <h1 className="font-heading text-4xl md:text-5xl mb-6">
             Contact Us
           </h1>
-          <p className="text-navy/60 font-body font-light max-w-xl mx-auto">
+          <p className="text-navy/70 font-body font-light max-w-xl mx-auto">
             The fastest way to reach us is a phone call. We answer during
             salon hours.
           </p>
@@ -123,7 +123,7 @@ export default function Contact() {
                 <div>
                   <label
                     htmlFor="name"
-                    className="block text-sm text-navy/60 mb-2 font-body"
+                    className="block text-sm text-navy/70 mb-2 font-body"
                   >
                     Full Name *
                   </label>
@@ -142,7 +142,7 @@ export default function Contact() {
                 <div>
                   <label
                     htmlFor="email"
-                    className="block text-sm text-navy/60 mb-2 font-body"
+                    className="block text-sm text-navy/70 mb-2 font-body"
                   >
                     Email *
                   </label>
@@ -164,7 +164,7 @@ export default function Contact() {
                 <div>
                   <label
                     htmlFor="phone"
-                    className="block text-sm text-navy/60 mb-2 font-body"
+                    className="block text-sm text-navy/70 mb-2 font-body"
                   >
                     Phone
                   </label>
@@ -182,7 +182,7 @@ export default function Contact() {
                 <div>
                   <label
                     htmlFor="service"
-                    className="block text-sm text-navy/60 mb-2 font-body"
+                    className="block text-sm text-navy/70 mb-2 font-body"
                   >
                     Service Interested In
                   </label>
@@ -214,7 +214,7 @@ export default function Contact() {
               <div>
                 <label
                   htmlFor="message"
-                  className="block text-sm text-navy/60 mb-2 font-body"
+                  className="block text-sm text-navy/70 mb-2 font-body"
                 >
                   Message *
                 </label>
@@ -244,12 +244,12 @@ export default function Contact() {
                     onChange={(e) => setFormData({ ...formData, smsConsent: e.target.checked })}
                     className="mt-1 h-4 w-4 accent-rose shrink-0"
                   />
-                  <span className="text-xs text-navy/60 font-body leading-relaxed">
+                  <span className="text-xs text-navy/70 font-body leading-relaxed">
                     By checking this box, I agree to receive SMS text messages from The Look Hair Salon.
                     Message frequency varies. Message and data rates may apply.
                   </span>
                 </label>
-                <p className="text-xs text-navy/50 font-body mt-2 ml-7">
+                <p className="text-xs text-navy/70 font-body mt-2 ml-7">
                   For more information, please review our{" "}
                   <a href="/privacy" className="underline hover:text-rose">Privacy Policy</a>
                   {" "}and{" "}
@@ -293,10 +293,10 @@ export default function Contact() {
             <div className="space-y-8">
               <div>
                 <h3 className="font-heading text-2xl mb-4">Visit Us</h3>
-                <div className="text-navy/60 font-body font-light space-y-2">
+                <div className="text-navy/70 font-body font-light space-y-2">
                   <p>{addrLine1}</p>
                   {addrLine2 && <p>{addrLine2}</p>}
-                  <p className="text-navy/50 text-sm mt-2">
+                  <p className="text-navy/70 text-sm mt-2">
                     Free parking lot &amp; free street parking available.
                   </p>
                 </div>
@@ -306,7 +306,7 @@ export default function Contact() {
                 <h3 className="font-heading text-2xl mb-4">
                   Call or Text Us
                 </h3>
-                <div className="text-navy/60 font-body font-light space-y-3">
+                <div className="text-navy/70 font-body font-light space-y-3">
                   {/* Tap-target buttons are the only contact entry points —
                       the raw number / email used to render above them but
                       was redundant noise on mobile and duplicated the

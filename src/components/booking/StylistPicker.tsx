@@ -111,7 +111,7 @@ export default function StylistPicker({
   return (
     <div>
       <h2 className="font-heading text-3xl mb-2 text-center">Choose Your Stylist</h2>
-      <p className="text-navy/50 font-body text-sm text-center mb-8">
+      <p className="text-navy/70 font-body text-sm text-center mb-8">
         {serviceIds.length > 1
           ? `Showing stylists who offer all ${serviceIds.length} selected services`
           : "Pick a stylist — you'll see their calendar next"}
@@ -142,7 +142,7 @@ export default function StylistPicker({
             >
               <div className="w-20 h-20 mb-4 rounded-full overflow-hidden relative bg-gradient-to-br from-navy/10 to-gold/20 self-center">
                 {isAny ? (
-                  <div className="w-full h-full flex items-center justify-center text-navy/50">
+                  <div className="w-full h-full flex items-center justify-center text-navy/70">
                     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                     </svg>
@@ -165,12 +165,12 @@ export default function StylistPicker({
               </div>
               <p className="font-heading text-lg text-center">{stylist.name}</p>
               {stylist.bio && (
-                <p className="text-xs font-body text-navy/60 mt-2 text-center leading-relaxed">
+                <p className="text-xs font-body text-navy/70 mt-2 text-center leading-relaxed">
                   {stylist.bio}
                 </p>
               )}
               {!offersAll && (
-                <p className="text-xs text-navy/60 font-body mt-3 text-center">
+                <p className="text-xs text-navy/70 font-body mt-3 text-center">
                   Doesn&apos;t offer all selected services
                 </p>
               )}

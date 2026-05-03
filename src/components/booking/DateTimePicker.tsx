@@ -61,7 +61,7 @@ export default function DateTimePicker({
   return (
     <div>
       <h2 className="font-heading text-3xl mb-2 text-center">Pick a Date &amp; Time</h2>
-      <p className="text-navy/50 font-body text-sm text-center mb-8">
+      <p className="text-navy/70 font-body text-sm text-center mb-8">
         {stylistName ? `Showing availability with ${stylistName}` : "Choose your preferred appointment slot"}
         {onChangeStylist ? (
           <>

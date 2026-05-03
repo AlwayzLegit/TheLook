@@ -34,7 +34,7 @@ export default function About() {
               {/* Floating badge */}
               <div className="absolute -bottom-6 -right-6 lg:-right-8 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.08)] px-6 py-4 rounded-sm animate-float">
                 <p className="font-heading text-2xl text-rose">14+</p>
-                <p className="text-navy/50 text-[10px] tracking-wider uppercase font-body">Years of Excellence</p>
+                <p className="text-navy/70 text-[10px] tracking-wider uppercase font-body">Years of Excellence</p>
               </div>
             </div>
           </AnimatedSection>
@@ -77,21 +77,21 @@ export default function About() {
             <div className="flex gap-6 lg:gap-10 pt-7 border-t border-navy/10">
               <div className="text-center px-3">
                 <p className="font-heading text-3xl text-navy">{brand.reviewBadges.yelpTotal}+</p>
-                <p className="text-navy/60 text-[10px] tracking-wider uppercase font-body mt-1">
+                <p className="text-navy/70 text-[10px] tracking-wider uppercase font-body mt-1">
                   Yelp Reviews
                 </p>
               </div>
               <div className="w-[1px] bg-navy/10" />
               <div className="text-center px-3">
                 <p className="font-heading text-3xl text-navy">{brand.reviewBadges.yelpRating.toFixed(1)}</p>
-                <p className="text-navy/60 text-[10px] tracking-wider uppercase font-body mt-1">
+                <p className="text-navy/70 text-[10px] tracking-wider uppercase font-body mt-1">
                   Star Rating
                 </p>
               </div>
               <div className="w-[1px] bg-navy/10" />
               <div className="text-center px-3">
                 <p className="font-heading text-3xl text-navy">639+</p>
-                <p className="text-navy/60 text-[10px] tracking-wider uppercase font-body mt-1">
+                <p className="text-navy/70 text-[10px] tracking-wider uppercase font-body mt-1">
                   Photos
                 </p>
               </div>

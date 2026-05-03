@@ -114,7 +114,7 @@ export default function StylistPortfolio({ stylistName, stylistSlug, items, pair
         </div>
         <Link
           href={`/gallery?stylist=${stylistSlug}`}
-          className="text-[11px] tracking-[0.2em] uppercase font-body text-navy/60 hover:text-rose transition-colors"
+          className="text-[11px] tracking-[0.2em] uppercase font-body text-navy/70 hover:text-rose transition-colors"
         >
           See all gallery →
         </Link>

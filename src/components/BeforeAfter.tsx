@@ -97,7 +97,7 @@ export default function BeforeAfter() {
           <p className="text-gold tracking-[0.3em] uppercase text-sm mb-4 font-body">Transformations</p>
           <h2 className="font-heading text-4xl md:text-5xl mb-6">Before &amp; After</h2>
           <div className="w-16 h-[1px] bg-rose mx-auto mb-4" />
-          <p className="text-navy/60 font-body font-light">Drag the slider to reveal the transformation</p>
+          <p className="text-navy/70 font-body font-light">Drag the slider to reveal the transformation</p>
         </AnimatedSection>
         <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="grid md:grid-cols-3 gap-8">
           {transformations.map((t) => (

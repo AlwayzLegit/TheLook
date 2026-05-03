@@ -133,7 +133,7 @@ export default async function TeamPage() {
               <span className="w-10 h-[1px] bg-gradient-to-l from-transparent to-gold" />
             </div>
             <h1 className="font-heading text-5xl md:text-6xl mb-5">Meet Our Team</h1>
-            <p className="text-navy/60 font-body font-light max-w-xl mx-auto">
+            <p className="text-navy/70 font-body font-light max-w-xl mx-auto">
               Family-owned since 2011. Below you&apos;ll meet the managers and stylists who make the salon run.
             </p>
           </div>
@@ -152,7 +152,7 @@ export default async function TeamPage() {
             )}
 
             {stylists.length === 0 ? (
-              <p className="text-navy/60 text-center font-body">Our stylists are being featured here soon.</p>
+              <p className="text-navy/70 text-center font-body">Our stylists are being featured here soon.</p>
             ) : (
               // Circular tiles match the Management section above so the
               // whole /team page feels uniform. Flex-wrap keeps any count
@@ -182,12 +182,12 @@ export default async function TeamPage() {
                       const tags: string[] = (s.categories?.length ? s.categories : s.specialties) || [];
                       if (tags.length === 0) return null;
                       return (
-                        <p className="text-xs font-body text-navy/50 mt-2">
+                        <p className="text-xs font-body text-navy/70 mt-2">
                           {tags.slice(0, 3).join(" · ")}
                         </p>
                       );
                     })()}
-                    {s.bio && <p className="text-navy/50 text-sm font-body mt-3 line-clamp-2 max-w-xs mx-auto">{s.bio}</p>}
+                    {s.bio && <p className="text-navy/70 text-sm font-body mt-3 line-clamp-2 max-w-xs mx-auto">{s.bio}</p>}
                   </Link>
                 ))}
               </div>
@@ -227,7 +227,7 @@ export default async function TeamPage() {
                         {s.title || defaultTitle(s.role)}
                       </p>
                       {s.bio && (
-                        <p className="text-navy/60 text-sm font-body mt-3 leading-relaxed max-w-xs mx-auto line-clamp-4">
+                        <p className="text-navy/70 text-sm font-body mt-3 leading-relaxed max-w-xs mx-auto line-clamp-4">
                           {s.bio}
                         </p>
                       )}

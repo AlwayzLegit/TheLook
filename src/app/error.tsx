@@ -21,7 +21,7 @@ export default function GlobalError({
         <h1 className="font-heading text-4xl md:text-5xl text-navy mb-6">
           Oops
         </h1>
-        <p className="text-navy/60 font-body font-light mb-10">
+        <p className="text-navy/70 font-body font-light mb-10">
           We encountered an unexpected error. Please try again or return to the
           home page.
         </p>

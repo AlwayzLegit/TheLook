@@ -40,13 +40,13 @@ export default function ClientInfoForm({
   return (
     <div>
       <h2 className="font-heading text-3xl mb-2 text-center">Your Information</h2>
-      <p className="text-navy/50 font-body text-sm text-center mb-8">
+      <p className="text-navy/70 font-body text-sm text-center mb-8">
         Tell us how to reach you
       </p>
 
       <div className="max-w-lg mx-auto space-y-6">
         <div>
-          <label htmlFor="book-name" className="block text-sm text-navy/60 mb-2 font-body">
+          <label htmlFor="book-name" className="block text-sm text-navy/70 mb-2 font-body">
             Full Name *
           </label>
           <input
@@ -60,7 +60,7 @@ export default function ClientInfoForm({
           />
         </div>
         <div>
-          <label htmlFor="book-email" className="block text-sm text-navy/60 mb-2 font-body">
+          <label htmlFor="book-email" className="block text-sm text-navy/70 mb-2 font-body">
             Email *
           </label>
           <input
@@ -75,7 +75,7 @@ export default function ClientInfoForm({
           />
         </div>
         <div>
-          <label htmlFor="book-phone" className="block text-sm text-navy/60 mb-2 font-body">
+          <label htmlFor="book-phone" className="block text-sm text-navy/70 mb-2 font-body">
             Phone *
           </label>
           <input
@@ -89,7 +89,7 @@ export default function ClientInfoForm({
             onChange={(e) => onChange({ ...info, phone: e.target.value })}
             className="w-full border-b border-navy/20 bg-transparent py-3 text-navy font-body focus:outline-none focus:border-rose transition-colors"
           />
-          <p id="book-phone-hint" className="text-xs text-navy/60 font-body mt-1">
+          <p id="book-phone-hint" className="text-xs text-navy/70 font-body mt-1">
             Required so we can reach you about same-day changes.
           </p>
         </div>
@@ -109,7 +109,7 @@ export default function ClientInfoForm({
               Message frequency varies. Message and data rates may apply.
             </span>
           </label>
-          <p className="text-xs text-navy/50 font-body mt-2 ml-7">
+          <p className="text-xs text-navy/70 font-body mt-2 ml-7">
             For more information, please review our{" "}
             <a href="/privacy" className="underline hover:text-rose" target="_blank" rel="noreferrer">Privacy Policy</a>
             {" "}and{" "}
@@ -117,7 +117,7 @@ export default function ClientInfoForm({
           </p>
         </div>
         <div>
-          <label htmlFor="book-notes" className="block text-sm text-navy/60 mb-2 font-body">
+          <label htmlFor="book-notes" className="block text-sm text-navy/70 mb-2 font-body">
             Notes (optional)
           </label>
           <textarea

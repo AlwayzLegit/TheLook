@@ -144,7 +144,7 @@ export default function GalleryWithStylistFilter({ initialItems, initialPairs, s
           <div className="max-w-7xl mx-auto px-6 flex items-center justify-end gap-3 flex-wrap">
             <label
               htmlFor="gallery-stylist-filter"
-              className="text-[11px] tracking-[0.3em] uppercase font-body text-navy/50"
+              className="text-[11px] tracking-[0.3em] uppercase font-body text-navy/70"
             >
               Filter by
             </label>
@@ -165,7 +165,7 @@ export default function GalleryWithStylistFilter({ initialItems, initialPairs, s
               <button
                 type="button"
                 onClick={() => setActiveSlug("")}
-                className="text-xs font-body text-navy/60 hover:text-navy underline-offset-2 hover:underline"
+                className="text-xs font-body text-navy/70 hover:text-navy underline-offset-2 hover:underline"
               >
                 Clear
               </button>
@@ -186,7 +186,7 @@ export default function GalleryWithStylistFilter({ initialItems, initialPairs, s
       )}
 
       {showFilter && activeStylist && filteredItems.length === 0 && carouselPairs.length === 0 && (
-        <p className="text-center text-navy/50 font-body text-sm py-12">
+        <p className="text-center text-navy/70 font-body text-sm py-12">
           No work tagged for {activeStylist.name} yet.
         </p>
       )}

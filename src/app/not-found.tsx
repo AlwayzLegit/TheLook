@@ -12,7 +12,7 @@ export default function NotFound() {
           <span className="w-8 h-[1px] bg-gold" />
         </div>
         <h1 className="font-heading text-5xl md:text-6xl text-navy mb-6">404</h1>
-        <p className="text-navy/60 font-body font-light mb-10">
+        <p className="text-navy/70 font-body font-light mb-10">
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">

@@ -41,7 +41,7 @@ export default function ClientLoginPage() {
       <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-md mx-auto px-6">
           <h1 className="font-heading text-4xl mb-3 text-center">Sign In</h1>
-          <p className="text-navy/50 text-sm font-body text-center mb-10">
+          <p className="text-navy/70 text-sm font-body text-center mb-10">
             Enter your email and we&apos;ll send you a secure sign-in link — no password needed.
           </p>
 
@@ -53,14 +53,14 @@ export default function ClientLoginPage() {
                 </svg>
               </div>
               <h2 className="font-heading text-xl mb-2">Check your email</h2>
-              <p className="text-navy/60 text-sm font-body">
+              <p className="text-navy/70 text-sm font-body">
                 We sent a sign-in link to <strong>{email}</strong>. It&apos;s valid for 15 minutes.
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="bg-white border border-navy/10 p-8 space-y-4">
               <div>
-                <label className="block text-sm text-navy/60 mb-2 font-body">Email</label>
+                <label className="block text-sm text-navy/70 mb-2 font-body">Email</label>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full border-b border-navy/20 bg-transparent py-2 font-body focus:outline-none focus:border-rose" />
               </div>
               {turnstileSiteKey ? (
@@ -76,13 +76,13 @@ export default function ClientLoginPage() {
               >
                 {submitting ? "Sending..." : "Send Sign-In Link"}
               </button>
-              <p className="text-xs text-navy/60 text-center font-body pt-2">
+              <p className="text-xs text-navy/70 text-center font-body pt-2">
                 You must have booked with us before to sign in.
               </p>
             </form>
           )}
 
-          <p className="text-center mt-8 text-xs text-navy/60 font-body">
+          <p className="text-center mt-8 text-xs text-navy/70 font-body">
             <Link href="/book" className="text-rose hover:underline">First time? Book an appointment</Link>
           </p>
         </div>

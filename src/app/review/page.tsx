@@ -27,7 +27,7 @@ export default async function ReviewPage() {
               <span className="w-10 h-[1px] bg-gradient-to-l from-transparent to-gold" />
             </div>
             <h1 className="font-heading text-5xl md:text-6xl mb-5">Share Your Experience</h1>
-            <p className="text-navy/60 font-body font-light max-w-xl mx-auto">
+            <p className="text-navy/70 font-body font-light max-w-xl mx-auto">
               Reviews are how new clients find us and how our stylists know they&apos;re on the right track.
               Pick whichever platform you already use — it takes less than a minute.
             </p>
@@ -36,10 +36,10 @@ export default async function ReviewPage() {
           <LeaveReviewCTA variant="light" />
 
           <div className="mt-12 text-center">
-            <p className="text-navy/60 text-xs tracking-[0.25em] uppercase font-body mb-3">
+            <p className="text-navy/70 text-xs tracking-[0.25em] uppercase font-body mb-3">
               Had an issue instead?
             </p>
-            <p className="text-navy/60 font-body text-sm mb-4">
+            <p className="text-navy/70 font-body text-sm mb-4">
               We&apos;d rather hear it directly so we can make it right.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">

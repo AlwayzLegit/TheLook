@@ -82,7 +82,7 @@ function PortalInner() {
         <Navbar />
         <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
           <div className="text-center py-20">
-            <p className="text-navy/60 font-body">Loading...</p>
+            <p className="text-navy/70 font-body">Loading...</p>
           </div>
         </main>
         <Footer />
@@ -101,20 +101,20 @@ function PortalInner() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="font-heading text-4xl">My Account</h1>
-              <p className="text-navy/60 text-sm font-body mt-1">{email}</p>
+              <p className="text-navy/70 text-sm font-body mt-1">{email}</p>
             </div>
-            <button onClick={signOut} className="text-xs font-body text-navy/60 hover:text-navy underline">Sign out</button>
+            <button onClick={signOut} className="text-xs font-body text-navy/70 hover:text-navy underline">Sign out</button>
           </div>
 
           {loading ? (
-            <p className="text-navy/60 font-body">Loading appointments...</p>
+            <p className="text-navy/70 font-body">Loading appointments...</p>
           ) : (
             <>
               <section className="mb-10">
                 <h2 className="font-heading text-2xl mb-4">Upcoming</h2>
                 {upcoming.length === 0 ? (
                   <div className="bg-white border border-navy/10 p-8 text-center">
-                    <p className="text-navy/60 font-body text-sm mb-4">No upcoming appointments.</p>
+                    <p className="text-navy/70 font-body text-sm mb-4">No upcoming appointments.</p>
                     <Link href="/book" className="inline-block bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-6 py-2 font-body">Book Now</Link>
                   </div>
                 ) : (
@@ -123,8 +123,8 @@ function PortalInner() {
                       <div key={a.id} className="bg-white border border-navy/10 p-5 flex items-center justify-between">
                         <div>
                           <p className="font-body font-bold">{a.services?.name || "Service"}</p>
-                          <p className="text-navy/50 text-sm font-body">with {a.stylists?.name || "Your Stylist"}</p>
-                          <p className="text-navy/60 text-sm font-body mt-1">{formatDate(a.date)} at {formatTime(a.start_time)}</p>
+                          <p className="text-navy/70 text-sm font-body">with {a.stylists?.name || "Your Stylist"}</p>
+                          <p className="text-navy/70 text-sm font-body mt-1">{formatDate(a.date)} at {formatTime(a.start_time)}</p>
                           <span className={`inline-block mt-2 text-xs font-body px-2 py-0.5 ${a.status === "confirmed" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>{a.status}</span>
                         </div>
                         {a.cancel_token && (
@@ -142,14 +142,14 @@ function PortalInner() {
               <section>
                 <h2 className="font-heading text-2xl mb-4">History</h2>
                 {past.length === 0 ? (
-                  <p className="text-navy/60 text-sm font-body">No past appointments.</p>
+                  <p className="text-navy/70 text-sm font-body">No past appointments.</p>
                 ) : (
                   <div className="bg-white border border-navy/10 divide-y divide-navy/5">
                     {past.slice(0, 20).map((a) => (
                       <div key={a.id} className="px-5 py-3 flex items-center justify-between">
                         <div>
                           <p className="font-body text-sm">{a.services?.name || "Service"}</p>
-                          <p className="text-navy/60 text-xs font-body">with {a.stylists?.name || "Stylist"} · {formatDate(a.date)}</p>
+                          <p className="text-navy/70 text-xs font-body">with {a.stylists?.name || "Stylist"} · {formatDate(a.date)}</p>
                         </div>
                         <span className={`text-xs font-body px-2 py-0.5 ${a.status === "completed" ? "bg-blue-100 text-blue-700" : a.status === "cancelled" ? "bg-red-100 text-red-700" : a.status === "no_show" ? "bg-gray-100 text-gray-600" : "bg-green-100 text-green-700"}`}>{a.status}</span>
                       </div>

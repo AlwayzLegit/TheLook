@@ -38,7 +38,7 @@ function CancelContent() {
   }, [token]);
 
   if (status === "loading") {
-    return <p className="text-navy/50 font-body">Cancelling your appointment...</p>;
+    return <p className="text-navy/70 font-body">Cancelling your appointment...</p>;
   }
 
   if (status === "success") {
@@ -53,7 +53,7 @@ function CancelContent() {
         <p className="text-navy/70 font-body">
           We&apos;d love to see you again — call us at {brand.phone} or visit our website to rebook.
         </p>
-        <p className="text-navy/50 text-xs font-body mt-5 leading-relaxed">
+        <p className="text-navy/70 text-xs font-body mt-5 leading-relaxed">
           <strong className="text-navy/70">Deposit &amp; cancellation policy:</strong> Cancellations
           made at least 24 hours in advance receive a full refund of the deposit. Cancellations
           within 24 hours of the appointment forfeit the deposit. Additional cancellation or
@@ -71,7 +71,7 @@ function CancelContent() {
         </svg>
       </div>
       <h2 className="font-heading text-3xl mb-4">Oops</h2>
-      <p className="text-navy/60 font-body">{message}</p>
+      <p className="text-navy/70 font-body">{message}</p>
     </>
   );
 }
@@ -82,7 +82,7 @@ export default function CancelPage() {
       <Navbar />
       <main className="pt-24 pb-20 min-h-[100dvh] bg-cream flex items-center justify-center">
         <div className="max-w-md mx-auto px-6 text-center">
-          <Suspense fallback={<p className="text-navy/50 font-body">Loading...</p>}>
+          <Suspense fallback={<p className="text-navy/70 font-body">Loading...</p>}>
             <CancelContent />
           </Suspense>
         </div>

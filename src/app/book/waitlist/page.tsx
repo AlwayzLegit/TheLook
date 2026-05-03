@@ -66,7 +66,7 @@ function WaitlistInner() {
       <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-xl mx-auto px-6">
           <h1 className="font-heading text-4xl mb-2 text-center">Join the Waitlist</h1>
-          <p className="text-navy/50 text-sm font-body text-center mb-10">
+          <p className="text-navy/70 text-sm font-body text-center mb-10">
             We&apos;ll let you know the moment a slot opens up that matches what you&apos;re looking for.
           </p>
 
@@ -78,7 +78,7 @@ function WaitlistInner() {
                 </svg>
               </div>
               <h2 className="font-heading text-2xl mb-3">You&apos;re on the list!</h2>
-              <p className="text-navy/60 font-body text-sm mb-6">
+              <p className="text-navy/70 font-body text-sm mb-6">
                 We&apos;ll email you as soon as a matching slot opens up.
               </p>
               <Link href="/" className="inline-block border border-navy/20 text-navy text-[11px] tracking-[0.2em] uppercase px-8 py-3 hover:border-navy">Return Home</Link>
@@ -86,7 +86,7 @@ function WaitlistInner() {
           ) : (
             <form onSubmit={handleSubmit} className="bg-white border border-navy/10 p-8 space-y-5">
               <div>
-                <label className="block text-sm text-navy/60 mb-2 font-body">Service *</label>
+                <label className="block text-sm text-navy/70 mb-2 font-body">Service *</label>
                 <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} required className="w-full border-b border-navy/20 bg-transparent py-2 text-navy font-body focus:outline-none focus:border-rose">
                   <option value="">Select a service</option>
                   {Object.entries(services).map(([cat, items]) => (
@@ -98,7 +98,7 @@ function WaitlistInner() {
               </div>
 
               <div>
-                <label className="block text-sm text-navy/60 mb-2 font-body">Preferred Stylist (optional)</label>
+                <label className="block text-sm text-navy/70 mb-2 font-body">Preferred Stylist (optional)</label>
                 <select value={stylistId} onChange={(e) => setStylistId(e.target.value)} className="w-full border-b border-navy/20 bg-transparent py-2 text-navy font-body focus:outline-none focus:border-rose">
                   <option value="">Any stylist</option>
                   {stylists.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -107,27 +107,27 @@ function WaitlistInner() {
 
               <div className="grid sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm text-navy/60 mb-2 font-body">Name *</label>
+                  <label className="block text-sm text-navy/70 mb-2 font-body">Name *</label>
                   <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full border-b border-navy/20 bg-transparent py-2 font-body focus:outline-none focus:border-rose" />
                 </div>
                 <div>
-                  <label className="block text-sm text-navy/60 mb-2 font-body">Email *</label>
+                  <label className="block text-sm text-navy/70 mb-2 font-body">Email *</label>
                   <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full border-b border-navy/20 bg-transparent py-2 font-body focus:outline-none focus:border-rose" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm text-navy/60 mb-2 font-body">Phone</label>
+                <label className="block text-sm text-navy/70 mb-2 font-body">Phone</label>
                 <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full border-b border-navy/20 bg-transparent py-2 font-body focus:outline-none focus:border-rose" />
               </div>
 
               <div className="grid sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm text-navy/60 mb-2 font-body">Preferred Date (optional)</label>
+                  <label className="block text-sm text-navy/70 mb-2 font-body">Preferred Date (optional)</label>
                   <input type="date" value={preferredDate} onChange={(e) => setPreferredDate(e.target.value)} className="w-full border-b border-navy/20 bg-transparent py-2 font-body focus:outline-none focus:border-rose" />
                 </div>
                 <div>
-                  <label className="block text-sm text-navy/60 mb-2 font-body">Preferred Time</label>
+                  <label className="block text-sm text-navy/70 mb-2 font-body">Preferred Time</label>
                   <select value={preferredTimeRange} onChange={(e) => setPreferredTimeRange(e.target.value)} className="w-full border-b border-navy/20 bg-transparent py-2 font-body focus:outline-none focus:border-rose">
                     <option value="">Any time</option>
                     <option value="morning">Morning (before 12pm)</option>
@@ -138,7 +138,7 @@ function WaitlistInner() {
               </div>
 
               <div>
-                <label className="block text-sm text-navy/60 mb-2 font-body">Additional Notes</label>
+                <label className="block text-sm text-navy/70 mb-2 font-body">Additional Notes</label>
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Any other details we should know..." className="w-full border-b border-navy/20 bg-transparent py-2 font-body focus:outline-none focus:border-rose resize-none" />
               </div>
 

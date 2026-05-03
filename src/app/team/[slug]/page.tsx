@@ -171,7 +171,7 @@ export default async function TeamMemberPage({ params }: any) {
         <Navbar />
         <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
           <div className="max-w-4xl mx-auto px-6">
-            <Link href="/team" className="text-xs text-navy/60 hover:text-navy font-body mb-6 inline-block">&larr; All team</Link>
+            <Link href="/team" className="text-xs text-navy/70 hover:text-navy font-body mb-6 inline-block">&larr; All team</Link>
 
             <div className="flex flex-col items-center text-center">
               <div className="relative aspect-square overflow-hidden bg-cream-dark rounded-full w-52 md:w-64 mb-6">
@@ -238,7 +238,7 @@ export default async function TeamMemberPage({ params }: any) {
       <Navbar />
       <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-6xl mx-auto px-6">
-          <Link href="/team" className="text-xs text-navy/60 hover:text-navy font-body mb-6 inline-block">&larr; All team</Link>
+          <Link href="/team" className="text-xs text-navy/70 hover:text-navy font-body mb-6 inline-block">&larr; All team</Link>
 
           <div className="grid md:grid-cols-2 gap-12 mb-16 items-center">
             <div className="relative aspect-square overflow-hidden bg-cream-dark rounded-full w-64 md:w-80 mx-auto">
@@ -257,7 +257,7 @@ export default async function TeamMemberPage({ params }: any) {
               <h1 className="font-heading text-5xl md:text-6xl mb-4">{stylist.name}</h1>
 
               {stylist.specialties.length > 0 && (
-                <p className="text-sm font-body text-navy/60 mb-6">
+                <p className="text-sm font-body text-navy/70 mb-6">
                   {stylist.specialties.join(" · ")}
                 </p>
               )}
@@ -299,7 +299,7 @@ export default async function TeamMemberPage({ params }: any) {
                         <div key={svc.id} className="grid grid-cols-[1fr_auto_auto] gap-4 items-baseline">
                           <div>
                             <p className="font-body text-sm">{svc.name}</p>
-                            <p className="text-navy/60 text-xs font-body">{svc.duration} min</p>
+                            <p className="text-navy/70 text-xs font-body">{svc.duration} min</p>
                           </div>
                           <span className="text-gold font-heading text-right tabular-nums min-w-[70px]">{svc.price_text}</span>
                           <Link href={`/book?service=${svc.id}&stylist=${stylist.id}`} className="text-[10px] font-body text-rose hover:underline">Book</Link>
