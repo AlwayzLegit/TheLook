@@ -461,6 +461,8 @@ export async function POST(request: NextRequest) {
       phone: number,
       clientName,
       serviceName: serviceNamesCombined,
+      stylistName,
+      requestedStylist: !wantsAny,
       date,
       time: startTime,
       appointmentId,

@@ -111,6 +111,20 @@ export default function BookPage() {
     window.history.replaceState(null, "", url.toString());
   }, [step]);
 
+  // Reset scroll to the top of the wizard on every step change.
+  // Without this the browser preserves whatever scroll position the
+  // previous step left the page in — e.g. picking a stylist near
+  // the bottom of a long stylist grid then auto-advancing to
+  // date/time would leave the user stranded below the new step's
+  // content, looking at empty space. Scroll-to-top is wrapped in
+  // an rAF so the new step's DOM has painted before we measure.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }, [step]);
+
   // Listen for back/forward so the step state follows the URL.
   useEffect(() => {
     if (typeof window === "undefined") return;

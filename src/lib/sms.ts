@@ -392,18 +392,27 @@ export async function sendStaffNewBookingSMS(args: {
   phone: string;
   clientName: string;
   serviceName: string;
+  // The stylist the booking landed under (auto-assigned when the
+  // customer picked Any, otherwise the one they requested).
+  stylistName: string;
+  // True when the customer explicitly picked this stylist; false
+  // when they picked "Any" and the system auto-assigned. Surfaced
+  // as a "(requested)" / "(any)" suffix so the salon's morning
+  // text stream tells front-desk at a glance whether a swap is OK.
+  requestedStylist: boolean;
   date: string;
   time: string;
   appointmentId?: string;
 }) {
-  const { phone, clientName, serviceName, date, time, appointmentId } = args;
+  const { phone, clientName, serviceName, stylistName, requestedStylist, date, time, appointmentId } = args;
   const brand = await getBranding();
   const shortName = smsShortName(brand.name);
+  const stylistTag = `${stylistName} (${requestedStylist ? "requested" : "any"})`;
   return sendSMS({
     to: phone,
     event: "staff.new_booking",
     appointmentId: appointmentId || null,
-    body: `[${shortName}] New booking: ${clientName} · ${serviceName} · ${shortDate(date)} ${pretty12h(time)}`,
+    body: `[${shortName}] New booking: ${clientName} · ${serviceName} · w/ ${stylistTag} · ${shortDate(date)} ${pretty12h(time)}`,
   });
 }
 
