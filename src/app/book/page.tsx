@@ -112,17 +112,37 @@ export default function BookPage() {
   }, [step]);
 
   // Reset scroll to the top of the wizard on every step change.
-  // Without this the browser preserves whatever scroll position the
-  // previous step left the page in — e.g. picking a stylist near
-  // the bottom of a long stylist grid then auto-advancing to
-  // date/time would leave the user stranded below the new step's
-  // content, looking at empty space. Scroll-to-top is wrapped in
-  // an rAF so the new step's DOM has painted before we measure.
+  // Round-17 prod QA found the single-rAF version losing the race
+  // against:
+  //   • autoFocus on form inputs scrolling them into view
+  //   • Turnstile iframe mounting on step 3 and adjusting layout
+  //   • smooth-scroll being interruptible mid-animation
+  // Multi-pass approach: double-rAF (run after the new step has
+  // actually painted), then a 100ms setTimeout to override any
+  // late-mount widget that calls scrollIntoView. 'auto' (instant)
+  // instead of 'smooth' so a competing scroll can't interrupt the
+  // reset. Also pin scrollRestoration to manual so the browser
+  // doesn't restore the prior step's scroll position on popstate.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    return () => {
+      if ("scrollRestoration" in window.history) {
+        window.history.scrollRestoration = "auto";
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const scrollTop = () => window.scrollTo({ top: 0, behavior: "auto" });
     requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      requestAnimationFrame(scrollTop);
     });
+    const t = setTimeout(scrollTop, 100);
+    return () => clearTimeout(t);
   }, [step]);
 
   // Listen for back/forward so the step state follows the URL.
@@ -446,7 +466,10 @@ export default function BookPage() {
   }, [step, selectedServices.length, totalPriceMin, totalDuration, requiresDeposit]);
 
   const prevStep = () => {
-    if (step > STEP_SERVICE) setStep(step - 1);
+    // Functional setState so a concurrent re-render (e.g. the
+    // navigation guard fires on the same tick) reads the freshest
+    // step value rather than a stale closure capture.
+    setStep((s) => (s > STEP_SERVICE ? s - 1 : s));
   };
 
   const handleSubmit = async () => {
@@ -489,6 +512,22 @@ export default function BookPage() {
           total_duration: totalDuration,
           requires_deposit: requiresDeposit,
         });
+        // Round-17 QA caught a customer-facing dead-end: Turnstile
+        // tokens expire ~5 min after issue, so a customer who lingers
+        // on step 4 (e.g. takes a phone call after step 3, comes back
+        // to confirm) hits "Captcha verification failed" with no path
+        // forward — Confirm is disabled, Back appeared not to work,
+        // and a page refresh dumps the wizard state. Recovery: clear
+        // the stale token, bounce them to step 3 where the Turnstile
+        // widget lives so it re-challenges, and show a clear message.
+        const errStr = String(data?.error || "").toLowerCase();
+        if (errStr.includes("captcha") || errStr.includes("turnstile") || errStr.includes("verification")) {
+          setTurnstileToken(null);
+          setStep(STEP_INFO);
+          setError("Verification expired — please confirm you're human and continue again.");
+          setSubmitting(false);
+          return;
+        }
         setError(data.error || "Failed to book appointment");
         setSubmitting(false);
         return;
