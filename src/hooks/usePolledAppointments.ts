@@ -30,6 +30,10 @@ interface Appointment {
   // Used by the review-request modal to warn admin if a review was
   // already sent (auto-on-completion or earlier manual fire).
   review_request_sent_at?: string | null;
+  // Snapshotted sum of appointment_services price_min (cents). The
+  // /api/admin/appointments endpoint folds this so the admin list +
+  // client-history panel don't have to per-row over the lines.
+  totalPriceMin?: number | null;
 }
 
 interface UsePolledAppointmentsOptions {

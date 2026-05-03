@@ -20,7 +20,7 @@ import WalkInDialog from "@/components/admin/WalkInDialog";
 import AppointmentActionsModal from "@/components/admin/AppointmentActionsModal";
 import { Button } from "@/components/ui/Button";
 import { Badge, badgeToneForStatus } from "@/components/ui/Badge";
-import { formatTime as fmtTime, formatDate as fmtDate } from "@/lib/format";
+import { formatTime as fmtTime, formatDate as fmtDate, formatMoney } from "@/lib/format";
 import ReviewRequestModal from "@/components/admin/ReviewRequestModal";
 
 interface Service {
@@ -83,6 +83,11 @@ interface EnrichedAppointment {
   deposit_required_cents?: number | null;
   deposit_status?: "none" | "paid" | "refunded" | "pending";
   review_request_sent_at?: string | null;
+  // Snapshotted total of every appointment_services line price (cents).
+  // Returned by /api/admin/appointments and used by the client-history
+  // panel so the owner can see what was charged on past visits and
+  // keep this visit's pricing consistent.
+  totalPriceMin?: number | null;
 }
 
 function formatTime(time: string) {
@@ -1286,13 +1291,23 @@ export default function AppointmentsPage() {
                 </p>
               )}
 
-              {appt.status !== "cancelled" && appt.status !== "completed" && appt.status !== "no_show" && (
+              {/* Edit is allowed on completed bookings too — owners
+                  often need to record what was actually done in the
+                  chair (added a treatment, swapped to a longer service,
+                  rounded the price up/down) AFTER the appointment is
+                  marked complete. Cancelled / no-show stay locked
+                  since their service lines aren't real work history. */}
+              {appt.status !== "cancelled" && appt.status !== "no_show" && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   <button
                     onClick={() => editingId === appt.id ? setEditingId(null) : openEdit(appt)}
                     className="text-xs font-body text-navy border border-navy/20 px-3 py-1 hover:bg-navy/5"
                   >
-                    {editingId === appt.id ? "Close Edit" : "Edit"}
+                    {editingId === appt.id
+                      ? "Close Edit"
+                      : appt.status === "completed"
+                        ? "Adjust"
+                        : "Edit"}
                   </button>
                   {appt.status === "pending" && (
                     <button
@@ -1390,7 +1405,19 @@ export default function AppointmentsPage() {
         </div>
       ) : null}
       {/* Client history panel */}
-      {clientHistoryId && clientHistory.length > 0 && (
+      {clientHistoryId && clientHistory.length > 0 && (() => {
+        // Lifetime total across the visible history rows. Skips
+        // cancelled / no-show because nothing was actually charged
+        // for those — including them would inflate the "kept by"
+        // number the owner uses to spot pricing inconsistencies.
+        const billable = clientHistory.filter(
+          (h) => h.status !== "cancelled" && h.status !== "no_show",
+        );
+        const lifetimeTotal = billable.reduce(
+          (sum, h) => sum + (h.totalPriceMin || 0),
+          0,
+        );
+        return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setClientHistoryId(null)}>
           <div className="bg-white p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
@@ -1398,25 +1425,37 @@ export default function AppointmentsPage() {
               <button onClick={() => setClientHistoryId(null)} className="text-navy/40 hover:text-navy text-xl">&times;</button>
             </div>
             <p className="text-sm font-body text-navy/50 mb-1">{clientHistory[0]?.client_name}</p>
-            <p className="text-xs font-body text-navy/40 mb-4">{clientHistoryId} &middot; {clientHistory.length} appointment{clientHistory.length !== 1 ? "s" : ""}</p>
+            <p className="text-xs font-body text-navy/40 mb-1">{clientHistoryId} &middot; {clientHistory.length} appointment{clientHistory.length !== 1 ? "s" : ""}</p>
+            {lifetimeTotal > 0 && (
+              <p className="text-xs font-body text-navy/60 mb-4">
+                Lifetime billed: <span className="font-bold text-navy">{formatMoney(lifetimeTotal, { from: "cents" })}</span>
+                <span className="text-navy/40"> across {billable.length} visit{billable.length === 1 ? "" : "s"}</span>
+              </p>
+            )}
             <div className="divide-y divide-navy/5">
               {clientHistory.map((h) => (
-                <div key={h.id} className="py-2 flex justify-between">
-                  <div>
-                    <p className="text-sm font-body">{h.serviceName}</p>
+                <div key={h.id} className="py-2 flex justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-body truncate">{h.serviceName}</p>
                     <p className="text-xs font-body text-navy/40">{h.date} &middot; {formatTime(h.start_time)}</p>
                   </div>
-                  <div className="self-start">
+                  <div className="flex flex-col items-end gap-1 shrink-0">
                     <Badge tone={badgeToneForStatus(h.status)} size="sm">
                       {h.status.replace("_", " ")}
                     </Badge>
+                    {h.totalPriceMin != null && h.totalPriceMin > 0 && h.status !== "cancelled" && h.status !== "no_show" && (
+                      <span className="text-xs font-body text-navy/70 tabular-nums">
+                        {formatMoney(h.totalPriceMin, { from: "cents" })}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Confirmation modal for destructive actions */}
       {confirmAction && (
