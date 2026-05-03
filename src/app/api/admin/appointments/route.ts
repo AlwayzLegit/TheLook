@@ -179,7 +179,19 @@ export async function GET(request: NextRequest) {
 const adminBookingSchema = z.object({
   serviceIds: z.array(z.string().uuid()).min(1).max(8),
   variantIds: z.array(z.string().uuid().or(z.literal(""))).max(8).optional(),
-  stylistId: z.string().uuid(),
+  // Canonical-format UUID regex instead of z.string().uuid() so the
+  // BOOKING.ANY_STYLIST_ID sentinel ("00000000-0000-0000-0000-000000000001")
+  // is accepted. Strict RFC 4122 validation rejects it because the
+  // version nibble must be 1-5 and the variant nibble must be 8/9/a/b
+  // — both are 0 in the sentinel. The public /api/appointments path
+  // happens to use a looser validator, which is why the customer-side
+  // Any-Stylist booking has been working all along; the admin path
+  // hadn't been exercised until commit b504dcc surfaced "Any Stylist"
+  // in the new-appointment dropdown.
+  stylistId: z.string().regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    "Invalid stylist ID",
+  ),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   clientName: z.string().trim().min(1).max(200),
