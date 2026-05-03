@@ -5,6 +5,7 @@ import { logAdminAction } from "@/lib/auditLog";
 import { getAvailableSlots } from "@/lib/availability";
 import { computeRequiredDeposit } from "@/lib/depositRules";
 import { createNotification } from "@/lib/notifications";
+import { BOOKING } from "@/lib/constants";
 import { z } from "zod";
 import { NextRequest } from "next/server";
 
@@ -277,7 +278,10 @@ export async function POST(request: NextRequest) {
     notes: p.notes || null,
     staff_notes: p.staffNotes || null,
     cancel_token: cancelToken,
-    requested_stylist: true,
+    // false when admin picked the "Any Stylist" sentinel — mirrors the
+    // customer-facing booking semantics so emails / dashboards render
+    // the neutral "Any" badge instead of a name nobody chose.
+    requested_stylist: p.stylistId !== BOOKING.ANY_STYLIST_ID,
     policy_accepted_at: new Date().toISOString(),
     deposit_required_cents: adminDepositCalc.depositCents,
     approved_at: p.status === "confirmed" ? new Date().toISOString() : null,

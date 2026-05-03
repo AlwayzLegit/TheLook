@@ -127,11 +127,22 @@ export default function AppointmentActionsModal({
       setTotalMinutes(null);
       setServiceCount(1);
     }
-  }, [appointment]);
+    // Gate on the appointment id, not the object reference. The parent
+    // (admin/appointments/page.tsx) passes a freshly-derived
+    // enrichedAppts.find(...) result on every render, which produces a
+    // new object identity on every poll tick AND every other state
+    // change. Depending on `appointment` itself caused this effect to
+    // re-fire on every parent re-render, which reset `editing` back
+    // to false a couple seconds into any edit — making the inline
+    // edit form auto-close while the admin was still typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appointment?.id]);
 
   // Pull appointment_services for this booking once per modal open so we
   // know the SUM of snapshotted durations. Snapshotted at booking time —
-  // immune to later edits of the underlying services table.
+  // immune to later edits of the underlying services table. Same
+  // identity-vs-id rationale as the field-init effect above: depend on
+  // the appointment id so we don't refetch on every parent re-render.
   useEffect(() => {
     if (!appointment) return;
     let cancelled = false;
@@ -165,7 +176,8 @@ export default function AppointmentActionsModal({
     return () => {
       cancelled = true;
     };
-  }, [appointment]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appointment?.id]);
 
   if (!appointment) return null;
 

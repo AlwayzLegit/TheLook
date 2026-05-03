@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { displayEmail, formatMoney, formatDuration } from "@/lib/format";
 import { cn } from "@/components/ui/cn";
 import { toast } from "@/components/ui/Toaster";
+import { BOOKING } from "@/lib/constants";
 
 // ─── 2-step New Appointment — plan §7.4 ─────────────────────────────
 // Step 1 "Who"  → client autocomplete over existing client_profiles + an
@@ -447,6 +448,18 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
               onChange={(e) => { setStylistId(e.target.value); setStartTime(""); }}
             >
               <option value="">Choose a stylist…</option>
+              {/* Match the customer-facing booking flow: let admins
+                  create an "Any Stylist" placeholder when they don't
+                  yet know who'll cover the slot. The availability
+                  endpoint already understands BOOKING.ANY_STYLIST_ID
+                  and returns the union of working stylists' free
+                  slots; the backend marks requested_stylist=false on
+                  insert when this sentinel is used. Only offer it
+                  when at least one real stylist could do the job —
+                  otherwise "Any" would still resolve to nobody. */}
+              {eligibleStylists.length > 0 && (
+                <option value={BOOKING.ANY_STYLIST_ID}>Any Stylist</option>
+              )}
               {eligibleStylists.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -456,7 +469,7 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
                 No stylist offers all selected services.
               </p>
             )}
-            {stylistId && (
+            {stylistId && stylistId !== BOOKING.ANY_STYLIST_ID && (
               <div className="mt-2">
                 {(() => {
                   const st = eligibleStylists.find((s) => s.id === stylistId);
@@ -464,6 +477,11 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
                   return <Tag color={st.color}>{st.name}</Tag>;
                 })()}
               </div>
+            )}
+            {stylistId === BOOKING.ANY_STYLIST_ID && (
+              <p className="mt-2 text-[0.75rem] text-[var(--color-text-muted)]">
+                Any available stylist — you can assign a specific stylist later by editing the appointment.
+              </p>
             )}
           </section>
 
