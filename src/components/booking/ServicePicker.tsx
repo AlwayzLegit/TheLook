@@ -21,6 +21,12 @@ function rowKey(s: Service) {
   return s.variantId ? `${s.id}:${s.variantId}` : s.id;
 }
 
+// Surface the most-booked categories first so customers land on
+// what they came for. Facial Services is a niche add-on and gets
+// pushed to the end. Keep this in sync with Services.tsx so the
+// marketing menu and the booking flow agree on order.
+const CATEGORY_ORDER = ["Haircuts", "Color", "Styling", "Treatments", "Facial Services"];
+
 interface Props {
   services: Record<string, Service[]>;
   onToggle: (service: Service) => void;
@@ -41,7 +47,10 @@ function formatPrice(cents: number, hasPlus: boolean) {
 }
 
 export default function ServicePicker({ services, onToggle, onContinue, selected }: Props) {
-  const categories = Object.keys(services);
+  const available = Object.keys(services);
+  const ordered = CATEGORY_ORDER.filter((c) => available.includes(c));
+  const remainder = available.filter((c) => !CATEGORY_ORDER.includes(c)).sort((a, b) => a.localeCompare(b));
+  const categories = [...ordered, ...remainder];
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const selectedKeys = new Set(selected.map(rowKey));
 
