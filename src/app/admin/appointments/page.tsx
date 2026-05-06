@@ -204,7 +204,10 @@ export default function AppointmentsPage() {
   // Latches to "true" once we've tried to auto-open the focused appointment.
   // Without this the modal would re-open every poll tick after the user
   // closed it.
-  const [focusOpened, setFocusOpened] = useState(false);
+  // Track which focus ID we've already auto-opened so polling doesn't
+  // re-open the modal after the user closes it, but a click on a *different*
+  // notification (which changes ?focus=) still opens that one.
+  const [lastFocusedId, setLastFocusedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -224,12 +227,14 @@ export default function AppointmentsPage() {
 
   // When a notification (or any deep-link with ?focus=<id>) lands here,
   // auto-open that appointment's detail modal once the polled list has
-  // the row in hand. Gated on `focusOpened` so closing the modal doesn't
-  // immediately re-open it on the next 15-second poll. Service/stylist
-  // lookups are computed inline so this effect doesn't depend on the
-  // derived maps that live below the early-return check.
+  // the row in hand. Gated on `lastFocusedId` so closing the modal
+  // doesn't immediately re-open it on the next 15-second poll, but
+  // clicking a *different* notification (changing ?focus=) still opens
+  // the new one. Service/stylist lookups are computed inline so this
+  // effect doesn't depend on the derived maps that live below the
+  // early-return check.
   useEffect(() => {
-    if (!qFocus || focusOpened) return;
+    if (!qFocus || qFocus === lastFocusedId) return;
     const match = realtimeAppts.find((a) => a.id === qFocus);
     if (!match) return;
     const svc = services.find((s) => s.id === match.service_id);
@@ -241,9 +246,9 @@ export default function AppointmentsPage() {
       stylistColor: sty?.color || null,
     };
     setSelectedAppt(enriched);
-    setFocusOpened(true);
+    setLastFocusedId(qFocus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realtimeAppts, qFocus, focusOpened, services, stylists]);
+  }, [realtimeAppts, qFocus, lastFocusedId, services, stylists]);
 
   if (status !== "authenticated") return null;
 

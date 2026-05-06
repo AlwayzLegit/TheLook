@@ -136,13 +136,16 @@ export default function NotificationsBell({ enabled = true }: { enabled?: boolea
               <p className="text-navy/40 text-sm font-body p-6 text-center">No notifications.</p>
             ) : (
               items.map((n) => {
-                const inner = (
-                  <div
-                    onClick={() => !n.readAt && markOne(n.id)}
-                    className={`px-4 py-3 border-b border-navy/5 cursor-pointer hover:bg-cream/40 transition-colors ${
-                      !n.readAt ? "bg-rose/5" : ""
-                    }`}
-                  >
+                // Single onClick on the wrapper handles both
+                // mark-as-read and panel-close. Nested onClicks on a
+                // child div previously raced the Link's navigation,
+                // making clicks feel inert.
+                const handleActivate = () => {
+                  if (!n.readAt) markOne(n.id);
+                  setOpen(false);
+                };
+                const body = (
+                  <>
                     <div className="flex justify-between gap-2">
                       <p className={`text-sm font-body ${!n.readAt ? "font-semibold text-navy" : "text-navy/80"}`}>
                         {n.title}
@@ -151,15 +154,25 @@ export default function NotificationsBell({ enabled = true }: { enabled?: boolea
                         {relativeTime(n.createdAt)}
                       </span>
                     </div>
-                    {n.body && <p className="text-xs text-navy/60 font-body mt-1">{n.body}</p>}
-                  </div>
+                    {n.body && <p className="text-xs text-navy/70 font-body mt-1">{n.body}</p>}
+                  </>
                 );
+                const rowClass = `block px-4 py-3 border-b border-navy/5 cursor-pointer hover:bg-cream/40 transition-colors ${
+                  !n.readAt ? "bg-rose/5" : ""
+                }`;
                 return n.url ? (
-                  <Link key={n.id} href={n.url} onClick={() => setOpen(false)}>
-                    {inner}
+                  <Link key={n.id} href={n.url} onClick={handleActivate} className={rowClass}>
+                    {body}
                   </Link>
                 ) : (
-                  <div key={n.id}>{inner}</div>
+                  <button
+                    key={n.id}
+                    type="button"
+                    onClick={handleActivate}
+                    className={`${rowClass} w-full text-left`}
+                  >
+                    {body}
+                  </button>
                 );
               })
             )}
