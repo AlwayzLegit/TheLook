@@ -23,6 +23,11 @@ interface CalendarAppointment {
   // stylist. Used to render a small badge in the day list so admin
   // knows at a glance without opening the row.
   requested_stylist?: boolean | null;
+  // Deposit state mirrored from /api/admin/appointments. Rendered as a
+  // pill next to "Requested"/"Any" so the front desk can see deposit
+  // status at a glance without opening the appointment.
+  deposit_status?: "none" | "paid" | "refunded" | "pending";
+  deposit_required_cents?: number | null;
 }
 
 interface Props {
@@ -221,6 +226,24 @@ export default function AppointmentCalendar({ appointments, onSelectAppointment 
                           Requested
                         </span>
                       ) : null}
+                      {(a.deposit_status === "paid" ||
+                        a.deposit_status === "refunded" ||
+                        a.deposit_status === "pending") &&
+                        (a.deposit_required_cents ?? 0) > 0 && (
+                          <span
+                            className={cn(
+                              "shrink-0 text-[0.625rem] uppercase tracking-widest font-body px-1.5 py-0.5 rounded",
+                              a.deposit_status === "paid"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : a.deposit_status === "refunded"
+                                  ? "bg-slate-100 text-slate-600"
+                                  : "bg-amber-100 text-amber-800",
+                            )}
+                            title={`$${Math.round((a.deposit_required_cents ?? 0) / 100)} deposit ${a.deposit_status}`}
+                          >
+                            ${Math.round((a.deposit_required_cents ?? 0) / 100)} deposit {a.deposit_status}
+                          </span>
+                        )}
                     </p>
                   </div>
                   {a.totalPriceText && (

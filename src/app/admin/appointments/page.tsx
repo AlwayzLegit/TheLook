@@ -862,6 +862,8 @@ export default function AppointmentsPage() {
               stylistName: a.stylistName,
               stylistColor: a.stylistColor,
               requested_stylist: a.requested_stylist,
+              deposit_status: a.deposit_status,
+              deposit_required_cents: a.deposit_required_cents,
             }))}
             onSelectAppointment={(id) => {
               const appt = filteredAppts.find((a) => a.id === id);
