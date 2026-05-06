@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Service {
@@ -47,10 +47,14 @@ function formatPrice(cents: number, hasPlus: boolean) {
 }
 
 export default function ServicePicker({ services, onToggle, onContinue, selected }: Props) {
-  const available = Object.keys(services);
-  const ordered = CATEGORY_ORDER.filter((c) => available.includes(c));
-  const remainder = available.filter((c) => !CATEGORY_ORDER.includes(c)).sort((a, b) => a.localeCompare(b));
-  const categories = [...ordered, ...remainder];
+  const categories = useMemo(() => {
+    const available = Object.keys(services);
+    const ordered = CATEGORY_ORDER.filter((c) => available.includes(c));
+    const remainder = available
+      .filter((c) => !CATEGORY_ORDER.includes(c))
+      .sort((a, b) => a.localeCompare(b));
+    return [...ordered, ...remainder];
+  }, [services]);
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const selectedKeys = new Set(selected.map(rowKey));
 

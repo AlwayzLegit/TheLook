@@ -23,8 +23,8 @@ describe("BOOKING", () => {
     expect(BOOKING.MAX_ADVANCE_DAYS).toBeLessThanOrEqual(365);
   });
 
-  it("has 30-minute slot increments", () => {
-    expect(BOOKING.SLOT_INCREMENT_MINUTES).toBe(30);
+  it("has 15-minute slot increments", () => {
+    expect(BOOKING.SLOT_INCREMENT_MINUTES).toBe(15);
   });
 });
 

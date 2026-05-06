@@ -247,7 +247,6 @@ export default function AppointmentsPage() {
     };
     setSelectedAppt(enriched);
     setLastFocusedId(qFocus);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [realtimeAppts, qFocus, lastFocusedId, services, stylists]);
 
   if (status !== "authenticated") return null;
