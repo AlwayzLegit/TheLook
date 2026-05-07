@@ -8,6 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
     title: "Privacy Policy",
     descriptionFor: (b) => `How ${b.name} collects, uses, and protects your personal information.`,
+    canonical: "/privacy",
   });
 }
 

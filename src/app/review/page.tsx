@@ -10,6 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
     title: "Leave a Review",
     descriptionFor: (b) => `Share your experience at ${b.name} on Google or Yelp.`,
+    canonical: "/review",
   });
 }
 

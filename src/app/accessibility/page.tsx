@@ -8,6 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
     title: "Accessibility",
     description: "Our commitment to an accessible website and salon experience.",
+    canonical: "/accessibility",
   });
 }
 

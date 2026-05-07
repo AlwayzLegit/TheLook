@@ -67,6 +67,12 @@ export async function rootMetadata(): Promise<Metadata> {
         },
       ],
     },
+    twitter: {
+      card: "summary_large_image",
+      title: `${brand.name} | ${LOCATION.city}, ${LOCATION.region}`,
+      description: brand.tagline,
+      images: [LOCATION.heroImage],
+    },
     robots: { index: true, follow: true },
   };
 }
@@ -125,19 +131,56 @@ export async function jsonLd(): Promise<Record<string, unknown>> {
 }
 
 // Per-page metadata helper — lets any route do
-//   export const generateMetadata = () => pageMetadata({ title, description })
-// without having to re-fetch branding manually.
+//   export const generateMetadata = () => pageMetadata({ title, description, canonical })
+// without having to re-fetch branding manually. Canonicals are required
+// per page to keep tracking-param variants from being deduped onto the
+// wrong URL (Round-22 SEO audit). `noindex` flips robots to noindex,
+// follow — used for placeholder pages (e.g. /shop "coming soon") so
+// they don't outrank real content. `ogImage` lets a route override the
+// inherited hero — falls back to the root layout's salon photo
+// otherwise.
 export async function pageMetadata(opts: {
   title: string;
   description?: string;
   descriptionFor?: (b: Branding) => string;
+  canonical?: string;
+  noindex?: boolean;
+  ogImage?: string;
 }): Promise<Metadata> {
   const brand = await getBranding();
   const description = opts.descriptionFor ? opts.descriptionFor(brand) : opts.description;
-  return {
-    title: `${opts.title} | ${brand.name}`,
+  const fullTitle = `${opts.title} | ${brand.name}`;
+  const meta: Metadata = {
+    title: fullTitle,
     ...(description ? { description } : {}),
   };
+  if (opts.canonical) {
+    meta.alternates = { canonical: opts.canonical };
+  }
+  if (opts.noindex) {
+    meta.robots = { index: false, follow: true };
+  }
+  // Always re-emit OG title + description so social cards reflect the
+  // page, not the inherited root layout title. ogImage override is
+  // optional — if absent, Next.js inherits the root layout's images
+  // array, which already points at LOCATION.heroImage.
+  meta.openGraph = {
+    title: fullTitle,
+    ...(description ? { description } : {}),
+    ...(opts.canonical ? { url: opts.canonical } : {}),
+    ...(opts.ogImage
+      ? {
+          images: [{ url: opts.ogImage, alt: fullTitle }],
+        }
+      : {}),
+  };
+  meta.twitter = {
+    card: "summary_large_image",
+    title: fullTitle,
+    ...(description ? { description } : {}),
+    ...(opts.ogImage ? { images: [opts.ogImage] } : {}),
+  };
+  return meta;
 }
 
 // Resolve a relative path against the canonical site URL — JSON-LD
@@ -208,6 +251,73 @@ export async function personJsonLd(person: {
   if (person.slug) data.url = abs(`/team/${person.slug}`);
   if (person.knowsAbout && person.knowsAbout.length > 0) {
     data.knowsAbout = [...person.knowsAbout];
+  }
+  return data;
+}
+
+// schema.org Service for /services/item/[slug]. provider points at the
+// salon (matches the HairSalon emitted on /), areaServed declares the
+// city so Google can match local intent queries ("balayage Glendale"),
+// and the Offer carries the price for rich-result eligibility. Empty
+// fields are omitted — Google's validator dings blank strings.
+export async function serviceJsonLd(opts: {
+  name: string;
+  slug: string;
+  category?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
+  priceMin?: number | null;
+  priceText?: string | null;
+}): Promise<Record<string, unknown>> {
+  const brand = await getBranding();
+  const data: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: opts.name,
+    url: abs(`/services/item/${opts.slug}`),
+    provider: {
+      "@type": "HairSalon",
+      name: brand.name,
+      url: siteUrl,
+      telephone: telHref(brand.phone).replace(/^tel:/, ""),
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: LOCATION.city,
+        addressRegion: LOCATION.region,
+        postalCode: LOCATION.postalCode,
+        addressCountry: LOCATION.country,
+      },
+    },
+    areaServed: {
+      "@type": "City",
+      name: LOCATION.city,
+    },
+  };
+  if (opts.category) {
+    data.category = opts.category;
+    data.serviceType = opts.category;
+  }
+  if (opts.description) data.description = opts.description;
+  if (opts.imageUrl) data.image = abs(opts.imageUrl);
+  if (typeof opts.priceMin === "number" && opts.priceMin > 0) {
+    data.offers = {
+      "@type": "Offer",
+      price: String(opts.priceMin),
+      priceCurrency: "USD",
+      availability: "https://schema.org/InStock",
+      url: abs(`/services/item/${opts.slug}`),
+    };
+  } else if (opts.priceText) {
+    data.offers = {
+      "@type": "Offer",
+      priceSpecification: {
+        "@type": "PriceSpecification",
+        priceCurrency: "USD",
+        price: opts.priceText,
+      },
+      availability: "https://schema.org/InStock",
+      url: abs(`/services/item/${opts.slug}`),
+    };
   }
   return data;
 }

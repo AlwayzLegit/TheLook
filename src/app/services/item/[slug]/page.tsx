@@ -9,7 +9,7 @@ import MobileBookButton from "@/components/MobileBookButton";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { getBranding } from "@/lib/branding";
 import { isOptimizableImageHost } from "@/lib/imageHosts";
-import { breadcrumbJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, serviceJsonLd } from "@/lib/seo";
 
 export const revalidate = 60;
 
@@ -81,10 +81,28 @@ export async function generateMetadata(
   if (!result) {
     return { title: `Service | ${brand.name}` };
   }
+  const canonical = `/services/item/${slug}`;
+  const title = `${result.service.name} | ${brand.name}`;
+  const description = result.service.description
+    || `Book ${result.service.name} at ${brand.name} in Glendale, CA.`;
   return {
-    title: `${result.service.name} | ${brand.name}`,
-    description: result.service.description
-      || `Book ${result.service.name} at ${brand.name} in Glendale, CA.`,
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      ...(result.service.image_url
+        ? { images: [{ url: result.service.image_url, alt: result.service.name }] }
+        : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(result.service.image_url ? { images: [result.service.image_url] } : {}),
+    },
   };
 }
 
@@ -113,6 +131,15 @@ export default async function ServiceDetailPage(
     { name: service.category, url: `/services/${categorySlug(service.category)}` },
     { name: service.name, url: `/services/item/${slug}` },
   ]);
+  const serviceLd = await serviceJsonLd({
+    name: service.name,
+    slug,
+    category: service.category,
+    description: service.description,
+    imageUrl: service.image_url,
+    priceMin: service.price_min,
+    priceText: service.price_text,
+  });
 
   return (
     <>
@@ -121,6 +148,12 @@ export default async function ServiceDetailPage(
         type="application/ld+json"
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbsLd) }}
+      />
+      <Script
+        id="ldjson-service-item"
+        type="application/ld+json"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceLd) }}
       />
       <Navbar />
       <main className="pt-20 pb-20 min-h-[100dvh] bg-cream">

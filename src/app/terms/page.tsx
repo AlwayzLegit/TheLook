@@ -8,6 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
     title: "Terms of Service",
     descriptionFor: (b) => `Terms of service governing use of ${b.name} website and booking.`,
+    canonical: "/terms",
   });
 }
 

@@ -23,9 +23,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!category) return {};
 
   const brand = await getBranding();
+  const canonical = `/services/${category.slug}`;
+  const title = `${category.title} | ${brand.name}`;
   return {
-    title: `${category.title} | ${brand.name}`,
+    title,
     description: category.description,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description: category.description,
+      url: canonical,
+      images: category.heroImage ? [{ url: category.heroImage, alt: title }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: category.description,
+      ...(category.heroImage ? { images: [category.heroImage] } : {}),
+    },
   };
 }
 
