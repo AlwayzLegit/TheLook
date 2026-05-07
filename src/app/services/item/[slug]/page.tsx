@@ -6,9 +6,11 @@ import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
+import StylistImage from "@/components/StylistImage";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { getBranding } from "@/lib/branding";
 import { isOptimizableImageHost } from "@/lib/imageHosts";
+import { BOOKING } from "@/lib/constants";
 import { breadcrumbJsonLd, serviceJsonLd } from "@/lib/seo";
 
 export const revalidate = 60;
@@ -73,6 +75,83 @@ async function fetchService(slug: string): Promise<{ service: ServiceRow; varian
   };
 }
 
+interface StylistTile {
+  id: string;
+  name: string;
+  slug: string | null;
+  image_url: string | null;
+}
+
+// Stylists who actually perform this service. Crawler signal: each
+// service detail now has 1-N outgoing links to stylist profiles, and
+// the stylist profiles already link back to their services list — the
+// closed loop helps internal PageRank flow. The "Any Stylist" sentinel
+// is filtered the same way the rest of the codebase does it (id +
+// name guard) since it's a booking-flow construct, not a real person.
+async function fetchStylistsForService(serviceId: string): Promise<StylistTile[]> {
+  if (!hasSupabaseConfig) return [];
+  try {
+    const { data: mappings } = await supabase
+      .from("stylist_services")
+      .select("stylist_id")
+      .eq("service_id", serviceId);
+    const ids = Array.from(
+      new Set(
+        ((mappings || []) as Array<{ stylist_id: string }>)
+          .map((m) => m.stylist_id)
+          .filter((id) => id && id !== BOOKING.ANY_STYLIST_ID),
+      ),
+    );
+    if (ids.length === 0) return [];
+    const { data } = await supabase
+      .from("stylists")
+      .select("id, name, slug, image_url, sort_order")
+      .eq("active", true)
+      .in("id", ids)
+      .not("name", "ilike", "any stylist")
+      .order("sort_order", { ascending: true });
+    return ((data || []) as Array<StylistTile & { sort_order: number | null }>).map(
+      ({ id, name, slug, image_url }) => ({ id, name, slug, image_url }),
+    );
+  } catch {
+    return [];
+  }
+}
+
+interface RelatedService {
+  id: string;
+  slug: string | null;
+  name: string;
+  price_text: string;
+  image_url: string | null;
+}
+
+// Sibling services in the same category. Card titles use the service
+// name as anchor text (keyword-rich) and link to the canonical
+// /services/item/<slug>. Capped at 6 so the rail stays scannable
+// even on long category lists like Color.
+async function fetchRelatedServices(
+  category: string,
+  currentId: string,
+): Promise<RelatedService[]> {
+  if (!hasSupabaseConfig) return [];
+  try {
+    const { data } = await supabase
+      .from("services")
+      .select("id, slug, name, price_text, image_url, sort_order")
+      .eq("active", true)
+      .eq("category", category)
+      .neq("id", currentId)
+      .order("sort_order", { ascending: true })
+      .limit(6);
+    return ((data || []) as Array<RelatedService & { sort_order: number | null }>).map(
+      ({ id, slug, name, price_text, image_url }) => ({ id, slug, name, price_text, image_url }),
+    );
+  } catch {
+    return [];
+  }
+}
+
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> },
 ): Promise<Metadata> {
@@ -124,6 +203,13 @@ export default async function ServiceDetailPage(
   const [result, brand] = await Promise.all([fetchService(slug), getBranding()]);
   if (!result) notFound();
   const { service, variants } = result;
+  // Cross-link queries fire after the main service is resolved (we
+  // need its id + category) but in parallel with each other so the
+  // page doesn't pay a serial round-trip cost.
+  const [stylists, related] = await Promise.all([
+    fetchStylistsForService(service.id),
+    fetchRelatedServices(service.category, service.id),
+  ]);
 
   const breadcrumbsLd = breadcrumbJsonLd([
     { name: "Home", url: "/" },
@@ -263,8 +349,9 @@ export default async function ServiceDetailPage(
               <Link
                 href={`/book?service=${service.id}`}
                 className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-xs tracking-[0.2em] uppercase font-body px-7 py-3 transition-colors"
+                aria-label={`Book ${service.name} at ${brand.name}`}
               >
-                Book this service
+                {`Book ${service.name}`}
               </Link>
               <Link
                 href={`/services/${categorySlug(service.category)}`}
@@ -279,6 +366,124 @@ export default async function ServiceDetailPage(
             </p>
           </div>
         </section>
+
+        {/* Stylists who offer this service. Cross-links the service
+            detail to every relevant stylist profile so internal PageRank
+            flows both ways (stylist pages already list the services
+            they offer). Heading uses the service name verbatim — that
+            anchor density helps rankings for "{service} Glendale" type
+            queries. */}
+        {stylists.length > 0 && (
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 md:pb-16">
+            <div className="border-t border-navy/10 pt-10 md:pt-12">
+              <h2 className="font-heading text-2xl md:text-3xl text-navy mb-2">
+                Stylists who offer {service.name}
+              </h2>
+              <p className="text-navy/70 font-body text-sm mb-8">
+                Pick the stylist you&apos;d like for your appointment, or
+                let us match you at booking.
+              </p>
+              <div className="flex flex-wrap gap-x-8 gap-y-10 sm:gap-x-12">
+                {stylists.map((s) => {
+                  const firstName = s.name.split(" ")[0];
+                  const profile = s.slug ? `/team/${s.slug}` : null;
+                  const bookHref = `/book?service=${service.id}&stylist=${s.id}`;
+                  return (
+                    <div key={s.id} className="text-center w-32 sm:w-36">
+                      <div className="relative aspect-square overflow-hidden bg-cream-dark rounded-full mb-3">
+                        <StylistImage
+                          src={s.image_url}
+                          alt={`${s.name} — ${service.name} stylist at ${brand.name}`}
+                          initial={s.name.charAt(0).toUpperCase()}
+                          initialClass="font-heading text-3xl text-navy/25"
+                          sizes="144px"
+                        />
+                      </div>
+                      {profile ? (
+                        <Link
+                          href={profile}
+                          className="font-heading text-base text-navy hover:text-rose transition-colors block"
+                        >
+                          {s.name}
+                        </Link>
+                      ) : (
+                        <p className="font-heading text-base text-navy">{s.name}</p>
+                      )}
+                      <Link
+                        href={bookHref}
+                        className="inline-block text-[10px] font-body text-rose hover:underline mt-2 tracking-wider uppercase"
+                        aria-label={`Book ${service.name} with ${s.name}`}
+                      >
+                        Book {firstName} for {service.name}
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Other services in the same category. Card titles are the
+            service name itself so the anchor text stays keyword-rich
+            (vs. a generic "View" CTA). */}
+        {related.length > 0 && (
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 md:pb-20">
+            <div className="border-t border-navy/10 pt-10 md:pt-12">
+              <div className="flex items-baseline justify-between mb-8 gap-4">
+                <h2 className="font-heading text-2xl md:text-3xl text-navy">
+                  Other {service.category} services
+                </h2>
+                <Link
+                  href={`/services/${categorySlug(service.category)}`}
+                  className="text-[11px] tracking-[0.2em] uppercase font-body text-rose hover:underline shrink-0"
+                >
+                  See all {service.category}
+                </Link>
+              </div>
+              <ul className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-8">
+                {related.map((r) => {
+                  const href = r.slug ? `/services/item/${r.slug}` : null;
+                  const card = (
+                    <>
+                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-navy/5 mb-3 rounded-sm">
+                        {r.image_url ? (
+                          <Image
+                            src={r.image_url}
+                            alt={`${r.name} at ${brand.name}`}
+                            fill
+                            sizes="(max-width: 768px) 50vw, 33vw"
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                            unoptimized={!isOptimizableImageHost(r.image_url)}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-navy/30 font-body text-xs">
+                            No photo yet
+                          </div>
+                        )}
+                      </div>
+                      <p className="font-heading text-base text-navy group-hover:text-rose transition-colors">
+                        {r.name}
+                      </p>
+                      <p className="text-gold font-heading text-sm mt-1">{r.price_text}</p>
+                    </>
+                  );
+                  return (
+                    <li key={r.id}>
+                      {href ? (
+                        <Link href={href} className="group block">
+                          {card}
+                        </Link>
+                      ) : (
+                        <div>{card}</div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </section>
+        )}
       </main>
       <Footer />
       <MobileBookButton />
