@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -128,13 +127,19 @@ export default async function ServiceDetailPage(
           {/* Hero image */}
           <div className="relative aspect-[4/3] w-full overflow-hidden bg-navy/5 rounded-sm shadow-[0_20px_60px_rgba(40,41,54,0.12)]">
             {service.image_url ? (
-              <Image
+              // Service photos uploaded through /admin/services land on
+              // arbitrary URLs that may not match next.config.ts
+              // remotePatterns (the same reason Services.tsx and
+              // ServiceCategory.tsx use a raw <img>). next/image was
+              // silently failing here, leaving a broken-image icon
+              // while the category list rendered fine.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={service.image_url}
                 alt={service.name}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover"
-                priority
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="eager"
+                decoding="async"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-navy/30 font-body text-sm">
