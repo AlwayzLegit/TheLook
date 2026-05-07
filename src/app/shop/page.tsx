@@ -10,6 +10,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
     title: "Shop",
     descriptionFor: (b) => `${b.name}'s product shop — curated professional haircare coming soon.`,
+    canonical: "/shop",
+    // /shop is a "Coming Soon" placeholder — SEO audit found it was
+    // indexable and risked outranking real service pages on brand
+    // queries. Flip back to indexable when the real shop ships.
+    noindex: true,
   });
 }
 

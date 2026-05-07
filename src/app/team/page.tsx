@@ -16,6 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Our Team",
     descriptionFor: (b) =>
       `Meet the management and stylists at ${b.name} in Glendale, CA. Family-owned since 2011.`,
+    canonical: "/team",
   });
 }
 

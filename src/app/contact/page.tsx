@@ -10,6 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Contact",
     descriptionFor: (b) =>
       `Contact ${b.name} — call ${b.phone}, email ${b.email}, or visit us at ${b.address}.`,
+    canonical: "/contact",
   });
 }
 

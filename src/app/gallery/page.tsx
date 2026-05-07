@@ -106,6 +106,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Gallery",
     descriptionFor: (b) =>
       `Browse our gallery of hair transformations — balayage, highlights, color corrections, precision cuts, and styling at ${b.name} in Glendale, CA.`,
+    canonical: "/gallery",
   });
 }
 

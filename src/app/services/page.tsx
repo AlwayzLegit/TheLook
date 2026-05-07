@@ -14,6 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Services & Pricing",
     descriptionFor: (b) =>
       `View our full service menu and pricing — haircuts, color, balayage, highlights, keratin, extensions, and more at ${b.name} in Glendale, CA.`,
+    canonical: "/services",
   });
 }
 

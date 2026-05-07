@@ -154,10 +154,29 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
   const { slug } = await params;
   const [staff, stylist, brand] = await Promise.all([getStaff(slug), getStylist(slug), getBranding()]);
   const person = staff || stylist;
-  if (!person) return { title: "Not Found" };
+  if (!person) return { title: "Not Found", robots: { index: false, follow: true } };
   const title = `${person.name} — ${brand.name}`;
   const description = person.bio || `Meet ${person.name} at ${brand.name} in Glendale, CA.`;
-  return { title, description };
+  const canonical = `/team/${slug}`;
+  const image = (person as { image_url?: string | null }).image_url;
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: "profile",
+      ...(image ? { images: [{ url: image, alt: person.name }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
+  };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
