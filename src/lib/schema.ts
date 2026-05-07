@@ -1,4 +1,5 @@
-import { pgTable, text, integer, timestamp, uuid, boolean, varchar, index, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, uuid, boolean, varchar, index, primaryKey, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const services = pgTable(
   "services",
@@ -89,6 +90,9 @@ export const appointments = pgTable(
     index("appointments_stylist_date_idx").on(t.stylistId, t.date),
     index("appointments_date_status_idx").on(t.date, t.status),
     index("appointments_reminder_idx").on(t.date, t.status, t.reminderSent),
+    uniqueIndex("appointments_active_slot_idx")
+      .on(t.stylistId, t.date, t.startTime)
+      .where(sql`${t.status} <> 'cancelled'`),
   ],
 );
 
