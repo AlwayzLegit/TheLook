@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
 import { SERVICE_CATEGORIES, type ServiceCategoryMeta } from "@/lib/service-categories";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 import { useBranding } from "./BrandingProvider";
 import type { BrandingImages } from "@/lib/branding";
 
@@ -162,15 +163,14 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
                     >
                       {image && !failedImages[imageKey] ? (
                         <div className="relative w-[56px] h-[56px] sm:w-[72px] sm:h-[72px] rounded-lg overflow-hidden border border-navy/10 shrink-0">
-                          {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic URLs from DB */}
-                          <img
+                          <Image
                             src={image}
                             alt={service.name}
                             width={72}
                             height={72}
                             className="w-full h-full object-cover"
                             loading="lazy"
-                            decoding="async"
+                            unoptimized={!isOptimizableImageHost(image)}
                             onError={() =>
                               setFailedImages((prev) => ({
                                 ...prev,

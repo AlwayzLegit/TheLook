@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedSection from "./AnimatedSection";
 import LeaveReviewCTA from "./LeaveReviewCTA";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 import { useBranding } from "./BrandingProvider";
 
 export type ReviewSource = "Google" | "Yelp" | "Curated";
@@ -119,14 +121,13 @@ function ReviewCard({ review }: { review: Review }) {
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-navy-light flex items-center justify-center border border-gold/20 overflow-hidden">
             {review.authorPhoto ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
+              <Image
                 src={review.authorPhoto}
                 alt={review.name}
                 width={36}
                 height={36}
                 loading="lazy"
-                decoding="async"
+                unoptimized={!isOptimizableImageHost(review.authorPhoto)}
                 className="w-full h-full object-cover"
               />
             ) : (

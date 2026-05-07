@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 
 // Drag-to-compare before/after slider. Renders the "after" image at full
 // width, then overlays the "before" image clipped from the left edge to
@@ -17,10 +18,6 @@ interface Props {
   afterUrl: string;
   alt?: string;
   className?: string;
-}
-
-function isAllowedHostUrl(url: string): boolean {
-  return /\.supabase\.co\//.test(url) || url.includes("images.unsplash.com");
 }
 
 export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className = "" }: Props) {
@@ -81,8 +78,8 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className 
     setPos(50);
   }, [beforeUrl, afterUrl]);
 
-  const beforeUnoptimized = !isAllowedHostUrl(beforeUrl);
-  const afterUnoptimized = !isAllowedHostUrl(afterUrl);
+  const beforeUnoptimized = !isOptimizableImageHost(beforeUrl);
+  const afterUnoptimized = !isOptimizableImageHost(afterUrl);
 
   return (
     <div

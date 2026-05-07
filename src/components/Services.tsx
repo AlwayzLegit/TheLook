@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
 import { getSlugForCategory } from "@/lib/service-categories";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 import { useBranding } from "./BrandingProvider";
 
 interface ApiVariant {
@@ -179,15 +180,14 @@ export default function Services() {
                     <div className="flex items-center gap-3 group">
                       {image && !failedImages[imageKey] ? (
                         <div className="relative w-[100px] h-[100px] rounded-md overflow-hidden border border-navy/10 shrink-0">
-                          {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic URLs from DB may not match next/image remotePatterns */}
-                          <img
+                          <Image
                             src={image}
                             alt={item.name}
                             width={100}
                             height={100}
                             className="w-full h-full object-cover"
                             loading="lazy"
-                            decoding="async"
+                            unoptimized={!isOptimizableImageHost(image)}
                             onError={() =>
                               setFailedImages((prev) => ({
                                 ...prev,
