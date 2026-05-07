@@ -37,6 +37,20 @@ const nextConfig: NextConfig = {
   // PostHog sends responses with a wildcard host header — lift Next's
   // trailing-slash restriction so the rewrite passes through cleanly.
   skipTrailingSlashRedirect: true,
+  // Legacy / colloquial service slugs that don't match the canonical
+  // DB slug. Permanent (308) so search engines / browsers learn the
+  // canonical URL after one hit. Add new entries here when the owner
+  // renames a service and we want stale inbound links to land
+  // somewhere useful instead of a 404.
+  async redirects() {
+    return [
+      {
+        source: "/services/item/balayage",
+        destination: "/services/item/balayage-incl-toner",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 // Wrap with Sentry's webpack plugin ONLY when a DSN + auth token are
