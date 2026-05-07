@@ -43,6 +43,11 @@ const STEP_DONE = 5;
 interface Service {
   id: string;
   category: string;
+  // Sub-grouping within a category; today only Haircuts uses it
+  // ("Unisex" / "Women's" / "Men's"). The picker renders rows
+  // under a sub-header keyed off this when set; null/missing
+  // collapses back to the flat layout.
+  subcategory?: string | null;
   name: string;
   priceText: string;
   priceMin?: number;
@@ -411,6 +416,7 @@ export default function BookPage() {
         type ServiceApi = {
           id: string;
           category: string;
+          subcategory?: string | null;
           name: string;
           priceText?: string;
           price_text?: string;
@@ -432,6 +438,7 @@ export default function BookPage() {
             const base: Service = {
               id: s.id,
               category: s.category,
+              subcategory: s.subcategory ?? null,
               name: s.name,
               priceText: s.priceText ?? s.price_text ?? "",
               priceMin: s.priceMin ?? s.price_min,
@@ -463,6 +470,10 @@ export default function BookPage() {
               rows.push({
                 id: s.id,
                 category: s.category,
+                // Variants inherit the parent's subcategory so they
+                // group under the same Unisex / Women's / Men's
+                // sub-header as their parent service.
+                subcategory: s.subcategory ?? null,
                 name: `${s.name} — ${v.name}`,
                 priceText: v.price_text,
                 priceMin: v.price_min,

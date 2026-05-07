@@ -23,7 +23,11 @@ const fallbackImages = [
   { src: "/images/services/Haircuts/haircut-04.jpg", alt: "Modern textured style" },
 ];
 
-const SUBCATEGORY_ORDER = ["Women's", "Men's"] as const;
+// Render order on the homepage. Unisex leads because its services
+// fit any client and act as a broad-appeal anchor; gendered groups
+// follow. Owner can re-classify in /admin/services to change which
+// services land where.
+const SUBCATEGORY_ORDER = ["Unisex", "Women's", "Men's"] as const;
 
 function toGalleryImages(services: HomeServicePhoto[]) {
   return services.map((s) => ({
@@ -96,7 +100,14 @@ export default async function HaircutsGallery() {
       {orderedSubs.map((sub, i) => {
         const subServices = bySub.get(sub) ?? [];
         const isFirst = i === 0;
-        const subTitle = sub === "" ? "More Haircuts" : `${sub} Haircuts`;
+        // "Unisex Haircuts" reads awkwardly; just "Haircuts" works
+        // when Unisex leads. Anything else gets the qualifier.
+        const subTitle =
+          sub === "Unisex"
+            ? "Haircuts"
+            : sub === ""
+              ? "More Haircuts"
+              : `${sub} Haircuts`;
         return (
           <ServiceGallery
             key={sub || "other"}
@@ -104,8 +115,9 @@ export default async function HaircutsGallery() {
             // Only the first sub-section gets the prominent
             // "Precision & Style" eyebrow — repeating it on every
             // sub-section visually shouts. Subsequent sub-sections
-            // use their gender label as the eyebrow instead, which
-            // doubles as a quiet visual divider.
+            // use their gender label (or "Haircuts" for Unisex)
+            // as the eyebrow instead, which doubles as a quiet
+            // visual divider.
             subtitle={isFirst ? "Precision & Style" : sub || "Haircuts"}
             // Lead description is part of the Haircuts section as a
             // whole; only show it on the first sub-section so we
@@ -119,8 +131,7 @@ export default async function HaircutsGallery() {
             ctaText={isFirst ? "Book a Haircut" : undefined}
             ctaHref={isFirst ? "/book" : undefined}
             // Alternate the hero/text orientation so consecutive
-            // sub-sections don't visually stack identically. First
-            // = text-left/photo-right (default); second = reversed.
+            // sub-sections don't visually stack identically.
             reversed={i % 2 === 1}
           />
         );

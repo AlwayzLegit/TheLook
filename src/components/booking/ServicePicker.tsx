@@ -6,6 +6,12 @@ import { motion, AnimatePresence } from "framer-motion";
 interface Service {
   id: string;
   category: string;
+  // Sub-grouping within a category. Today only Haircuts uses it
+  // ("Unisex" / "Women's" / "Men's") so the booking flow renders
+  // those rows under a sub-header inside the Haircuts panel —
+  // mirrors the homepage Haircuts gallery split. Null/missing for
+  // every other category, which still renders as a flat list.
+  subcategory?: string | null;
   name: string;
   priceText: string;
   priceMin?: number;
@@ -31,6 +37,39 @@ function rowKey(s: Service) {
 // pushed to the end. Keep this in sync with Services.tsx so the
 // marketing menu and the booking flow agree on order.
 const CATEGORY_ORDER = ["Haircuts", "Color", "Styling", "Treatments", "Facial Services"];
+
+// Mirrors HaircutsGallery's subcategory ordering: Unisex first
+// (broadest appeal), then Women's, then Men's. Anything tagged with
+// a value not in this list slots in alphabetically after the known
+// ones; null/missing tags fall into a "" bucket that renders without
+// a sub-header at the bottom of the category panel.
+const SUBCATEGORY_ORDER = ["Unisex", "Women's", "Men's"] as const;
+
+function compareSubcategory(a: string, b: string): number {
+  const ia = SUBCATEGORY_ORDER.indexOf(a as (typeof SUBCATEGORY_ORDER)[number]);
+  const ib = SUBCATEGORY_ORDER.indexOf(b as (typeof SUBCATEGORY_ORDER)[number]);
+  if (ia !== -1 && ib !== -1) return ia - ib;
+  if (ia !== -1) return -1;
+  if (ib !== -1) return 1;
+  return a.localeCompare(b);
+}
+
+function groupBySubcategory(services: Service[]): Array<{ key: string; rows: Service[] }> {
+  const buckets = new Map<string, Service[]>();
+  for (const s of services) {
+    const key = s.subcategory && s.subcategory.trim().length > 0 ? s.subcategory : "";
+    const arr = buckets.get(key) ?? [];
+    arr.push(s);
+    buckets.set(key, arr);
+  }
+  // Untagged rows always render last so the structured groups lead.
+  const keys = Array.from(buckets.keys()).sort((a, b) => {
+    if (a === "" && b !== "") return 1;
+    if (b === "" && a !== "") return -1;
+    return compareSubcategory(a, b);
+  });
+  return keys.map((key) => ({ key, rows: buckets.get(key)! }));
+}
 
 interface Props {
   services: Record<string, Service[]>;
@@ -136,68 +175,88 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
                     className="overflow-hidden"
                   >
                     <div className="border-t border-navy/5">
-                      {services[cat].map((service) => {
-                        const isSelected = selectedKeys.has(rowKey(service));
-                        const isAddOn = !!service.isAddOn;
-                        // Add-ons price as "+$N" so customers see at a
-                        // glance that the cost stacks on top of the
-                        // parent service rather than replacing it.
-                        const addOnPriceLabel = isAddOn
-                          ? service.priceText.startsWith("+")
-                            ? service.priceText
-                            : `+${service.priceText}`
-                          : service.priceText;
-                        const addOnNameLabel = isAddOn && service.variantName
-                          ? service.variantName
-                          : service.name;
-                        return (
-                          <button
-                            key={rowKey(service)}
-                            type="button"
-                            onClick={() => onToggle(service)}
-                            aria-pressed={isSelected}
-                            aria-label={`${isSelected ? "Remove" : "Select"} ${service.name}${service.priceText ? `, ${service.priceText}` : ""}`}
-                            className={`w-full ${isAddOn ? "pl-12 pr-6 py-3" : "px-6 py-4"} flex items-center gap-4 text-left transition-all duration-200 ${
-                              isSelected
-                                ? "bg-rose/8 border-l-[3px] border-rose"
-                                : "hover:bg-cream/40 border-l-[3px] border-transparent"
-                            } ${isAddOn ? "bg-cream/20" : ""}`}
-                          >
-                            <span
-                              className={`w-5 h-5 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${
-                                isSelected
-                                  ? "bg-rose border-rose text-white"
-                                  : "bg-white border-navy/25"
-                              }`}
-                              aria-hidden
+                      {(() => {
+                        const groups = groupBySubcategory(services[cat]);
+                        // When every row in this category sits in a
+                        // single bucket (the un-tagged "" key, OR the
+                        // category genuinely only has one subcategory),
+                        // we don't need sub-headers. That keeps the
+                        // existing flat layout for every non-Haircuts
+                        // category as-is.
+                        const showSubHeaders = groups.length > 1;
+                        return groups.flatMap((group) => {
+                          const header = showSubHeaders && group.key ? (
+                            <div
+                              key={`subheader-${group.key}`}
+                              className="bg-cream/40 px-6 py-2 border-b border-navy/8"
                             >
-                              {isSelected && (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </span>
-                            <span className={`font-heading shrink-0 w-20 text-left ${isAddOn ? "text-gold/80 text-sm" : "text-gold text-base"}`}>
-                              {addOnPriceLabel}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className={`font-body text-sm ${isSelected ? "text-rose font-medium" : isAddOn ? "text-navy/80" : "text-navy"}`}>
-                                  {addOnNameLabel}
-                                </p>
-                                {isAddOn && (
-                                  <span className="text-[10px] font-body uppercase tracking-widest bg-gold/15 text-gold/90 px-1.5 py-0.5 rounded">
-                                    Add-on
-                                  </span>
-                                )}
-                              </div>
-                              <p className="font-body text-xs text-navy/70 mt-0.5">
-                                {isAddOn ? `+${formatDuration(service.duration)}` : formatDuration(service.duration)}
+                              <p className="font-heading text-[13px] tracking-wider uppercase text-navy/70">
+                                {group.key}
                               </p>
                             </div>
-                          </button>
-                        );
-                      })}
+                          ) : null;
+                          const rows = group.rows.map((service) => {
+                            const isSelected = selectedKeys.has(rowKey(service));
+                            const isAddOn = !!service.isAddOn;
+                            const addOnPriceLabel = isAddOn
+                              ? service.priceText.startsWith("+")
+                                ? service.priceText
+                                : `+${service.priceText}`
+                              : service.priceText;
+                            const addOnNameLabel = isAddOn && service.variantName
+                              ? service.variantName
+                              : service.name;
+                            return (
+                              <button
+                                key={rowKey(service)}
+                                type="button"
+                                onClick={() => onToggle(service)}
+                                aria-pressed={isSelected}
+                                aria-label={`${isSelected ? "Remove" : "Select"} ${service.name}${service.priceText ? `, ${service.priceText}` : ""}`}
+                                className={`w-full ${isAddOn ? "pl-12 pr-6 py-3" : "px-6 py-4"} flex items-center gap-4 text-left transition-all duration-200 ${
+                                  isSelected
+                                    ? "bg-rose/8 border-l-[3px] border-rose"
+                                    : "hover:bg-cream/40 border-l-[3px] border-transparent"
+                                } ${isAddOn ? "bg-cream/20" : ""}`}
+                              >
+                                <span
+                                  className={`w-5 h-5 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${
+                                    isSelected
+                                      ? "bg-rose border-rose text-white"
+                                      : "bg-white border-navy/25"
+                                  }`}
+                                  aria-hidden
+                                >
+                                  {isSelected && (
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </span>
+                                <span className={`font-heading shrink-0 w-20 text-left ${isAddOn ? "text-gold/80 text-sm" : "text-gold text-base"}`}>
+                                  {addOnPriceLabel}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className={`font-body text-sm ${isSelected ? "text-rose font-medium" : isAddOn ? "text-navy/80" : "text-navy"}`}>
+                                      {addOnNameLabel}
+                                    </p>
+                                    {isAddOn && (
+                                      <span className="text-[10px] font-body uppercase tracking-widest bg-gold/15 text-gold/90 px-1.5 py-0.5 rounded">
+                                        Add-on
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="font-body text-xs text-navy/70 mt-0.5">
+                                    {isAddOn ? `+${formatDuration(service.duration)}` : formatDuration(service.duration)}
+                                  </p>
+                                </div>
+                              </button>
+                            );
+                          });
+                          return header ? [header, ...rows] : rows;
+                        });
+                      })()}
                     </div>
                   </motion.div>
                 )}

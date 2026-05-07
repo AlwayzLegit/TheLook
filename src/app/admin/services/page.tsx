@@ -358,11 +358,12 @@ export default function ServicesPage() {
                     className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
                   >
                     <option value="">— None (renders un-split) —</option>
+                    <option value="Unisex">Unisex</option>
                     <option value="Women's">Women&apos;s</option>
                     <option value="Men's">Men&apos;s</option>
                   </select>
                   <p className="text-xs font-body text-navy/50 mt-1">
-                    Splits the homepage Haircuts gallery into Women&apos;s and Men&apos;s sub-sections, each with its own hero photo.
+                    Splits the homepage Haircuts gallery into Unisex, Women&apos;s and Men&apos;s sub-sections, each with its own hero photo. Unisex renders first so universal services lead.
                   </p>
                 </div>
               )}
