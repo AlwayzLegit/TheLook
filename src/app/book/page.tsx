@@ -438,17 +438,27 @@ export default function BookPage() {
               duration: s.duration,
             };
             const variants = Array.isArray(s.variants) ? s.variants : [];
-            // Parent priceText ending in "+" signals a "starts at"
-            // service where the variants ARE the products (e.g. Facial
-            // Hair Removal — Brow / Lip / Chin) and the parent isn't
-            // independently bookable. Otherwise the parent is a real
-            // bookable service and the variants are add-ons / options;
-            // surface both so the customer can pick the base service
-            // OR a variant.
-            const parentIsBookable = !String(base.priceText || "").trim().endsWith("+");
-            if (variants.length === 0 || parentIsBookable) {
-              rows.push(base);
-            }
+            // Distinguish add-on variants from replacement variants by
+            // the salon's naming convention: variants whose name starts
+            // with "Add-On" / "Add On" are paid extras layered on the
+            // parent service (e.g. Blow-Out + "Add-On Wash"). Anything
+            // else is a standalone offering in the same family
+            // (Facial Hair Removal → Eyebrows / Full face).
+            //
+            // The previous heuristic — "parent isn't bookable when
+            // priceText ends in +" — was wrong: $40+ means "starts at
+            // $40", not "placeholder", so Blow-Out's parent was being
+            // hidden on /book even though customers can absolutely
+            // book a plain Blow-Out. Switching to a name-based signal
+            // restores the parent for add-on style services without
+            // re-introducing a misleading $5+ Facial Hair Removal row.
+            //
+            // Long-term fix is an is_addon boolean on service_variants
+            // so the salon owner controls this explicitly — TODO.
+            const isAddOnName = (n: string) => /^add[\s-]on\b/i.test((n || "").trim());
+            const hasAddOn = variants.some((v) => isAddOnName(v.name));
+            const showParent = variants.length === 0 || hasAddOn;
+            if (showParent) rows.push(base);
             for (const v of variants as VariantApi[]) {
               rows.push({
                 id: s.id,
@@ -459,7 +469,7 @@ export default function BookPage() {
                 duration: v.duration,
                 variantId: v.id,
                 variantName: v.name,
-                isAddOn: parentIsBookable,
+                isAddOn: isAddOnName(v.name),
               });
             }
           }
