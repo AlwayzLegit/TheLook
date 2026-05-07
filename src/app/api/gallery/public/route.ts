@@ -46,7 +46,9 @@ export async function GET() {
         .select("id, image_url, title, caption, sort_order")
         .eq("active", true)
         .order("sort_order", { ascending: true });
-      items = retry.data;
+      // Pre-stylist_id column installs don't return that field — synthesize
+      // null so the response shape stays uniform for callers.
+      items = (retry.data || []).map((r) => ({ ...r, stylist_id: null }));
     }
     if (pairsRes.error && /stylist_id/i.test(pairsRes.error.message || "")) {
       const retry = await supabase
@@ -54,7 +56,7 @@ export async function GET() {
         .select("id, before_url, after_url, caption, alt, sort_order")
         .eq("active", true)
         .order("sort_order", { ascending: true });
-      pairs = retry.data;
+      pairs = (retry.data || []).map((r) => ({ ...r, stylist_id: null }));
     }
     return apiSuccess({
       items: items || [],

@@ -50,8 +50,7 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | Source | "low">("all");
   const [copied, setCopied] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userRole = (session?.user as any)?.role;
+  const userRole = session?.user?.role;
   // Google Review URL from /admin/settings (key: google_review_url).
   // The Copy button hands this URL to clients so they land directly
   // on the salon's Google review page. Falls back to the internal

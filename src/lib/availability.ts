@@ -51,13 +51,23 @@ export async function getAvailableSlots(
     console.error("Error fetching schedule rules:", rulesError);
   }
 
-  const stylistOverride = (allRules || []).find(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (r: any) => r.specific_date === date && r.stylist_id === stylistId
+  type ScheduleRuleRow = {
+    stylist_id: string | null;
+    rule_type: string;
+    day_of_week: number | null;
+    specific_date: string | null;
+    start_time: string | null;
+    end_time: string | null;
+    is_closed: boolean | null;
+    note: string | null;
+  };
+
+  const overrideRows = (allRules || []) as ScheduleRuleRow[];
+  const stylistOverride = overrideRows.find(
+    (r) => r.specific_date === date && r.stylist_id === stylistId,
   );
-  const salonOverride = (allRules || []).find(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (r: any) => r.specific_date === date && !r.stylist_id
+  const salonOverride = overrideRows.find(
+    (r) => r.specific_date === date && !r.stylist_id,
   );
 
   // Get weekly rules
@@ -71,10 +81,9 @@ export async function getAvailableSlots(
     console.error("Error fetching weekly rules:", weeklyError);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stylistWeekly = (weeklyRules || []).find((r: any) => r.stylist_id === stylistId);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const salonWeekly = (weeklyRules || []).find((r: any) => !r.stylist_id);
+  const weeklyRows = (weeklyRules || []) as ScheduleRuleRow[];
+  const stylistWeekly = weeklyRows.find((r) => r.stylist_id === stylistId);
+  const salonWeekly = weeklyRows.find((r) => !r.stylist_id);
 
   // B-04: a stylist with NO rule for the requested day is closed for that
   // day — the salon being open doesn't auto-grant per-stylist availability.
@@ -89,7 +98,7 @@ export async function getAvailableSlots(
     .limit(1);
   const stylistHasAnySchedule = (anyStylistRules || []).length > 0;
 
-  let activeRule: { start_time: string | null; end_time: string | null; is_closed: boolean } | undefined;
+  let activeRule: { start_time: string | null; end_time: string | null; is_closed: boolean | null } | undefined;
   if (stylistOverride) {
     // Stylist-specific date override wins (vacation, extra shift, etc.).
     activeRule = stylistOverride;
@@ -142,8 +151,10 @@ export async function getAvailableSlots(
     }
     // Respect duplicates: if the same id appears twice (two variants of one
     // parent), the duration is added twice.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const byId = new Map<string, number>((services as any[]).map((s) => [s.id, s.duration || 0]));
+    type SvcRow = { id: string; duration: number | null };
+    const byId = new Map<string, number>(
+      (services as SvcRow[]).map((s) => [s.id, s.duration || 0]),
+    );
     duration = ids.reduce((sum, id) => sum + (byId.get(id) || 0), 0);
   }
 

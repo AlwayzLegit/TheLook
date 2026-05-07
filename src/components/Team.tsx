@@ -56,15 +56,23 @@ export default function Team() {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setTeam(data.map((s: any) => ({
+          type StylistApi = {
+            id: string;
+            name: string;
+            slug: string;
+            bio: string | null;
+            image_url: string | null;
+            categories?: unknown;
+            specialties?: unknown;
+          };
+          setTeam((data as StylistApi[]).map((s) => ({
             id: s.id,
             name: s.name,
             slug: s.slug,
             bio: s.bio,
             image_url: s.image_url,
-            categories: Array.isArray(s.categories) ? s.categories : [],
-            specialties: Array.isArray(s.specialties) ? s.specialties : [],
+            categories: Array.isArray(s.categories) ? (s.categories as string[]) : [],
+            specialties: Array.isArray(s.specialties) ? (s.specialties as string[]) : [],
           })));
         }
       })

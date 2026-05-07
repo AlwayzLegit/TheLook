@@ -50,13 +50,14 @@ export default function WalkInDialog({ open, onClose, onCreated }: Props) {
     ])
       .then(([sty, svc]) => {
         if (cancelled) return;
+        type StylistLite = { active?: boolean; name?: string } & Record<string, unknown>;
+        type ServiceLite = { active?: boolean } & Record<string, unknown>;
         const activeStylists = (Array.isArray(sty) ? sty : []).filter(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (s: any) => s.active !== false && (s.name || "").trim().toLowerCase() !== "any stylist",
+          (s: StylistLite) =>
+            s.active !== false && (s.name || "").trim().toLowerCase() !== "any stylist",
         );
         const activeServices = (Array.isArray(svc) ? svc : []).filter(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (s: any) => s.active !== false,
+          (s: ServiceLite) => s.active !== false,
         );
         setStylists(activeStylists);
         setServices(activeServices);

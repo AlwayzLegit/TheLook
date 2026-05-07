@@ -111,10 +111,12 @@ export async function sendReviewRequest(
   const { data: services } = fallbackIds.length
     ? await supabase.from("services").select("id, name").in("id", fallbackIds)
     : { data: [] };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serviceMap = Object.fromEntries(((services as any[]) || []).map((s: any) => [s.id, s.name]));
+  type NamedSvc = { id: string; name: string };
+  const serviceMap = new Map<string, string>(
+    ((services || []) as NamedSvc[]).map((s) => [s.id, s.name]),
+  );
   const serviceName =
-    fallbackIds.map((sid: string) => serviceMap[sid]).filter(Boolean).join(", ") || "your appointment";
+    fallbackIds.map((sid: string) => serviceMap.get(sid)).filter(Boolean).join(", ") || "your appointment";
 
   const [smsTpl, emailSubjTpl, emailBodyTpl, reviewUrl] = await Promise.all([
     getSetting("review_request_sms_template").then((v) => v || DEFAULT_TEMPLATES.review_request_sms_template),

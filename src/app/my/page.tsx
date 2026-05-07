@@ -6,8 +6,20 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-interface Appointment { id: string; service_id: string; stylist_id: string; date: string; start_time: string; end_time: string; status: string; cancel_token: string | null; services?: any; stylists?: any; }
+// Supabase embed shape: select("*, services(name), stylists(name)")
+// returns the matched FK row or null.
+interface Appointment {
+  id: string;
+  service_id: string;
+  stylist_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  cancel_token: string | null;
+  services?: { name: string } | null;
+  stylists?: { name: string } | null;
+}
 
 function formatDate(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });

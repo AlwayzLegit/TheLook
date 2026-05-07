@@ -158,9 +158,11 @@ export async function chargeOffSession(args: {
     if (customer.deleted) return { error: "Customer deleted in Stripe" };
 
     let paymentMethodId: string | null = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const defaultPm = (customer as any).invoice_settings?.default_payment_method as string | null;
-    if (defaultPm) paymentMethodId = defaultPm;
+    const defaultPm = customer.invoice_settings?.default_payment_method;
+    if (typeof defaultPm === "string") paymentMethodId = defaultPm;
+    else if (defaultPm && typeof defaultPm === "object" && "id" in defaultPm) {
+      paymentMethodId = defaultPm.id;
+    }
 
     if (!paymentMethodId) {
       const pms = await stripe.paymentMethods.list({
@@ -205,20 +207,30 @@ export async function chargeOffSession(args: {
       requiresAction: intent.status === "requires_action",
       clientSecret: intent.status === "requires_action" ? (intent.client_secret ?? undefined) : undefined,
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Stripe off-session failures throw StripeCardError — their .raw carries
     // the payment_intent when the bank asked for 3DS re-auth.
-    if (err?.raw?.payment_intent?.status === "requires_action") {
+    type StripeCardErrorShape = {
+      raw?: {
+        payment_intent?: {
+          id: string;
+          status: string;
+          client_secret: string | null;
+        };
+      };
+      message?: string;
+    };
+    const e = err as StripeCardErrorShape;
+    if (e.raw?.payment_intent?.status === "requires_action") {
       return {
-        paymentIntentId: err.raw.payment_intent.id,
+        paymentIntentId: e.raw.payment_intent.id,
         status: "requires_action",
         requiresAction: true,
-        clientSecret: err.raw.payment_intent.client_secret,
+        clientSecret: e.raw.payment_intent.client_secret ?? undefined,
         error: "Card requires customer authentication (3D Secure).",
       };
     }
-    return { error: err?.message || "Off-session charge failed." };
+    return { error: e.message || "Off-session charge failed." };
   }
 }
 

@@ -21,10 +21,10 @@ interface WaitlistEntry {
   notes: string | null;
   status: string;
   created_at: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  services?: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  stylists?: any;
+  // Supabase embed shape — `select("*, services(name), stylists(name)")`
+  // returns either a single matched row or null when there's no match.
+  services?: { name: string } | null;
+  stylists?: { name: string } | null;
 }
 
 export default function WaitlistPage() {

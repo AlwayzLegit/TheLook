@@ -126,8 +126,7 @@ async function getStylist(slug: string) {
 
   // Get service mappings
   const { data: mappings } = await supabase.from("stylist_services").select("service_id").eq("stylist_id", data.id);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serviceIds = (mappings || []).map((m: any) => m.service_id);
+  const serviceIds = ((mappings || []) as Array<{ service_id: string }>).map((m) => m.service_id);
 
   // Get services
   let services: unknown[] = [];
@@ -149,8 +148,9 @@ function defaultRoleTitle(role: string): string {
   return "Team";
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function generateMetadata({ params }: any): Promise<Metadata> {
+type RouteParams = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: RouteParams): Promise<Metadata> {
   const { slug } = await params;
   const [staff, stylist, brand] = await Promise.all([getStaff(slug), getStylist(slug), getBranding()]);
   const person = staff || stylist;
@@ -179,8 +179,7 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default async function TeamMemberPage({ params }: any) {
+export default async function TeamMemberPage({ params }: RouteParams) {
   const { slug } = await params;
   // admin_users takes precedence — a manager and a stylist sharing the
   // same slug is unlikely, but the slug is editable from /admin/profile,
@@ -260,10 +259,16 @@ export default async function TeamMemberPage({ params }: any) {
 
   const portfolio = await getStylistPortfolio(stylist.id);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const servicesByCategory: Record<string, any[]> = {};
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  stylist.services.forEach((s: any) => {
+  type StylistServiceRow = {
+    id: string;
+    name: string;
+    slug: string | null;
+    category: string;
+    duration: number;
+    price_text: string;
+  };
+  const servicesByCategory: Record<string, StylistServiceRow[]> = {};
+  (stylist.services as StylistServiceRow[]).forEach((s) => {
     if (!servicesByCategory[s.category]) servicesByCategory[s.category] = [];
     servicesByCategory[s.category].push(s);
   });

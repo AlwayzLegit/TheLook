@@ -132,8 +132,7 @@ export default function SettingsPage() {
   const [section, setSection] = useState<Section>("general");
   const [testPhone, setTestPhone] = useState("");
   const [testing, setTesting] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const role = (session?.user as any)?.role || "admin";
+  const role = session?.user?.role || "admin";
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");

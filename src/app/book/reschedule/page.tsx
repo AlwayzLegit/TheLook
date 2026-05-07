@@ -20,8 +20,19 @@ function RescheduleInner() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [appointment, setAppointment] = useState<any>(null);
+  type AppointmentDetails = {
+    id: string;
+    serviceId: string;
+    stylistId: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    clientName: string;
+    serviceName?: string;
+    stylistName?: string;
+    duration?: number;
+  };
+  const [appointment, setAppointment] = useState<AppointmentDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [date, setDate] = useState<string | null>(null);

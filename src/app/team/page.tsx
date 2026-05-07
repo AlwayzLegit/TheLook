@@ -64,15 +64,23 @@ async function getStylists() {
     supabase.from("services").select("id, category").eq("active", true),
   ]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mappings = (mappingsRes.data || []) as Array<{ stylist_id: string; service_id: string }>;
+  type MappingRow = { stylist_id: string; service_id: string };
+  type CategoryRow = { id: string; category: string };
+  type StylistRow = {
+    id: string;
+    name: string;
+    slug: string;
+    bio: string | null;
+    image_url: string | null;
+    specialties: unknown;
+  } & Record<string, unknown>;
+
+  const mappings = (mappingsRes.data || []) as MappingRow[];
   const categoryById = new Map<string, string>(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((servicesRes.data || []) as any[]).map((s) => [s.id, s.category]),
+    ((servicesRes.data || []) as CategoryRow[]).map((s) => [s.id, s.category]),
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (stylistsRes.data || []).map((s: any) => {
+  return ((stylistsRes.data || []) as StylistRow[]).map((s) => {
     const serviceIds = mappings.filter((m) => m.stylist_id === s.id).map((m) => m.service_id);
     // Distinct categories in first-seen order. The tile shows the
     // top three, so ordering matters — most-used categories should
@@ -132,10 +140,9 @@ export default async function TeamPage() {
       ...staff
         .filter((s): s is typeof s & { slug: string } => !!s.slug)
         .map((s) => ({ name: s.name, slug: s.slug })),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(stylists as Array<any>)
+      ...stylists
         .filter((s) => !!s.slug)
-        .map((s) => ({ name: s.name as string, slug: s.slug as string })),
+        .map((s) => ({ name: s.name, slug: s.slug })),
     ],
   );
 
@@ -183,8 +190,7 @@ export default async function TeamPage() {
               // (2, 3, 4, 5…) centered on the row instead of jamming at
               // the left edge of a fixed grid.
               <div className="flex flex-wrap justify-center gap-10 md:gap-12 max-w-5xl mx-auto">
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {stylists.map((s: any) => (
+                {stylists.map((s) => (
                   <Link key={s.id} href={`/team/${s.slug}`} className="group block text-center w-full sm:w-60">
                     <div className="relative aspect-square overflow-hidden bg-cream-dark rounded-full max-w-[220px] mx-auto mb-4">
                       <StylistImage

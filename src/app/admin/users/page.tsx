@@ -36,8 +36,7 @@ export default function UsersPage() {
     email: "", name: "", password: "", role: "admin", stylistId: "", active: true,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userRole = (session?.user as any)?.role;
+  const userRole = session?.user?.role;
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");

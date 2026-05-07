@@ -38,10 +38,10 @@ export async function sendRawEmail(args: {
       html: args.html,
       replyTo: args.replyTo,
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((res as any)?.error) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      console.error("sendRawEmail failed:", (res as any).error);
+    // Resend's emails.send() returns { data, error } where `error`
+    // is non-null when the API rejected the message.
+    if (res?.error) {
+      console.error("sendRawEmail failed:", res.error);
       return false;
     }
     return true;

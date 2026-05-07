@@ -16,10 +16,13 @@ interface Service {
   id: string;
   category: string;
   name: string;
+  slug?: string | null;
   price_text: string;
   price_min: number;
   duration: number;
   image_url?: string | null;
+  description?: string | null;
+  products_used?: string | null;
   active: boolean;
   sort_order: number;
 }
@@ -168,16 +171,13 @@ export default function ServicesPage() {
     setFormData({
       category: service.category || "Haircuts",
       name: service.name || "",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      slug: (service as any).slug || "",
+      slug: service.slug || "",
       price_text: service.price_text || "",
       price_min: Number.isFinite(service.price_min) ? service.price_min : 0,
       duration: Number.isFinite(service.duration) && service.duration > 0 ? service.duration : 30,
       image_url: service.image_url || "",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      description: (service as any).description || "",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      products_used: (service as any).products_used || "",
+      description: service.description || "",
+      products_used: service.products_used || "",
       active: service.active ?? true,
       sort_order: Number.isFinite(service.sort_order) ? service.sort_order : 0,
     });

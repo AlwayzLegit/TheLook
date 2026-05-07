@@ -34,8 +34,16 @@ export default function ServiceVariantsEditor({ serviceId, onToast }: Props) {
       .then((data) => {
         if (cancelled) return;
         if (Array.isArray(data)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setVariants(data.map((v: any) => ({
+          type VariantApi = {
+            id: string;
+            name: string;
+            price_text: string;
+            price_min: number;
+            duration: number;
+            active: boolean;
+            sort_order: number;
+          };
+          setVariants((data as VariantApi[]).map((v) => ({
             id: v.id,
             name: v.name,
             price_text: v.price_text,

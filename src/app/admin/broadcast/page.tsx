@@ -57,9 +57,9 @@ export default function BroadcastPage() {
     fetch("/api/admin/services")
       .then((r) => (r.ok ? r.json() : []))
       .then((rows) => {
+        type ServiceLite = { active?: boolean } & Record<string, unknown>;
         const list = (Array.isArray(rows) ? rows : []).filter(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (s: any) => s.active !== false,
+          (s: ServiceLite) => s.active !== false,
         );
         setServices(list);
       })

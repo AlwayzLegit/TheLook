@@ -64,8 +64,8 @@ export default function NewAppointmentModal({
           fetch("/api/admin/services").then((r) => r.json()),
           fetch("/api/admin/stylists").then((r) => r.json()),
         ]);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const baseServices: Service[] = Array.isArray(sr) ? (sr as any[]).map((s) => ({
+        type SvcApi = { id: string; name: string; price_text: string; duration: number; category: string };
+        const baseServices: Service[] = Array.isArray(sr) ? (sr as SvcApi[]).map((s) => ({
           id: s.id,
           name: s.name,
           price_text: s.price_text,
@@ -79,8 +79,8 @@ export default function NewAppointmentModal({
               const vr = await fetch(`/api/admin/services/${s.id}/variants`);
               if (!vr.ok) return s;
               const vdata = await vr.json();
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              if (Array.isArray(vdata) && vdata.length > 0) s.variants = (vdata as any[]).map((v) => ({
+              type VariantApi = { id: string; name: string; price_text: string; duration: number };
+              if (Array.isArray(vdata) && vdata.length > 0) s.variants = (vdata as VariantApi[]).map((v) => ({
                 id: v.id, name: v.name, price_text: v.price_text, duration: v.duration,
               }));
               return s;

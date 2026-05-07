@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 // Resolve from both public and server env names used across providers/tooling.
 const supabaseUrl =
@@ -18,9 +18,9 @@ export const hasSupabaseConfig = Boolean(
   supabaseKey
 );
 
-let _supabase: ReturnType<typeof createClient> | null = null;
+let _supabase: SupabaseClient | null = null;
 
-function getSupabaseClient() {
+function getSupabaseClient(): SupabaseClient {
   if (_supabase) return _supabase;
   if (!hasSupabaseConfig) {
     throw new Error(
@@ -36,14 +36,17 @@ function getSupabaseClient() {
 }
 
 // Lazy proxy avoids build-time crashes when env vars are not present.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const supabase = new Proxy({} as any, {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get(_target, prop: string | symbol): any {
-    const client = getSupabaseClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const value = (client as any)[prop];
-    return typeof value === "function" ? value.bind(client) : value;
+// Typed as SupabaseClient so .from(), .auth, .storage etc. surface
+// proper signatures at every call site (without the Database generic
+// — we don't generate types from the schema today, but the method
+// shapes still type-check).
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop: string | symbol) {
+    const client = getSupabaseClient() as unknown as Record<string | symbol, unknown>;
+    const value = client[prop];
+    return typeof value === "function"
+      ? (value as (...args: unknown[]) => unknown).bind(client)
+      : value;
   },
 });
 

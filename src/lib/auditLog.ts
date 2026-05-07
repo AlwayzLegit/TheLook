@@ -94,8 +94,7 @@ async function resolveExtras(extras?: AuditExtras): Promise<AuditExtras> {
   if (!out.actorEmail || !out.actorUserId) {
     try {
       const session = await auth();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const u = session?.user as any;
+      const u = session?.user;
       if (u) {
         out.actorEmail ??= u.email ?? null;
         out.actorUserId ??= u.id ?? null;

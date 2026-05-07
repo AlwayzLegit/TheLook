@@ -67,7 +67,9 @@ export async function GET() {
         .select("id, client_name, client_email, client_phone, service_id, stylist_id, date, start_time, end_time, status, requested_stylist")
         .gte("date", isoDay(trendStart))
         .lte("date", isoDay(trendEnd));
-      rows = retry.data || [];
+      // Pre-archived_at column installs don't return the field — synthesize
+      // it as null so the rest of this handler can keep its uniform Row shape.
+      rows = (retry.data || []).map((r) => ({ ...r, archived_at: null }));
       error = retry.error;
     }
     if (error) {

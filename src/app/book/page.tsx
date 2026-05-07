@@ -408,10 +408,27 @@ export default function BookPage() {
         }
 
         const expandedByCat: Record<string, Service[]> = {};
+        type ServiceApi = {
+          id: string;
+          category: string;
+          name: string;
+          priceText?: string;
+          price_text?: string;
+          priceMin?: number;
+          price_min?: number;
+          duration: number;
+          variants?: VariantApi[];
+        };
+        type VariantApi = {
+          id: string;
+          name: string;
+          price_text: string;
+          price_min: number;
+          duration: number;
+        };
         for (const cat of Object.keys(data)) {
           const rows: Service[] = [];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          for (const s of data[cat] as any[]) {
+          for (const s of (data as Record<string, ServiceApi[]>)[cat]) {
             const base: Service = {
               id: s.id,
               category: s.category,
@@ -432,8 +449,7 @@ export default function BookPage() {
             if (variants.length === 0 || parentIsBookable) {
               rows.push(base);
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            for (const v of variants as any[]) {
+            for (const v of variants as VariantApi[]) {
               rows.push({
                 id: s.id,
                 category: s.category,

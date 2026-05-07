@@ -7,8 +7,9 @@ import AdminToast from "@/components/admin/AdminToast";
 import { formatMoney } from "@/lib/format";
 
 interface Stylist { id: string; name: string; color?: string | null; }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-interface Commission { stylist_id: string; commission_percent: number; hourly_rate: number | null; stylists?: any; }
+// Supabase embed shape — select("*, stylists(name)") returns the
+// matched stylist row or null when no FK row exists.
+interface Commission { stylist_id: string; commission_percent: number; hourly_rate: number | null; stylists?: { name: string } | null; }
 
 interface Appointment {
   id: string;
@@ -37,8 +38,7 @@ export default function CommissionsPage() {
   const [period, setPeriod] = useState(30);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userRole = (session?.user as any)?.role;
+  const userRole = session?.user?.role;
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");

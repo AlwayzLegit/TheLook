@@ -77,8 +77,8 @@ export default function SchedulePage() {
         const pub = await r.json();
         if (Array.isArray(pub)) {
           const counts: Record<string, number> = {};
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          for (const st of pub as any[]) {
+          type StylistApi = { id: string; serviceIds?: string[] };
+          for (const st of pub as StylistApi[]) {
             counts[st.id] = Array.isArray(st.serviceIds) ? st.serviceIds.length : 0;
           }
           setServiceCountByStylist(counts);

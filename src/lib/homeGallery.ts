@@ -66,8 +66,7 @@ async function fetchAllHomeSectionServices(): Promise<HomeServicePhoto[]> {
         // Stash category on the row so the public helper can
         // filter without re-querying. Hidden from the exported
         // type via the surrounding map().
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ...({ _category: row.category } as any),
+        _category: row.category,
       }));
   } catch {
     return [];

@@ -9,6 +9,10 @@ export interface ActivityView {
   category: ActivityCategory;
 }
 
+// JSON.parse returns the raw decoded value — every caller knows its
+// own context (action -> expected payload shape) and reads fields
+// optimistically. Tightening to a structured type here would just push
+// `as` casts to every caller, which is what `any` is doing already.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function tryParse(details: string | null): any {
   if (!details) return null;

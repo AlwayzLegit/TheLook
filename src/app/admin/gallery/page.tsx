@@ -134,13 +134,13 @@ export default function AdminGalleryPage() {
       setInspiration(Array.isArray(c) ? c : []);
       // Filter to active stylists who are real people (skip the "Any
       // stylist" sentinel used in the booking flow).
+      type StylistRow = { id: string; name: string; active?: boolean };
       const stylistRows = (Array.isArray(s) ? s : []).filter(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (row: any) => row.active !== false && (row.name || "").trim().toLowerCase() !== "any stylist",
+        (row: StylistRow) =>
+          row.active !== false && (row.name || "").trim().toLowerCase() !== "any stylist",
       );
       setStylists(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        stylistRows.map((row: any) => ({ id: row.id, name: row.name })),
+        stylistRows.map((row: StylistRow) => ({ id: row.id, name: row.name })),
       );
     } finally {
       setLoading(false);

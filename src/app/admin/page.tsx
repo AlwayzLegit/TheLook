@@ -75,8 +75,7 @@ export default function AdminDashboard() {
     if (status === "unauthenticated") router.push("/admin/login");
   }, [status, router]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const role = (session?.user as any)?.role;
+  const role = session?.user?.role;
 
   useEffect(() => {
     if (status !== "authenticated") return;
