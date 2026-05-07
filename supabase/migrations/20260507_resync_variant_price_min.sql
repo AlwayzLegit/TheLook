@@ -14,6 +14,15 @@
 -- stored. Mirrors lib/priceText.ts so the SQL fix and runtime
 -- safety-net agree on parsing rules.
 --
+-- Regex note: substring(text FROM pattern) returns ONLY the first
+-- parenthesised capture group when the pattern has parens. The whole
+-- number (including any decimals) needs to be wrapped in a single
+-- outer group; the optional decimal portion uses (?:...) so it
+-- doesn't shadow the outer capture group. The first revision of this
+-- migration used `[0-9]+(\.[0-9]{1,2})?` and silently skipped every
+-- row without decimals because substring returned the empty optional
+-- group → NULL.
+--
 -- Idempotent: safe to re-run.
 
 UPDATE public.service_variants
@@ -21,9 +30,9 @@ SET price_min = derived.cents
 FROM (
   SELECT
     id,
-    ROUND((substring(price_text from '[0-9]+(\.[0-9]{1,2})?'))::numeric * 100)::integer AS cents
+    ROUND((substring(price_text from '([0-9]+(?:\.[0-9]{1,2})?)'))::numeric * 100)::integer AS cents
   FROM public.service_variants
-  WHERE price_text ~ '[0-9]+(\.[0-9]{1,2})?'
+  WHERE price_text ~ '[0-9]+'
 ) AS derived
 WHERE service_variants.id = derived.id
   AND derived.cents IS NOT NULL
