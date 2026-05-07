@@ -53,6 +53,14 @@ interface Service {
   // appointments POST.
   variantId?: string;
   variantName?: string;
+  // True when this row is a variant of a parent service that's
+  // independently bookable (e.g. Custom Scissor Cut + Add-On Wash).
+  // Picking it adds to the parent rather than replacing it; the
+  // toggle handler auto-adds the parent when an add-on is checked
+  // and removes all add-ons when the parent is unchecked. False/
+  // undefined for parents and for variants of "starts at" services
+  // (Facial Hair Removal — Brow) where the variant IS the product.
+  isAddOn?: boolean;
 }
 
 interface Stylist {
@@ -252,8 +260,34 @@ export default function BookPage() {
     setSelectedServices((prev) => {
       const key = serviceKey(service);
       const exists = prev.find((s) => serviceKey(s) === key);
-      if (exists) return prev.filter((s) => serviceKey(s) !== key);
-      return [...prev, service];
+      if (exists) {
+        // Removing. If this is the parent (no variantId), drop any of
+        // its add-on variants too — orphan add-ons without their
+        // parent is the exact "$10 wash with no cut" nonsense the
+        // owner flagged.
+        const filtered = prev.filter((s) => serviceKey(s) !== key);
+        if (!service.variantId) {
+          return filtered.filter((s) => !(s.id === service.id && s.isAddOn));
+        }
+        return filtered;
+      }
+      // Adding. If it's an add-on variant whose parent isn't already
+      // selected, auto-add the parent so the appointment books as a
+      // combo (cut + wash) instead of just the wash.
+      let next = [...prev, service];
+      if (service.isAddOn) {
+        const parentSelected = prev.some(
+          (s) => s.id === service.id && !s.variantId,
+        );
+        if (!parentSelected) {
+          const allRows = Object.values(services).flat();
+          const parent = allRows.find(
+            (s) => s.id === service.id && !s.variantId,
+          );
+          if (parent) next = [parent, ...prev, service];
+        }
+      }
+      return next;
     });
     // Service change invalidates downstream selections.
     setSelectedStylist(null);
@@ -409,6 +443,7 @@ export default function BookPage() {
                 duration: v.duration,
                 variantId: v.id,
                 variantName: v.name,
+                isAddOn: parentIsBookable,
               });
             }
           }

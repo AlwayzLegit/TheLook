@@ -15,6 +15,11 @@ interface Service {
   // the picker keys by (id, variantId) rather than id alone.
   variantId?: string;
   variantName?: string;
+  // True when this variant is an add-on rather than a replacement —
+  // picking it adds to the parent service in book/page.tsx's toggle
+  // handler. We render add-ons indented beneath their parent with a
+  // "+ Add-on" badge so the relationship is clear.
+  isAddOn?: boolean;
 }
 
 function rowKey(s: Service) {
@@ -133,6 +138,18 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
                     <div className="border-t border-navy/5">
                       {services[cat].map((service) => {
                         const isSelected = selectedKeys.has(rowKey(service));
+                        const isAddOn = !!service.isAddOn;
+                        // Add-ons price as "+$N" so customers see at a
+                        // glance that the cost stacks on top of the
+                        // parent service rather than replacing it.
+                        const addOnPriceLabel = isAddOn
+                          ? service.priceText.startsWith("+")
+                            ? service.priceText
+                            : `+${service.priceText}`
+                          : service.priceText;
+                        const addOnNameLabel = isAddOn && service.variantName
+                          ? service.variantName
+                          : service.name;
                         return (
                           <button
                             key={rowKey(service)}
@@ -140,11 +157,11 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
                             onClick={() => onToggle(service)}
                             aria-pressed={isSelected}
                             aria-label={`${isSelected ? "Remove" : "Select"} ${service.name}${service.priceText ? `, ${service.priceText}` : ""}`}
-                            className={`w-full px-6 py-4 flex items-center gap-4 text-left transition-all duration-200 ${
+                            className={`w-full ${isAddOn ? "pl-12 pr-6 py-3" : "px-6 py-4"} flex items-center gap-4 text-left transition-all duration-200 ${
                               isSelected
                                 ? "bg-rose/8 border-l-[3px] border-rose"
                                 : "hover:bg-cream/40 border-l-[3px] border-transparent"
-                            }`}
+                            } ${isAddOn ? "bg-cream/20" : ""}`}
                           >
                             <span
                               className={`w-5 h-5 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${
@@ -160,15 +177,22 @@ export default function ServicePicker({ services, onToggle, onContinue, selected
                                 </svg>
                               )}
                             </span>
-                            <span className="text-gold font-heading text-base shrink-0 w-20 text-left">
-                              {service.priceText}
+                            <span className={`font-heading shrink-0 w-20 text-left ${isAddOn ? "text-gold/80 text-sm" : "text-gold text-base"}`}>
+                              {addOnPriceLabel}
                             </span>
                             <div className="flex-1 min-w-0">
-                              <p className={`font-body text-sm ${isSelected ? "text-rose font-medium" : "text-navy"}`}>
-                                {service.name}
-                              </p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className={`font-body text-sm ${isSelected ? "text-rose font-medium" : isAddOn ? "text-navy/80" : "text-navy"}`}>
+                                  {addOnNameLabel}
+                                </p>
+                                {isAddOn && (
+                                  <span className="text-[10px] font-body uppercase tracking-widest bg-gold/15 text-gold/90 px-1.5 py-0.5 rounded">
+                                    Add-on
+                                  </span>
+                                )}
+                              </div>
                               <p className="font-body text-xs text-navy/70 mt-0.5">
-                                {formatDuration(service.duration)}
+                                {isAddOn ? `+${formatDuration(service.duration)}` : formatDuration(service.duration)}
                               </p>
                             </div>
                           </button>
