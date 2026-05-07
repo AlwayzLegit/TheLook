@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   // the grid.
   const { data: svcs, error: svcErr } = await supabase
     .from("services")
-    .select("id, duration")
+    .select("id, duration, price_min")
     .in("id", serviceIds);
   if (svcErr || !svcs) {
     logError("walk-in/services", svcErr);
@@ -123,12 +123,24 @@ export async function POST(request: NextRequest) {
   }
 
   // Mirror the multi-service mapping so reporting + commission paths
-  // see all services attached to the walk-in. Single-service walk-ins
-  // still get a row here — keeps the schema uniform.
+  // see all services attached to the walk-in. Snapshot price + duration
+  // at booking time — without this the per-line edit modal falls back
+  // to generic defaults and the catalog showing 25 min stays out of
+  // sync with the line that was actually booked at 10 min.
   if (serviceIds.length > 0) {
-    const rows = serviceIds.map((id) => ({
+    const priceMap = new Map<string, number>(
+      (svcs as Array<{ id: string; duration: number | null; price_min?: number | null }>).map(
+        (s) => [s.id, s.price_min ?? 0],
+      ),
+    );
+    const rows = serviceIds.map((id, i) => ({
       appointment_id: apptRow.id,
       service_id: id,
+      sort_order: i,
+      price_min: priceMap.get(id) ?? 0,
+      duration: durationMap.get(id) ?? 0,
+      // Legacy NOT NULL column on prod — keep in sync with `duration`.
+      duration_minutes: durationMap.get(id) ?? 0,
     }));
     const { error: mapErr } = await supabase.from("appointment_services").insert(rows);
     if (mapErr) {
