@@ -125,8 +125,16 @@ export const adminAppointmentServiceLineSchema = z.object({
   sort_order: z.number().int().min(0).max(100).optional(),
 });
 
+export const APPOINTMENT_STATUSES = [
+  "pending",
+  "confirmed",
+  "cancelled",
+  "completed",
+  "no_show",
+] as const;
+
 export const adminAppointmentPatchSchema = z.object({
-  status: z.string().trim().min(1).max(20).optional(),
+  status: z.enum(APPOINTMENT_STATUSES).optional(),
   staff_notes: z.string().max(2000).nullable().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   start_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),

@@ -48,10 +48,18 @@ function needsAuth(pathname: string): boolean {
   return false;
 }
 
+// Mirrors lib/roles.ts isAdminOrManager(). Stylist accounts can hold a
+// session for portal lookups but must not reach the admin UI/API.
+const ADMIN_ROLES = new Set(["admin", "manager"]);
+
 const authCheck = auth((req) => {
+  const { pathname } = req.nextUrl;
+  const isApi = pathname.startsWith("/api/admin");
+  const role = req.auth?.user?.role;
+  const allowed = !!req.auth && (!role || ADMIN_ROLES.has(role));
+
   if (!req.auth) {
-    const { pathname } = req.nextUrl;
-    if (pathname.startsWith("/api/admin")) {
+    if (isApi) {
       return addSecurityHeaders(
         new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
@@ -60,6 +68,17 @@ const authCheck = auth((req) => {
       );
     }
     return addSecurityHeaders(NextResponse.redirect(new URL("/admin/login", req.url)));
+  }
+  if (!allowed) {
+    if (isApi) {
+      return addSecurityHeaders(
+        new NextResponse(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    return addSecurityHeaders(NextResponse.redirect(new URL("/admin/login?error=forbidden", req.url)));
   }
   return addSecurityHeaders(NextResponse.next());
 }) as unknown as (request: NextRequest) => Promise<NextResponse>;

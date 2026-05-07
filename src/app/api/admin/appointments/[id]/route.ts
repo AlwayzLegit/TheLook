@@ -239,7 +239,7 @@ export async function PATCH(
   const servicesChanged = !!(payload.services && payload.services.length > 0);
   const materialChange = dateChanged || startChanged || stylistChanged || servicesChanged;
 
-  if (data && wasConfirmed && stillConfirmed && newStatus !== "cancelled" && materialChange) {
+  if (data && wasConfirmed && stillConfirmed && materialChange) {
     const { data: mappingsAfter } = await supabase
       .from("appointment_services")
       .select("service_id, sort_order")

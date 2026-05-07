@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { supabase } from "@/lib/supabase";
 import { sendSMS } from "@/lib/sms";
 import { getSetting } from "@/lib/settings";
@@ -36,8 +37,14 @@ function formatDate(d: string): string {
 
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get("authorization");
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    return apiError("CRON_SECRET not configured", 500);
+  }
+  const authHeader = request.headers.get("authorization") ?? "";
+  const expected = `Bearer ${cronSecret}`;
+  const a = Buffer.from(authHeader);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     return apiError("Unauthorized", 401);
   }
 

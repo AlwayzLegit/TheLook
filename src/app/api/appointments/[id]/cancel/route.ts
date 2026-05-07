@@ -9,8 +9,12 @@ export async function POST(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const token = searchParams.get("token");
 
-  if (!token) {
-    return apiError("Cancel token required.", 400);
+  // Reject requests where the token isn't the 32-hex shape we issue at
+  // booking time (crypto.randomUUID() with hyphens stripped). This stops
+  // junk values from hitting Supabase as filter input and limits the
+  // surface for token-shaped probing.
+  if (!token || !/^[a-f0-9]{32}$/i.test(token)) {
+    return apiError("Invalid cancel token.", 400);
   }
 
   // Cheap throttle per-IP so a stolen email link can't be weaponized
