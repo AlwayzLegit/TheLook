@@ -272,6 +272,14 @@ export async function POST(request: NextRequest) {
       sms_consent_at: smsConsent ? new Date().toISOString() : null,
     });
   if (insertError) {
+    // Partial unique index appointments_active_slot_idx (migration
+    // 20260515) catches the SELECT-then-INSERT race that the
+    // getAvailableSlots() pre-check can lose under concurrent traffic.
+    // Surface the same 409 the pre-check already uses so the client
+    // experience is identical regardless of which check tripped.
+    if (insertError.code === "23505") {
+      return apiError("This time slot is no longer available. Please choose another.", 409);
+    }
     logError("appointments POST", insertError);
     return apiError("Failed to create appointment.", 500);
   }
