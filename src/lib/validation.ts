@@ -5,7 +5,10 @@ import { z } from "zod";
 // version nibble is 0, which is invalid per RFC). Everywhere we used to
 // call .uuid() we now accept any canonical 8-4-4-4-12 hex format — the
 // values are still strictly formatted, just not version-restricted.
-const UUID_ISH = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+// Exported so non-zod call sites (like /api/availability, which parses
+// CSV-style query strings of its own) can validate IDs against the same
+// pattern without re-deriving the regex.
+export const UUID_ISH = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 const uuidish = () => z.string().regex(UUID_ISH, "Invalid id.");
 
 export const appointmentCreateSchema = z.object({

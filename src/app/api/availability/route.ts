@@ -2,6 +2,7 @@ import { getAvailableSlots } from "@/lib/availability";
 import { apiError, apiSuccess } from "@/lib/apiResponse";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { BOOKING } from "@/lib/constants";
+import { UUID_ISH } from "@/lib/validation";
 import { NextRequest } from "next/server";
 
 // GET /api/availability?stylistId=<uuid|any>&serviceIds=<csv>&date=<YYYY-MM-DD>
@@ -23,6 +24,19 @@ export async function GET(request: NextRequest) {
 
   if (!stylistIdRaw || !date) {
     return apiError("stylistId and date are required.", 400);
+  }
+  // Date must be YYYY-MM-DD; stylistId must be the "any" sentinel or a
+  // canonical UUID. Without these guards a bad input falls through to
+  // the service lookup, fails to resolve a row, and returns a stock
+  // fallback slot list — masking the bad request as a successful
+  // 200 response. QA caught this with stylistId=bad → 200.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return apiError("date must be YYYY-MM-DD.", 400);
+  }
+  const isAnySentinel =
+    stylistIdRaw === "any" || stylistIdRaw === BOOKING.ANY_STYLIST_ID;
+  if (!isAnySentinel && !UUID_ISH.test(stylistIdRaw)) {
+    return apiError("Invalid stylistId.", 400);
   }
 
   // Parse serviceIds supporting THREE input patterns, all of which the
@@ -50,13 +64,20 @@ export async function GET(request: NextRequest) {
   if (ids.length === 0) {
     return apiError("At least one serviceId is required.", 400);
   }
+  if (ids.some((id) => !UUID_ISH.test(id))) {
+    return apiError("Invalid serviceId.", 400);
+  }
 
   // Same flattening story for variantIds — DateTimePicker sends them CSV,
-  // StylistPicker sends them repeated.
+  // StylistPicker sends them repeated. Empty strings are valid (used as
+  // a placeholder for "service in this slot has no variant picked").
   const rawVariantIds = searchParams.getAll("variantIds");
   const variantIds = rawVariantIds.length > 0
     ? rawVariantIds.flatMap((v) => v.split(",")).map((v) => v.trim())
     : [];
+  if (variantIds.some((v) => v.length > 0 && !UUID_ISH.test(v))) {
+    return apiError("Invalid variantId.", 400);
+  }
 
   // Compute a variant-aware duration override when any variantId is present.
   let durationOverride: number | undefined;
