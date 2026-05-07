@@ -1,12 +1,12 @@
 import { db } from "@/lib/db";
 import { appointments, services, stylists } from "@/lib/schema";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/api-auth";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { searchParams } = request.nextUrl;
   const dateFrom = searchParams.get("from");

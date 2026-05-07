@@ -1,20 +1,20 @@
 import { db } from "@/lib/db";
 import { scheduleRules } from "@/lib/schema";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/api-auth";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const rules = await db.select().from(scheduleRules);
   return NextResponse.json(rules);
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const body = await request.json();
   const { stylistId, ruleType, dayOfWeek, specificDate, startTime, endTime, isClosed, note } = body;
@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { searchParams } = request.nextUrl;
   const id = searchParams.get("id");
