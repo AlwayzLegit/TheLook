@@ -1,28 +1,33 @@
-// Single source of truth for which remote image hosts the next/image
-// optimizer is willing to proxy. Mirrors next.config.ts's
-// `images.remotePatterns` so callers can decide whether to pass
-// `unoptimized` instead of falling back to a raw <img> tag.
+// Single source of truth for which image sources the next/image
+// optimizer is willing to proxy. Callers pass
+// `unoptimized={!isOptimizableImageHost(url)}` to next/image — when
+// this returns false the raw URL is rendered as-is, which avoids the
+// optimizer's quota and its strict allowlist.
 //
 // Why the runtime check exists: admins can paste arbitrary URLs into
-// service / stylist / gallery photo fields. URLs from
-// images.unsplash.com optimize fine; anything else (Yelp avatars,
-// Instagram CDN, an old stock site, etc.) was silently 400-ing
-// inside /_next/image and rendering as a broken-image icon. Pass
-// `unoptimized={!isOptimizableImageHost(url)}` to next/image and the
-// unknown-host case becomes "loaded as-is" — no broken image, but no
-// Next-side optimization either, which is the right trade-off for
-// CMS-driven content.
+// service / stylist / gallery photo fields. Only sources we've
+// vetted should run through /_next/image; everything else needs to
+// fall through as a raw <img>.
 //
-// Supabase Storage URLs deliberately return false here. Two reasons:
-// (1) Vercel Hobby/Pro plans cap monthly /_next/image transformations
-//     and we exhausted the quota on 2026-05-07, returning 402 site-
-//     wide for every Supabase-hosted CMS image (service heroes,
-//     stylist headshots, before/after pairs).
-// (2) Supabase Storage already serves images via a Cloudflare-backed
-//     CDN with sane caching, and uploads through /admin go through
-//     /api/admin/upload which writes them at reasonable sizes. The
-//     marginal benefit of double-running them through Next's
-//     optimizer doesn't justify the quota burn.
+// Quota policy: Vercel Hobby/Pro plans cap monthly /_next/image
+// transformations. When that cap blows, /_next/image returns 402
+// site-wide and EVERY image going through it renders as a broken
+// icon — a hard outage for a marketing site. So this function is
+// conservative: it only opts URLs in when (a) the source is fixed,
+// and (b) optimization actually justifies the quota burn.
+//
+// - Supabase Storage URLs: NO. Already served via a Cloudflare-backed
+//   CDN; admin uploads write them at reasonable sizes.
+// - Local /images/* paths: NO. Vercel deploys these as static assets
+//   at the original URL, which serves with no quota cost. Returning
+//   `true` here used to break the handful of services still pointing
+//   at /images/services/... when the optimizer 402'd on 2026-05-07
+//   (Round-2 incident: salon owner reported missing thumbnails on
+//   /services for Bleaching Roots, Thermal Styling, and Deep
+//   Conditioning — all three still had legacy local paths).
+// - images.unsplash.com: YES. Source images are huge (Unsplash serves
+//   originals at 4000px+) and optimizer resizing is the whole point
+//   of including them.
 //
 // KEEP THIS LIST IN SYNC WITH next.config.ts. If you add a host /
 // pathname there, add the matching test below.
@@ -33,13 +38,15 @@ export function isOptimizableImageHost(url: string | null | undefined): boolean 
   try {
     parsed = new URL(url);
   } catch {
-    // Relative paths (`/images/foo.jpg`) ARE served from our own host
-    // and always optimize fine.
-    if (url.startsWith("/")) return true;
+    // Relative paths — Vercel serves these as static assets directly
+    // at their original URL, so going through /_next/image just
+    // burns the monthly transform quota for no benefit. Bypass the
+    // optimizer and let the raw file serve.
     return false;
   }
   if (parsed.protocol !== "https:") return false;
   if (parsed.hostname === "images.unsplash.com") return true;
-  // Supabase intentionally NOT optimizable — see header comment.
+  // Supabase + everything else intentionally NOT optimizable —
+  // see header comment.
   return false;
 }

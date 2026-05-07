@@ -18,8 +18,9 @@ describe("isOptimizableImageHost", () => {
     expect(isOptimizableImageHost("https://images.unsplash.com/photo-123.jpg")).toBe(true);
   });
 
-  it("allows relative paths (served from our own host)", () => {
-    expect(isOptimizableImageHost("/images/hero/salon-main.jpg")).toBe(true);
+  it("rejects relative paths (Vercel serves /images/* as static assets directly; going through the optimizer just burns quota)", () => {
+    expect(isOptimizableImageHost("/images/hero/salon-main.jpg")).toBe(false);
+    expect(isOptimizableImageHost("/images/services/Color & Highlights/bleaching-roots.jpg")).toBe(false);
   });
 
   it("rejects Supabase Storage signed/private paths", () => {
