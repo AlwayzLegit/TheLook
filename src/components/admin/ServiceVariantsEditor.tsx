@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { parseDollarsToCents } from "@/lib/priceText";
 
 interface Variant {
   id?: string;
@@ -57,7 +58,21 @@ export default function ServiceVariantsEditor({ serviceId, onToast }: Props) {
   };
 
   const updateRow = (idx: number, field: keyof Variant, value: string | number | boolean) => {
-    setVariants((prev) => prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v)));
+    setVariants((prev) =>
+      prev.map((v, i) => {
+        if (i !== idx) return v;
+        const next = { ...v, [field]: value };
+        // Whenever price_text changes, derive price_min so the two
+        // can't drift. Owners edit the visible "$25" string; the
+        // cents field becomes a derived display, not a separate
+        // truth. Server applies the same derivation as a safety net.
+        if (field === "price_text" && typeof value === "string") {
+          const cents = parseDollarsToCents(value);
+          if (cents !== null) next.price_min = cents;
+        }
+        return next;
+      }),
+    );
   };
 
   const removeRow = (idx: number) => {
@@ -133,15 +148,17 @@ export default function ServiceVariantsEditor({ serviceId, onToast }: Props) {
                 value={v.price_text}
                 onChange={(e) => updateRow(i, "price_text", e.target.value)}
                 className="col-span-2 border border-navy/20 px-2 py-1.5 text-sm font-body"
+                title="Customer-facing price (e.g. $25, $5+, from $15). Cents are derived automatically."
               />
               <input
                 type="number"
                 placeholder="cents"
                 value={v.price_min}
                 onChange={(e) => updateRow(i, "price_min", parseInt(e.target.value, 10) || 0)}
-                className="col-span-2 border border-navy/20 px-2 py-1.5 text-sm font-body"
+                className="col-span-2 border border-navy/20 px-2 py-1.5 text-sm font-body bg-navy/5 text-navy/70"
                 min={0}
                 step={100}
+                title="Cents — auto-derived from the price text. Override only if the visible price doesn't have a number (e.g. 'Free')."
               />
               <input
                 type="number"

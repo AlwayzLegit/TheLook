@@ -2,6 +2,7 @@ import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
+import { parseDollarsToCents } from "@/lib/priceText";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { NextRequest } from "next/server";
@@ -74,15 +75,25 @@ export async function PUT(
   }
 
   if (variants.length > 0) {
-    const rows = variants.map((v, i) => ({
-      service_id: id,
-      name: v.name,
-      price_text: v.price_text,
-      price_min: v.price_min,
-      duration: v.duration,
-      active: v.active ?? true,
-      sort_order: v.sort_order ?? i,
-    }));
+    // Server-side safety net: when price_text parses to a valid
+    // dollar amount, use that as the canonical price_min. The
+    // editor's two-field UI (price_text + price_min) drifted in prod
+    // — owners updated the visible "$25" but never touched the
+    // hidden cents — and the booking footer summed stale 500-cent
+    // values for $25 services. Always recomputing here keeps the
+    // two columns in lockstep regardless of what the client sent.
+    const rows = variants.map((v, i) => {
+      const derivedCents = parseDollarsToCents(v.price_text);
+      return {
+        service_id: id,
+        name: v.name,
+        price_text: v.price_text,
+        price_min: derivedCents !== null ? derivedCents : v.price_min,
+        duration: v.duration,
+        active: v.active ?? true,
+        sort_order: v.sort_order ?? i,
+      };
+    });
     const { error: insErr } = await supabase.from("service_variants").insert(rows);
     if (insErr) {
       logError("variants PUT (insert)", insErr);

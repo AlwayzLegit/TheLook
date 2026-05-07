@@ -6,12 +6,12 @@ import { isOptimizableImageHost } from "../src/lib/imageHosts";
 // (callers pass `unoptimized={!isOptimizableImageHost(url)}` to
 // next/image) stays in sync.
 describe("isOptimizableImageHost", () => {
-  it("allows our Supabase Storage public bucket", () => {
+  it("rejects Supabase Storage public URLs (Vercel quota; CDN already in front)", () => {
     expect(
       isOptimizableImageHost(
         "https://abc123.supabase.co/storage/v1/object/public/photos/services/foo.jpg",
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("allows Unsplash", () => {
@@ -35,11 +35,9 @@ describe("isOptimizableImageHost", () => {
     expect(isOptimizableImageHost("https://scontent.cdninstagram.com/x.jpg")).toBe(false);
   });
 
-  it("rejects http (only https in remotePatterns)", () => {
+  it("rejects http unsplash (only https in remotePatterns)", () => {
     expect(
-      isOptimizableImageHost(
-        "http://abc123.supabase.co/storage/v1/object/public/photos/x.jpg",
-      ),
+      isOptimizableImageHost("http://images.unsplash.com/photo-123.jpg"),
     ).toBe(false);
   });
 

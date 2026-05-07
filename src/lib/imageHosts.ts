@@ -5,18 +5,27 @@
 //
 // Why the runtime check exists: admins can paste arbitrary URLs into
 // service / stylist / gallery photo fields. URLs from
-// images.unsplash.com or our Supabase Storage public bucket optimize
-// fine; anything else (Yelp avatars, Instagram CDN, an old stock
-// site, etc.) was silently 400-ing inside /_next/image and rendering
-// as a broken-image icon. Pass `unoptimized={!isOptimizableImageHost(url)}`
-// to next/image and the unknown-host case becomes "loaded as-is" —
-// no broken image, but no optimization either, which is the right
-// trade-off for CMS-driven content.
+// images.unsplash.com optimize fine; anything else (Yelp avatars,
+// Instagram CDN, an old stock site, etc.) was silently 400-ing
+// inside /_next/image and rendering as a broken-image icon. Pass
+// `unoptimized={!isOptimizableImageHost(url)}` to next/image and the
+// unknown-host case becomes "loaded as-is" — no broken image, but no
+// Next-side optimization either, which is the right trade-off for
+// CMS-driven content.
+//
+// Supabase Storage URLs deliberately return false here. Two reasons:
+// (1) Vercel Hobby/Pro plans cap monthly /_next/image transformations
+//     and we exhausted the quota on 2026-05-07, returning 402 site-
+//     wide for every Supabase-hosted CMS image (service heroes,
+//     stylist headshots, before/after pairs).
+// (2) Supabase Storage already serves images via a Cloudflare-backed
+//     CDN with sane caching, and uploads through /admin go through
+//     /api/admin/upload which writes them at reasonable sizes. The
+//     marginal benefit of double-running them through Next's
+//     optimizer doesn't justify the quota burn.
 //
 // KEEP THIS LIST IN SYNC WITH next.config.ts. If you add a host /
 // pathname there, add the matching test below.
-
-const SUPABASE_STORAGE_PATH = "/storage/v1/object/public/";
 
 export function isOptimizableImageHost(url: string | null | undefined): boolean {
   if (!url) return false;
@@ -31,11 +40,6 @@ export function isOptimizableImageHost(url: string | null | undefined): boolean 
   }
   if (parsed.protocol !== "https:") return false;
   if (parsed.hostname === "images.unsplash.com") return true;
-  if (
-    parsed.hostname.endsWith(".supabase.co") &&
-    parsed.pathname.startsWith(SUPABASE_STORAGE_PATH)
-  ) {
-    return true;
-  }
+  // Supabase intentionally NOT optimizable — see header comment.
   return false;
 }
