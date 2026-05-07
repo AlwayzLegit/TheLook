@@ -387,9 +387,16 @@ export default function BookPage() {
               duration: s.duration,
             };
             const variants = Array.isArray(s.variants) ? s.variants : [];
-            if (variants.length === 0) {
+            // Parent priceText ending in "+" signals a "starts at"
+            // service where the variants ARE the products (e.g. Facial
+            // Hair Removal — Brow / Lip / Chin) and the parent isn't
+            // independently bookable. Otherwise the parent is a real
+            // bookable service and the variants are add-ons / options;
+            // surface both so the customer can pick the base service
+            // OR a variant.
+            const parentIsBookable = !String(base.priceText || "").trim().endsWith("+");
+            if (variants.length === 0 || parentIsBookable) {
               rows.push(base);
-              continue;
             }
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             for (const v of variants as any[]) {
