@@ -68,16 +68,49 @@ export async function GET(request: NextRequest) {
     return apiError("Failed to fetch appointments.", 500);
   }
 
-  const { data: allServices } = await supabase.from("services").select("*");
-  const { data: allStylists } = await supabase.from("stylists").select("*");
+  // Pull appointment_services first so we know exactly which services + stylists
+  // the listed appointments reference. Then fetch only those rows from
+  // services/stylists instead of pulling every row in the table — keeps
+  // bandwidth bounded as the catalog grows.
   const apptIds = (rows || []).map((a: { id: string }) => a.id);
+  type MappingRow = {
+    appointment_id: string;
+    service_id: string;
+    sort_order: number;
+    price_min: number | null;
+    duration: number | null;
+  };
   const { data: mappings } = apptIds.length > 0
     ? await supabase
         .from("appointment_services")
         .select("appointment_id, service_id, sort_order, price_min, duration")
         .in("appointment_id", apptIds)
         .order("sort_order", { ascending: true })
-    : { data: [] };
+    : { data: [] as MappingRow[] };
+
+  const referencedServiceIds = new Set<string>();
+  const referencedStylistIds = new Set<string>();
+  for (const m of (mappings || []) as MappingRow[]) {
+    if (m.service_id) referencedServiceIds.add(m.service_id);
+  }
+  for (const a of (rows || []) as Array<{ service_id: string | null; stylist_id: string | null }>) {
+    if (a.service_id) referencedServiceIds.add(a.service_id);
+    if (a.stylist_id) referencedStylistIds.add(a.stylist_id);
+  }
+
+  type ServiceRow = { id: string; name: string; price_min: number };
+  type StylistRow = { id: string; name: string };
+
+  const [servicesResult, stylistsResult] = await Promise.all([
+    referencedServiceIds.size > 0
+      ? supabase.from("services").select("*").in("id", Array.from(referencedServiceIds))
+      : Promise.resolve({ data: [] as ServiceRow[] }),
+    referencedStylistIds.size > 0
+      ? supabase.from("stylists").select("*").in("id", Array.from(referencedStylistIds))
+      : Promise.resolve({ data: [] as StylistRow[] }),
+  ]);
+  const allServices = servicesResult.data as ServiceRow[] | null;
+  const allStylists = stylistsResult.data as StylistRow[] | null;
 
   // Pull deposit charge state for the listed appointments so the
   // modal + inline list can show "$X deposit paid" vs "$X deposit
@@ -111,10 +144,8 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serviceMap = Object.fromEntries((allServices || []).map((s: any) => [s.id, s]));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stylistMap = Object.fromEntries((allStylists || []).map((s: any) => [s.id, s]));
+  const serviceMap = new Map<string, ServiceRow>((allServices || []).map((s) => [s.id, s]));
+  const stylistMap = new Map<string, StylistRow>((allStylists || []).map((s) => [s.id, s]));
 
   // Group mappings by appointment_id. `lines` keeps the booking-time
   // snapshot (price_min/duration) per service so consumers don't recompute
@@ -123,36 +154,41 @@ export async function GET(request: NextRequest) {
   type Line = { service_id: string; price_min: number | null; duration: number | null };
   const servicesByAppt = new Map<string, string[]>();
   const linesByAppt = new Map<string, Line[]>();
-  for (const m of (mappings || []) as Line[] & { appointment_id: string }[]) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mm = m as any;
-    const ids = servicesByAppt.get(mm.appointment_id) || [];
-    ids.push(mm.service_id);
-    servicesByAppt.set(mm.appointment_id, ids);
-    const lines = linesByAppt.get(mm.appointment_id) || [];
-    lines.push({ service_id: mm.service_id, price_min: mm.price_min ?? null, duration: mm.duration ?? null });
-    linesByAppt.set(mm.appointment_id, lines);
+  for (const m of (mappings || []) as MappingRow[]) {
+    const ids = servicesByAppt.get(m.appointment_id) || [];
+    ids.push(m.service_id);
+    servicesByAppt.set(m.appointment_id, ids);
+    const lines = linesByAppt.get(m.appointment_id) || [];
+    lines.push({ service_id: m.service_id, price_min: m.price_min ?? null, duration: m.duration ?? null });
+    linesByAppt.set(m.appointment_id, lines);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const enriched = (rows || []).map((a: any) => {
+  type AppointmentRow = {
+    id: string;
+    service_id: string | null;
+    stylist_id: string | null;
+    deposit_required_cents: number | null;
+    stripe_customer_id: string | null;
+  } & Record<string, unknown>;
+
+  const enriched = ((rows || []) as AppointmentRow[]).map((a) => {
     const ids = servicesByAppt.get(a.id) || (a.service_id ? [a.service_id] : []);
-    const serviceNames = ids.map((id) => serviceMap[id]?.name).filter(Boolean);
-    const lines = linesByAppt.get(a.id) || (a.service_id ? [{ service_id: a.service_id, price_min: null, duration: null }] : []);
+    const serviceNames = ids.map((id) => serviceMap.get(id)?.name).filter(Boolean) as string[];
+    const lines: Line[] = linesByAppt.get(a.id) || (a.service_id ? [{ service_id: a.service_id, price_min: null, duration: null }] : []);
     const priceMinSnapshot = lines.reduce((sum: number, l: Line) => {
       if (l.price_min != null) return sum + l.price_min;
-      return sum + (serviceMap[l.service_id]?.price_min || 0);
+      return sum + (serviceMap.get(l.service_id)?.price_min || 0);
     }, 0);
     return {
       ...a,
       serviceIds: ids,
-      serviceName: serviceNames.join(", ") || serviceMap[a.service_id]?.name,
+      serviceName: serviceNames.join(", ") || (a.service_id ? serviceMap.get(a.service_id)?.name : undefined),
       serviceNames,
       serviceLines: lines,
       // Convenience field so analytics + commissions pages don't each have
       // to fold price_min/duration themselves.
       totalPriceMin: priceMinSnapshot,
-      stylistName: stylistMap[a.stylist_id]?.name,
+      stylistName: a.stylist_id ? stylistMap.get(a.stylist_id)?.name : undefined,
       // Render-friendly deposit state. "none" when the booking
       // didn't require a deposit; "paid" / "refunded" / "pending"
       // otherwise. Computed from the charges ledger so partial

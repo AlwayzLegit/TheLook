@@ -24,30 +24,48 @@ export async function GET() {
     return apiError("Failed to fetch stylists.", 500);
   }
 
-  const { data: allMappings, error: mappingsError } = await supabase
-    .from("stylist_services")
-    .select("*");
+  // Scope the join to only the active stylists we just fetched — pulling
+  // the entire stylist_services table grew unbounded as inactive stylists
+  // accumulated. Same idea for the services lookup below: only the
+  // service_ids actually referenced are needed.
+  type StylistRow = { id: string; image_url: string | null; specialties: unknown } & Record<string, unknown>;
+  const stylistRows = (allStylists || []) as StylistRow[];
+  const activeStylistIds = stylistRows.map((s) => s.id);
+
+  type MappingRow = { stylist_id: string; service_id: string };
+  const { data: allMappings, error: mappingsError } = activeStylistIds.length > 0
+    ? await supabase
+        .from("stylist_services")
+        .select("stylist_id, service_id")
+        .in("stylist_id", activeStylistIds)
+    : { data: [] as MappingRow[], error: null };
 
   if (mappingsError) {
     logError("stylists GET (mappings)", mappingsError);
     return apiError("Failed to fetch stylist services.", 500);
   }
 
-  // Pull active service rows once and key them by id so we can resolve
-  // serviceIds → category list per stylist below. Listing pages
-  // (/team and the home/about <Team /> component) want a short summary
-  // line ("Cuts · Color · Styling") that reflects what each stylist
-  // actually does, not just the free-text specialty tags admin types
-  // into the stylist edit form.
-  const { data: allServices } = await supabase
-    .from("services")
-    .select("id, name, category")
-    .eq("active", true);
+  const referencedServiceIds = Array.from(
+    new Set(((allMappings || []) as MappingRow[]).map((m) => m.service_id)),
+  );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // Pull active service rows for the IDs referenced and key them by id so
+  // we can resolve serviceIds → category list per stylist below. Listing
+  // pages (/team and the home/about <Team /> component) want a short
+  // summary line ("Cuts · Color · Styling") that reflects what each
+  // stylist actually does, not just the free-text specialty tags admin
+  // types into the stylist edit form.
+  type ServiceRow = { id: string; name: string; category: string };
+  const { data: allServices } = referencedServiceIds.length > 0
+    ? await supabase
+        .from("services")
+        .select("id, name, category")
+        .eq("active", true)
+        .in("id", referencedServiceIds)
+    : { data: [] as ServiceRow[] };
+
   const serviceById = new Map<string, { name: string; category: string }>(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (allServices || []).map((s: any) => [s.id, { name: s.name, category: s.category }]),
+    ((allServices || []) as ServiceRow[]).map((s) => [s.id, { name: s.name, category: s.category }]),
   );
 
   const parseSpecialties = (raw: unknown): string[] => {
@@ -64,13 +82,17 @@ export async function GET() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result = (allStylists || []).map((s: any) => {
-    const serviceIds = (allMappings || [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((m: any) => m.stylist_id === s.id)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((m: any) => m.service_id) as string[];
+  // Pre-bucket mappings by stylist_id so the per-stylist filter below is O(1)
+  // instead of O(stylists × mappings).
+  const serviceIdsByStylist = new Map<string, string[]>();
+  for (const m of (allMappings || []) as MappingRow[]) {
+    const list = serviceIdsByStylist.get(m.stylist_id) || [];
+    list.push(m.service_id);
+    serviceIdsByStylist.set(m.stylist_id, list);
+  }
+
+  const result = stylistRows.map((s) => {
+    const serviceIds = serviceIdsByStylist.get(s.id) || [];
 
     // Distinct, ordered category list. We preserve insertion order
     // (first occurrence per category) so the most-prominent service

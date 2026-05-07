@@ -79,31 +79,65 @@ export async function GET(request: NextRequest) {
     return apiSuccess({ date: todayStr, sent: 0, smsSent: 0, emailSent: 0, skipped: 0 });
   }
 
-  const apptIds = rows.map((a: { id: string }) => a.id);
-  const [{ data: allServices }, { data: allStylists }, { data: mappings }] = await Promise.all([
-    supabase.from("services").select("id, name"),
-    supabase.from("stylists").select("id, name"),
-    supabase.from("appointment_services").select("appointment_id, service_id, sort_order").in("appointment_id", apptIds).order("sort_order", { ascending: true }),
-  ]);
+  // Mappings come first so we know exactly which service/stylist rows we
+  // need — pulling the full services + stylists tables on every cron tick
+  // wastes Supabase egress and only got worse as the catalog grew.
+  type ApptRow = { id: string; service_id: string | null; stylist_id: string | null };
+  const todaysAppts = rows as ApptRow[];
+  const apptIds = todaysAppts.map((a) => a.id);
+  type MappingRow = { appointment_id: string; service_id: string; sort_order: number };
+  const { data: mappings } = await supabase
+    .from("appointment_services")
+    .select("appointment_id, service_id, sort_order")
+    .in("appointment_id", apptIds)
+    .order("sort_order", { ascending: true });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serviceMap = Object.fromEntries(((allServices as any[]) || []).map((s: any) => [s.id, s.name]));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stylistMap = Object.fromEntries(((allStylists as any[]) || []).map((s: any) => [s.id, s.name]));
   const serviceIdsByAppt = new Map<string, string[]>();
-  for (const m of (mappings || []) as Array<{ appointment_id: string; service_id: string }>) {
+  const referencedServiceIds = new Set<string>();
+  for (const m of (mappings || []) as MappingRow[]) {
     const arr = serviceIdsByAppt.get(m.appointment_id) || [];
     arr.push(m.service_id);
     serviceIdsByAppt.set(m.appointment_id, arr);
+    referencedServiceIds.add(m.service_id);
   }
+  const referencedStylistIds = new Set<string>();
+  for (const a of todaysAppts) {
+    if (a.service_id) referencedServiceIds.add(a.service_id);
+    if (a.stylist_id) referencedStylistIds.add(a.stylist_id);
+  }
+
+  type NamedRow = { id: string; name: string };
+  const [{ data: allServices }, { data: allStylists }] = await Promise.all([
+    referencedServiceIds.size > 0
+      ? supabase.from("services").select("id, name").in("id", Array.from(referencedServiceIds))
+      : Promise.resolve({ data: [] as NamedRow[] }),
+    referencedStylistIds.size > 0
+      ? supabase.from("stylists").select("id, name").in("id", Array.from(referencedStylistIds))
+      : Promise.resolve({ data: [] as NamedRow[] }),
+  ]);
+
+  const serviceMap = new Map<string, string>(
+    ((allServices || []) as NamedRow[]).map((s) => [s.id, s.name]),
+  );
+  const stylistMap = new Map<string, string>(
+    ((allStylists || []) as NamedRow[]).map((s) => [s.id, s.name]),
+  );
 
   let smsSent = 0, emailSent = 0, skipped = 0;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const appt of rows as any[]) {
+  type ReminderApptRow = ApptRow & {
+    client_name: string | null;
+    client_email: string | null;
+    client_phone: string | null;
+    sms_consent: boolean | null;
+    cancel_token: string | null;
+    date: string;
+    start_time: string;
+  };
+  for (const appt of rows as ReminderApptRow[]) {
     const ids = serviceIdsByAppt.get(appt.id) || (appt.service_id ? [appt.service_id] : []);
-    const serviceName = ids.map((id: string) => serviceMap[id]).filter(Boolean).join(", ") || "your appointment";
-    const stylistName = stylistMap[appt.stylist_id] || "your stylist";
+    const serviceName = ids.map((id) => serviceMap.get(id)).filter(Boolean).join(", ") || "your appointment";
+    const stylistName = (appt.stylist_id && stylistMap.get(appt.stylist_id)) || "your stylist";
     const vars = {
       client_name: appt.client_name || "there",
       service: serviceName,
