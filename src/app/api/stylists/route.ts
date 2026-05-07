@@ -3,25 +3,44 @@ import { stylists, stylistServices } from "@/lib/schema";
 import { eq, asc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+function parseSpecialties(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function GET() {
-  const allStylists = await db
-    .select()
+  const rows = await db
+    .select({
+      stylist: stylists,
+      serviceId: stylistServices.serviceId,
+    })
     .from(stylists)
+    .leftJoin(stylistServices, eq(stylistServices.stylistId, stylists.id))
     .where(eq(stylists.active, true))
     .orderBy(asc(stylists.sortOrder));
 
-  const allMappings = await db.select().from(stylistServices);
+  const byId = new Map<string, ReturnType<typeof formatStylist>>();
+  for (const row of rows) {
+    const existing = byId.get(row.stylist.id);
+    if (!existing) {
+      byId.set(row.stylist.id, formatStylist(row.stylist, row.serviceId));
+    } else if (row.serviceId) {
+      existing.serviceIds.push(row.serviceId);
+    }
+  }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result = allStylists.map((s: any) => ({
+  return NextResponse.json(Array.from(byId.values()));
+}
+
+function formatStylist(s: typeof stylists.$inferSelect, serviceId: string | null) {
+  return {
     ...s,
-    specialties: s.specialties ? JSON.parse(s.specialties) : [],
-    serviceIds: allMappings
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((m: any) => m.stylistId === s.id)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((m: any) => m.serviceId),
-  }));
-
-  return NextResponse.json(result);
+    specialties: parseSpecialties(s.specialties),
+    serviceIds: serviceId ? [serviceId] : [],
+  };
 }

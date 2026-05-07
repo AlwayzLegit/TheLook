@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { scheduleRules, appointments, services } from "./schema";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, or, isNull } from "drizzle-orm";
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
@@ -16,9 +16,8 @@ function minutesToTime(mins: number): string {
 export async function getAvailableSlots(
   stylistId: string,
   serviceId: string,
-  date: string
+  date: string,
 ): Promise<string[]> {
-  // Validate date is not in the past and within 60 days
   const dateObj = new Date(date + "T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -29,38 +28,39 @@ export async function getAvailableSlots(
 
   const dayOfWeek = dateObj.getUTCDay();
 
-  // Get schedule: check overrides first, then weekly rules
-  const allRules = await db
-    .select()
-    .from(scheduleRules)
-    .where(eq(scheduleRules.ruleType, "override"));
+  const stylistOrSalon = or(eq(scheduleRules.stylistId, stylistId), isNull(scheduleRules.stylistId));
 
-  const stylistOverride = allRules.find(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (r: any) => r.specificDate === date && r.stylistId === stylistId
-  );
-  const salonOverride = allRules.find(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (r: any) => r.specificDate === date && !r.stylistId
-  );
-
-  const weeklyRules = await db
+  const overrides = await db
     .select()
     .from(scheduleRules)
     .where(
-      and(eq(scheduleRules.ruleType, "weekly"), eq(scheduleRules.dayOfWeek, dayOfWeek))
+      and(
+        eq(scheduleRules.ruleType, "override"),
+        eq(scheduleRules.specificDate, date),
+        stylistOrSalon,
+      ),
     );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stylistWeekly = weeklyRules.find((r: any) => r.stylistId === stylistId);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const salonWeekly = weeklyRules.find((r: any) => !r.stylistId);
+  const weekly = await db
+    .select()
+    .from(scheduleRules)
+    .where(
+      and(
+        eq(scheduleRules.ruleType, "weekly"),
+        eq(scheduleRules.dayOfWeek, dayOfWeek),
+        stylistOrSalon,
+      ),
+    );
+
+  const stylistOverride = overrides.find((r) => r.stylistId === stylistId);
+  const salonOverride = overrides.find((r) => !r.stylistId);
+  const stylistWeekly = weekly.find((r) => r.stylistId === stylistId);
+  const salonWeekly = weekly.find((r) => !r.stylistId);
 
   const rule = stylistOverride || salonOverride || stylistWeekly || salonWeekly;
 
   if (!rule || rule.isClosed || !rule.startTime || !rule.endTime) return [];
 
-  // Get service duration
   const [service] = await db
     .select()
     .from(services)
@@ -71,31 +71,29 @@ export async function getAvailableSlots(
   const closeMins = timeToMinutes(rule.endTime);
   const duration = service.duration;
 
-  // Generate 30-min aligned slots
   const allSlots: string[] = [];
   for (let start = openMins; start + duration <= closeMins; start += 30) {
     allSlots.push(minutesToTime(start));
   }
 
-  // Get existing appointments for this stylist on this date
   const existing = await db
-    .select()
+    .select({
+      startTime: appointments.startTime,
+      endTime: appointments.endTime,
+    })
     .from(appointments)
     .where(
       and(
         eq(appointments.stylistId, stylistId),
         eq(appointments.date, date),
-        ne(appointments.status, "cancelled")
-      )
+        ne(appointments.status, "cancelled"),
+      ),
     );
 
-  // Filter out conflicting slots
   return allSlots.filter((slotTime) => {
     const slotStart = timeToMinutes(slotTime);
     const slotEnd = slotStart + duration;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return !existing.some((appt: any) => {
+    return !existing.some((appt) => {
       const apptStart = timeToMinutes(appt.startTime);
       const apptEnd = timeToMinutes(appt.endTime);
       return slotStart < apptEnd && slotEnd > apptStart;

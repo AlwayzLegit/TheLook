@@ -18,53 +18,57 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Get tomorrow's date
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split("T")[0];
 
-  // Find confirmed appointments for tomorrow that haven't been reminded
   const upcoming = await db
-    .select()
+    .select({
+      appointment: appointments,
+      serviceName: services.name,
+      stylistName: stylists.name,
+    })
     .from(appointments)
+    .leftJoin(services, eq(services.id, appointments.serviceId))
+    .leftJoin(stylists, eq(stylists.id, appointments.stylistId))
     .where(
       and(
         eq(appointments.date, tomorrowStr),
         eq(appointments.status, "confirmed"),
-        eq(appointments.reminderSent, false)
-      )
+        eq(appointments.reminderSent, false),
+      ),
     );
-
-  const allServices = await db.select().from(services);
-  const allStylists = await db.select().from(stylists);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serviceMap = Object.fromEntries(allServices.map((s: any) => [s.id, s]));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stylistMap = Object.fromEntries(allStylists.map((s: any) => [s.id, s]));
 
   const baseUrl = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
   let sent = 0;
+  const failures: string[] = [];
 
-  for (const appt of upcoming) {
-    await sendReminderEmail({
-      clientName: appt.clientName,
-      clientEmail: appt.clientEmail,
-      serviceName: serviceMap[appt.serviceId]?.name || "Your Service",
-      stylistName: stylistMap[appt.stylistId]?.name || "Your Stylist",
-      date: appt.date,
-      startTime: appt.startTime,
-      cancelUrl: appt.cancelToken
-        ? `${baseUrl}/book/cancel?token=${appt.cancelToken}`
-        : undefined,
-    });
+  for (const row of upcoming) {
+    const appt = row.appointment;
+    try {
+      await sendReminderEmail({
+        clientName: appt.clientName,
+        clientEmail: appt.clientEmail,
+        serviceName: row.serviceName ?? "Your Service",
+        stylistName: row.stylistName ?? "Your Stylist",
+        date: appt.date,
+        startTime: appt.startTime,
+        cancelUrl: appt.cancelToken
+          ? `${baseUrl}/book/cancel?token=${appt.cancelToken}`
+          : undefined,
+      });
 
-    await db
-      .update(appointments)
-      .set({ reminderSent: true })
-      .where(eq(appointments.id, appt.id));
+      await db
+        .update(appointments)
+        .set({ reminderSent: true })
+        .where(eq(appointments.id, appt.id));
 
-    sent++;
+      sent++;
+    } catch (err) {
+      failures.push(appt.id);
+      console.error(`reminder failed for ${appt.id}:`, err);
+    }
   }
 
-  return NextResponse.json({ sent, date: tomorrowStr });
+  return NextResponse.json({ sent, failed: failures.length, date: tomorrowStr });
 }

@@ -1,11 +1,12 @@
 import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle, type NeonHttpDatabase } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _db: any = null;
+type DB = NeonHttpDatabase<typeof schema>;
 
-export function getDb() {
+let _db: DB | null = null;
+
+function getDb(): DB {
   if (_db) return _db;
   const url = process.env.POSTGRES_URL || process.env.DATABASE_URL;
   if (!url) {
@@ -15,12 +16,12 @@ export function getDb() {
   return _db;
 }
 
-// Lazy proxy — only creates DB connection at runtime, not at build time
-export const db = new Proxy({}, {
+export const db = new Proxy({} as DB, {
   get(_target, prop: string | symbol) {
-    const instance = getDb();
+    const instance = getDb() as unknown as Record<string | symbol, unknown>;
     const value = instance[prop];
-    return typeof value === "function" ? value.bind(instance) : value;
+    return typeof value === "function"
+      ? (value as (...args: unknown[]) => unknown).bind(instance)
+      : value;
   },
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-}) as any;
+});

@@ -36,25 +36,21 @@ export async function GET(request: NextRequest) {
   if (stylistId) conditions.push(eq(appointments.stylistId, stylistId));
 
   const rows = await db
-    .select()
+    .select({
+      appointment: appointments,
+      serviceName: services.name,
+      stylistName: stylists.name,
+    })
     .from(appointments)
+    .leftJoin(services, eq(services.id, appointments.serviceId))
+    .leftJoin(stylists, eq(stylists.id, appointments.stylistId))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(appointments.date), desc(appointments.startTime));
 
-  // Enrich with service and stylist names
-  const allServices = await db.select().from(services);
-  const allStylists = await db.select().from(stylists);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serviceMap = Object.fromEntries(allServices.map((s: any) => [s.id, s]));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stylistMap = Object.fromEntries(allStylists.map((s: any) => [s.id, s]));
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const enriched = rows.map((a: any) => ({
-    ...a,
-    serviceName: serviceMap[a.serviceId]?.name,
-    stylistName: stylistMap[a.stylistId]?.name,
+  const enriched = rows.map((r) => ({
+    ...r.appointment,
+    serviceName: r.serviceName,
+    stylistName: r.stylistName,
   }));
 
   return NextResponse.json(enriched);
