@@ -88,6 +88,11 @@ interface EnrichedAppointment {
   // panel so the owner can see what was charged on past visits and
   // keep this visit's pricing consistent.
   totalPriceMin?: number | null;
+  // Per-service breakdown for the client-history panel — the owner
+  // wants to see "last time this client paid $X for Full Color" so
+  // they can keep prices consistent across repeat visits.
+  serviceLines?: Array<{ service_id: string; price_min: number | null; duration: number | null }>;
+  serviceNames?: string[];
 }
 
 function formatTime(time: string) {
@@ -191,6 +196,10 @@ export default function AppointmentsPage() {
   const [confirmAction, setConfirmAction] = useState<{ id: string; status: string; name: string } | null>(null);
   const [clientHistoryId, setClientHistoryId] = useState<string | null>(null);
   const [clientHistory, setClientHistory] = useState<EnrichedAppointment[]>([]);
+  // Track which past-visit rows are expanded in the client-history
+  // panel so the owner can drill into each visit's per-service prices
+  // when deciding what to charge for a repeat appointment.
+  const [expandedHistoryIds, setExpandedHistoryIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   // (view state moved above fromDateForFetch — see earlier in this
   // component. Landing from a Needs-Attention link still defaults to
@@ -453,6 +462,7 @@ export default function AppointmentsPage() {
   const lookupClient = (email: string) => {
     const history = enrichedAppts.filter((a) => a.client_email === email);
     setClientHistory(history);
+    setExpandedHistoryIds(new Set());
     setClientHistoryId(clientHistoryId === email ? null : email);
   };
 
@@ -563,6 +573,12 @@ export default function AppointmentsPage() {
       end_time: string;
       staff_notes: string;
       stylist_id?: string;
+      services?: Array<{
+        service_id: string;
+        price_min: number;
+        duration: number;
+        sort_order: number;
+      }>;
     },
   ) => {
     try {
@@ -1439,24 +1455,83 @@ export default function AppointmentsPage() {
               </p>
             )}
             <div className="divide-y divide-navy/5">
-              {clientHistory.map((h) => (
-                <div key={h.id} className="py-2 flex justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-body truncate">{h.serviceName}</p>
-                    <p className="text-xs font-body text-navy/40">{h.date} &middot; {formatTime(h.start_time)}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <Badge tone={badgeToneForStatus(h.status)} size="sm">
-                      {h.status.replace("_", " ")}
-                    </Badge>
-                    {h.totalPriceMin != null && h.totalPriceMin > 0 && h.status !== "cancelled" && h.status !== "no_show" && (
-                      <span className="text-xs font-body text-navy/70 tabular-nums">
-                        {formatMoney(h.totalPriceMin, { from: "cents" })}
-                      </span>
+              {clientHistory.map((h) => {
+                const lines = h.serviceLines || [];
+                const showBreakdown = expandedHistoryIds.has(h.id);
+                const hasLines = lines.length > 0;
+                const hidePrice = h.status === "cancelled" || h.status === "no_show";
+                return (
+                  <div key={h.id} className="py-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExpandedHistoryIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(h.id)) next.delete(h.id);
+                          else next.add(h.id);
+                          return next;
+                        });
+                      }}
+                      className="w-full flex justify-between gap-3 text-left hover:bg-cream/40 px-1 py-1 rounded-sm transition-colors"
+                      aria-expanded={showBreakdown}
+                      aria-label={`${showBreakdown ? "Hide" : "Show"} per-service prices for ${h.date}`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <svg
+                            className={`w-3 h-3 text-navy/40 transition-transform ${showBreakdown ? "rotate-90" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                          <p className="text-sm font-body truncate">{h.serviceName}</p>
+                        </div>
+                        <p className="text-xs font-body text-navy/40 ml-5">{h.date} &middot; {formatTime(h.start_time)}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <Badge tone={badgeToneForStatus(h.status)} size="sm">
+                          {h.status.replace("_", " ")}
+                        </Badge>
+                        {h.totalPriceMin != null && h.totalPriceMin > 0 && !hidePrice && (
+                          <span className="text-xs font-body text-navy/70 tabular-nums">
+                            {formatMoney(h.totalPriceMin, { from: "cents" })}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                    {showBreakdown && (
+                      <div className="ml-5 mt-2 mb-1 border-l border-navy/10 pl-3 space-y-1">
+                        {hasLines ? (
+                          lines.map((l, i) => (
+                            <div
+                              key={`${h.id}-${l.service_id}-${i}`}
+                              className="flex justify-between gap-3 text-xs font-body"
+                            >
+                              <span className="text-navy/70 truncate">
+                                {serviceMap[l.service_id]?.name || "Unknown service"}
+                              </span>
+                              <span className="text-navy/70 tabular-nums shrink-0">
+                                {hidePrice
+                                  ? "—"
+                                  : l.price_min != null
+                                    ? formatMoney(l.price_min, { from: "cents" })
+                                    : "—"}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs font-body text-navy/40 italic">
+                            No per-service breakdown saved.
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1528,6 +1603,13 @@ export default function AppointmentsPage() {
           id: s.id,
           name: s.name,
           active: s.active === false ? false : true,
+        }))}
+        services={services.map((s) => ({
+          id: s.id,
+          name: s.name,
+          price_min: s.price_min ?? null,
+          duration: s.duration ?? null,
+          active: s.active ?? null,
         }))}
       />
 

@@ -51,12 +51,43 @@ interface StylistOption {
   active?: boolean;
 }
 
+// Catalog row for the "+ Add service…" picker. Mirrors the parent's
+// services list so we can show price + duration defaults when adding
+// a new line, and look up names for existing lines.
+interface ServiceCatalogOption {
+  id: string;
+  name: string;
+  price_min?: number | null;
+  duration?: number | null;
+  active?: boolean | null;
+}
+
+// One editable service line in the modal. Mirrors the inline list-view
+// shape so the PATCH payload has identical structure.
+interface ModalServiceLine {
+  service_id: string;
+  name: string;
+  price_min: number;
+  duration: number;
+  sort_order: number;
+}
+
 export interface AppointmentEditFields {
   date: string;
   start_time: string;
   end_time: string;
   staff_notes: string;
   stylist_id: string;
+  // When the admin edited per-line prices/durations in the modal, the
+  // parent forwards these to /api/admin/appointments/[id] which
+  // replaces appointment_services. Omitted when no service edits were
+  // made so the PATCH skips the services-replace path.
+  services?: Array<{
+    service_id: string;
+    price_min: number;
+    duration: number;
+    sort_order: number;
+  }>;
 }
 
 interface Props {
@@ -70,6 +101,9 @@ interface Props {
   // List of stylists the admin can reassign to. Comes from the parent
   // page so the modal doesn't have to refetch.
   stylists?: StylistOption[];
+  // Services catalog for the per-line editor — needed to render the
+  // "+ Add service…" dropdown and to look up names/defaults.
+  services?: ServiceCatalogOption[];
   pending: boolean;
 }
 
@@ -93,6 +127,7 @@ export default function AppointmentActionsModal({
   onUnarchive,
   onSaveEdit,
   stylists = [],
+  services = [],
   pending,
 }: Props) {
   const [editing, setEditing] = useState(false);
@@ -105,13 +140,15 @@ export default function AppointmentActionsModal({
   });
   const [reviewOpen, setReviewOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
-  // Sum of appointment_services.duration for this booking, in minutes.
-  // Used to auto-recompute end_time when admin edits start_time so a
-  // single-knob time change keeps the slot length intact. Falls back to
-  // (end - start) on the appointment row itself when there are no
-  // appointment_services rows (legacy / single-service bookings).
-  const [totalMinutes, setTotalMinutes] = useState<number | null>(null);
-  const [serviceCount, setServiceCount] = useState<number>(1);
+  // Per-service editable lines. Owner edits price/duration here so the
+  // next time this client books the same service we can keep pricing
+  // consistent across visits.
+  const [serviceLines, setServiceLines] = useState<ModalServiceLine[]>([]);
+  const [servicesEdited, setServicesEdited] = useState(false);
+  const [endOverridden, setEndOverridden] = useState(false);
+  const [addServiceId, setAddServiceId] = useState("");
+  const totalMinutes = serviceLines.reduce((sum, l) => sum + (l.duration || 0), 0);
+  const serviceCount = serviceLines.length;
 
   useEffect(() => {
     if (appointment) {
@@ -123,9 +160,10 @@ export default function AppointmentActionsModal({
         stylist_id: appointment.stylist_id || "",
       });
       setEditing(false);
-      // Reset duration cache; refetch below.
-      setTotalMinutes(null);
-      setServiceCount(1);
+      setServiceLines([]);
+      setServicesEdited(false);
+      setEndOverridden(false);
+      setAddServiceId("");
     }
     // Gate on the appointment id, not the object reference. The parent
     // (admin/appointments/page.tsx) passes a freshly-derived
@@ -138,40 +176,65 @@ export default function AppointmentActionsModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointment?.id]);
 
-  // Pull appointment_services for this booking once per modal open so we
-  // know the SUM of snapshotted durations. Snapshotted at booking time —
-  // immune to later edits of the underlying services table. Same
-  // identity-vs-id rationale as the field-init effect above: depend on
-  // the appointment id so we don't refetch on every parent re-render.
+  // Pull appointment_services for this booking once per modal open so
+  // we can render an editable per-service breakdown. Snapshotted at
+  // booking time — immune to later edits of the underlying services
+  // table. Falls back to a single line synthesised from the
+  // appointment row itself for legacy single-service imports without
+  // a mapping row.
   useEffect(() => {
     if (!appointment) return;
     let cancelled = false;
-    fetch(`/api/admin/appointments/${appointment.id}/services`)
+    const apptStart = appointment.start_time;
+    const apptEnd = appointment.end_time;
+    const apptId = appointment.id;
+    fetch(`/api/admin/appointments/${apptId}/services`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { services?: Array<{ duration: number | null }> } | null) => {
-        if (cancelled || !data) return;
-        const rows = Array.isArray(data.services) ? data.services : [];
-        if (rows.length > 0) {
-          const sum = rows.reduce((acc, r) => acc + (r.duration || 0), 0);
-          if (sum > 0) {
-            setTotalMinutes(sum);
-            setServiceCount(rows.length);
-            return;
+      .then(
+        (data: {
+          services?: Array<{
+            service_id: string;
+            duration: number | null;
+            price_min: number | null;
+            sort_order: number | null;
+          }>;
+        } | null) => {
+          if (cancelled) return;
+          const rows = Array.isArray(data?.services) ? data!.services! : [];
+          const lines: ModalServiceLine[] = rows.map((r, i) => ({
+            service_id: r.service_id,
+            name: services.find((s) => s.id === r.service_id)?.name || "Service",
+            price_min: Number.isFinite(r.price_min) ? Number(r.price_min) : 0,
+            duration:
+              Number.isFinite(r.duration) && (r.duration as number) > 0
+                ? Number(r.duration)
+                : 30,
+            sort_order: typeof r.sort_order === "number" ? r.sort_order : i,
+          }));
+          if (lines.length === 0) {
+            const fallback = diffMinutes(apptStart, apptEnd);
+            lines.push({
+              service_id: "",
+              name: "Service",
+              price_min: 0,
+              duration: fallback > 0 ? fallback : 30,
+              sort_order: 0,
+            });
           }
-        }
-        // Fallback: derive from the appointment row itself.
-        const fallback = diffMinutes(appointment.start_time, appointment.end_time);
-        if (fallback > 0) {
-          setTotalMinutes(fallback);
-          setServiceCount(1);
-        }
-      })
+          setServiceLines(lines);
+        },
+      )
       .catch(() => {
-        const fallback = diffMinutes(appointment.start_time, appointment.end_time);
-        if (fallback > 0) {
-          setTotalMinutes(fallback);
-          setServiceCount(1);
-        }
+        const fallback = diffMinutes(apptStart, apptEnd);
+        setServiceLines([
+          {
+            service_id: "",
+            name: "Service",
+            price_min: 0,
+            duration: fallback > 0 ? fallback : 30,
+            sort_order: 0,
+          },
+        ]);
       });
     return () => {
       cancelled = true;
@@ -331,12 +394,12 @@ export default function AppointmentActionsModal({
                     value={fields.start_time}
                     onChange={(e) => {
                       const next = e.target.value;
-                      // Auto-shift end_time by the cached total duration so
-                      // a single edit keeps the slot length intact. Admin
-                      // can still override end_time after this fires by
-                      // editing it directly.
+                      // Auto-shift end_time by the live total duration so
+                      // a single edit keeps the slot length intact —
+                      // unless the admin manually overrode End during
+                      // this edit session.
                       setFields((f) => {
-                        if (totalMinutes && totalMinutes > 0 && next) {
+                        if (!endOverridden && totalMinutes > 0 && next) {
                           return {
                             ...f,
                             start_time: next,
@@ -351,21 +414,219 @@ export default function AppointmentActionsModal({
                 </div>
                 <div>
                   <label className="block text-xs font-body text-navy/40 mb-1">End</label>
-                  <input type="time" value={fields.end_time} onChange={(e) => setFields({ ...fields, end_time: e.target.value })} className="border border-navy/20 px-2 py-1.5 text-sm font-body" />
+                  <input
+                    type="time"
+                    value={fields.end_time}
+                    onChange={(e) => {
+                      setEndOverridden(true);
+                      setFields({ ...fields, end_time: e.target.value });
+                    }}
+                    className="border border-navy/20 px-2 py-1.5 text-sm font-body"
+                  />
                 </div>
               </div>
-              {totalMinutes !== null && totalMinutes > 0 && (
+              {totalMinutes > 0 && !endOverridden && (
                 <p className="text-[11px] font-body text-navy/50 -mt-1">
                   Auto-set from {serviceCount} service{serviceCount === 1 ? "" : "s"} ·{" "}
                   {formatDurationLabel(totalMinutes)} total. Edit End to override.
                 </p>
               )}
+              {totalMinutes > 0 && endOverridden && (
+                <p className="text-[11px] font-body text-navy/50 -mt-1">
+                  End time manually overridden ({formatDurationLabel(totalMinutes)} of services).
+                </p>
+              )}
+
+              {/* Services & Prices — owner edits per-line so repeat
+                  visits stay consistent ("$100 Full Color last time →
+                  $100 Full Color this time"). */}
+              <div className="space-y-2">
+                <label className="block text-xs font-body text-navy/40">Services &amp; Prices</label>
+                {serviceLines.length === 0 && (
+                  <p className="text-[11px] font-body text-amber-700 bg-amber-50 px-2 py-1.5 border border-amber-200">
+                    No services on this appointment yet. Add at least one before saving.
+                  </p>
+                )}
+                {serviceLines.map((line, idx) => (
+                  <div
+                    key={`${line.service_id || "blank"}-${idx}`}
+                    className="flex flex-wrap items-end gap-2 bg-white border border-navy/10 px-3 py-2"
+                  >
+                    <div className="flex-1 min-w-[160px]">
+                      <p className="text-sm font-body text-navy">{line.name}</p>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-body text-navy/40 mb-0.5">Price ($)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={Math.round(line.price_min / 100)}
+                        onChange={(e) => {
+                          const dollars = parseInt(e.target.value, 10);
+                          const cents = Number.isFinite(dollars) ? Math.max(0, dollars) * 100 : 0;
+                          setServiceLines((prev) =>
+                            prev.map((l, i) => (i === idx ? { ...l, price_min: cents } : l)),
+                          );
+                          setServicesEdited(true);
+                        }}
+                        className="w-24 border border-navy/20 px-2 py-1 text-sm font-body"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-body text-navy/40 mb-0.5">Duration (min)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        step={5}
+                        value={line.duration}
+                        onChange={(e) => {
+                          const next = parseInt(e.target.value, 10);
+                          const safe = Number.isFinite(next) && next > 0 ? next : 1;
+                          setServiceLines((prev) => {
+                            const updated = prev.map((l, i) =>
+                              i === idx ? { ...l, duration: safe } : l,
+                            );
+                            if (!endOverridden && fields.start_time) {
+                              const newTotal = updated.reduce((sum, l) => sum + (l.duration || 0), 0);
+                              if (newTotal > 0) {
+                                setFields((f) => ({
+                                  ...f,
+                                  end_time: minutesToTime(timeToMinutes(f.start_time) + newTotal),
+                                }));
+                              }
+                            }
+                            return updated;
+                          });
+                          setServicesEdited(true);
+                        }}
+                        className="w-20 border border-navy/20 px-2 py-1 text-sm font-body"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setServiceLines((prev) => {
+                          const updated = prev.filter((_, i) => i !== idx);
+                          if (!endOverridden && fields.start_time) {
+                            const newTotal = updated.reduce((sum, l) => sum + (l.duration || 0), 0);
+                            setFields((f) => ({
+                              ...f,
+                              end_time: newTotal > 0
+                                ? minutesToTime(timeToMinutes(f.start_time) + newTotal)
+                                : f.end_time,
+                            }));
+                          }
+                          return updated;
+                        });
+                        setServicesEdited(true);
+                      }}
+                      className="text-xs font-body text-red-600 border border-red-200 px-2 py-1 hover:bg-red-50"
+                      aria-label={`Remove ${line.name}`}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                {(() => {
+                  const available = services.filter(
+                    (s) => s.active !== false && !serviceLines.some((l) => l.service_id === s.id),
+                  );
+                  if (available.length === 0) return null;
+                  return (
+                    <div className="flex flex-wrap items-end gap-2">
+                      <select
+                        value={addServiceId}
+                        onChange={(e) => setAddServiceId(e.target.value)}
+                        className="border border-navy/20 px-2 py-1.5 text-sm font-body bg-white"
+                      >
+                        <option value="">+ Add service…</option>
+                        {available.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={!addServiceId}
+                        onClick={() => {
+                          const svc = services.find((s) => s.id === addServiceId);
+                          if (!svc) return;
+                          const priceMin = Number.isFinite(svc.price_min) ? Number(svc.price_min) : 0;
+                          const dur =
+                            Number.isFinite(svc.duration) && (svc.duration as number) > 0
+                              ? Number(svc.duration)
+                              : 30;
+                          setServiceLines((prev) => {
+                            const updated = [
+                              ...prev,
+                              {
+                                service_id: svc.id,
+                                name: svc.name,
+                                price_min: priceMin,
+                                duration: dur,
+                                sort_order: prev.length,
+                              },
+                            ];
+                            if (!endOverridden && fields.start_time) {
+                              const newTotal = updated.reduce((sum, l) => sum + (l.duration || 0), 0);
+                              setFields((f) => ({
+                                ...f,
+                                end_time: minutesToTime(timeToMinutes(f.start_time) + newTotal),
+                              }));
+                            }
+                            return updated;
+                          });
+                          setAddServiceId("");
+                          setServicesEdited(true);
+                        }}
+                        className="text-xs font-body bg-navy text-white px-3 py-1.5 hover:bg-navy/90 disabled:opacity-40"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  );
+                })()}
+                {serviceLines.length > 0 && (
+                  <p className="text-[11px] font-body text-navy/50">
+                    Total: $
+                    {Math.round(
+                      serviceLines.reduce((sum, l) => sum + (l.price_min || 0), 0) / 100,
+                    )}
+                    {" · "}
+                    {formatDurationLabel(totalMinutes)}
+                  </p>
+                )}
+              </div>
               <div>
                 <label className="block text-xs font-body text-navy/40 mb-1">Staff Notes</label>
                 <textarea value={fields.staff_notes} onChange={(e) => setFields({ ...fields, staff_notes: e.target.value })} rows={2} placeholder="Internal notes" className="w-full border border-navy/20 px-3 py-2 text-sm font-body resize-none" />
               </div>
               <div className="flex gap-2">
-                <button onClick={() => onSaveEdit(appointment.id, fields)} disabled={pending} className="text-xs font-body bg-navy text-white px-4 py-1.5 hover:bg-navy/90 disabled:opacity-60">
+                <button
+                  onClick={() => {
+                    // Only forward `services` when the admin edited
+                    // them — avoids unnecessarily rewriting
+                    // appointment_services and burning the snapshot.
+                    const payload: AppointmentEditFields = servicesEdited
+                      ? {
+                          ...fields,
+                          services: serviceLines
+                            .filter((l) => !!l.service_id)
+                            .map((l, i) => ({
+                              service_id: l.service_id,
+                              price_min: Math.max(0, Math.round(l.price_min)),
+                              duration: Math.max(1, Math.round(l.duration)),
+                              sort_order: i,
+                            })),
+                        }
+                      : fields;
+                    onSaveEdit(appointment.id, payload);
+                  }}
+                  disabled={pending || (servicesEdited && serviceLines.length === 0)}
+                  className="text-xs font-body bg-navy text-white px-4 py-1.5 hover:bg-navy/90 disabled:opacity-60"
+                >
                   {pending ? "Saving..." : "Save Changes"}
                 </button>
                 <button onClick={() => setEditing(false)} className="text-xs font-body text-navy/50 hover:text-navy px-3 py-1.5">
