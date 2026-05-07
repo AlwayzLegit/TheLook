@@ -3,19 +3,21 @@ import { sendCancellationEmail } from "@/lib/email";
 import { sendCancellationSMS } from "@/lib/sms";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { cancelTokenSchema } from "@/lib/validation";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const token = searchParams.get("token");
 
   // Reject requests where the token isn't the 32-hex shape we issue at
   // booking time (crypto.randomUUID() with hyphens stripped). This stops
   // junk values from hitting Supabase as filter input and limits the
   // surface for token-shaped probing.
-  if (!token || !/^[a-f0-9]{32}$/i.test(token)) {
+  const tokenParse = cancelTokenSchema.safeParse(searchParams.get("token"));
+  if (!tokenParse.success) {
     return apiError("Invalid cancel token.", 400);
   }
+  const token = tokenParse.data;
 
   // Cheap throttle per-IP so a stolen email link can't be weaponized
   // to flood the cancel endpoint with bogus tokens.

@@ -150,3 +150,59 @@ export const adminAppointmentPatchSchema = z.object({
   services: z.array(adminAppointmentServiceLineSchema).min(1).max(20).optional(),
 });
 
+// 32-hex cancel token issued by /api/appointments (crypto.randomUUID
+// with hyphens stripped). Reused by cancel + reschedule routes.
+export const cancelTokenSchema = z
+  .string()
+  .regex(/^[a-f0-9]{32}$/i, "Invalid token.");
+
+// Statuses where a customer-initiated reschedule is allowed. Whitelist
+// instead of blacklist so an unexpected status (e.g. "no_show") can't
+// slip past the gate.
+export const RESCHEDULABLE_STATUSES = ["pending", "confirmed"] as const;
+
+export const rescheduleSchema = z.object({
+  token: cancelTokenSchema,
+  newDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD"),
+  newStartTime: z.string().regex(/^\d{2}:\d{2}$/, "Expected HH:MM"),
+});
+
+export const waitlistCreateSchema = z.object({
+  serviceId: uuidish(),
+  stylistId: uuidish().nullable().optional(),
+  clientName: z.string().trim().min(1).max(200),
+  clientEmail: z.string().trim().email().max(200),
+  clientPhone: z.string().trim().max(50).nullable().optional(),
+  preferredDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  // Free-text — capped so a hostile client can't pad rows with
+  // megabyte-sized strings.
+  preferredTimeRange: z.string().trim().max(120).nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
+});
+
+// Discount-validate is read-only (no DB write, no money flow), but
+// the route does math against the client-supplied servicePrice and
+// echoes a "you saved $X" total back. Constrain the inputs so the
+// response can't be manipulated into nonsensical numbers via NaN/-1.
+export const discountValidateSchema = z.object({
+  code: z.string().trim().min(1).max(60),
+  servicePrice: z.number().int().min(0).max(10_000_000).optional().default(0),
+});
+
+// Money-in-cents bound: 100 = $1.00 minimum, 100_000_000 = $1,000,000
+// ceiling. Anything outside that range is almost certainly a typo or
+// an attempt to manipulate the deposit flow.
+export const depositCreateSchema = z
+  .object({
+    appointmentId: uuidish().optional(),
+    amountCents: z.number().int().finite().min(100).max(100_000_000),
+    clientEmail: z.string().trim().email().max(200).optional(),
+    clientName: z.string().trim().max(200).optional(),
+    clientPhone: z.string().trim().max(50).optional(),
+    description: z.string().trim().max(500).optional(),
+  })
+  .refine((v) => !!v.appointmentId || !!v.clientEmail, {
+    message: "appointmentId or clientEmail is required",
+    path: ["clientEmail"],
+  });
+

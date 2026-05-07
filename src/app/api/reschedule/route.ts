@@ -3,6 +3,11 @@ import { getAvailableSlots } from "@/lib/availability";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { sendStatusChangeEmail } from "@/lib/email";
 import { sendRescheduleSMS } from "@/lib/sms";
+import {
+  cancelTokenSchema,
+  RESCHEDULABLE_STATUSES,
+  rescheduleSchema,
+} from "@/lib/validation";
 import { NextRequest } from "next/server";
 
 function minToTime(m: number) {
@@ -19,13 +24,13 @@ export async function GET(request: NextRequest) {
   if (!hasSupabaseConfig) return apiError("Not available.", 503);
 
   const { searchParams } = request.nextUrl;
-  const token = searchParams.get("token");
-  if (!token) return apiError("Token required.", 400);
+  const tokenParse = cancelTokenSchema.safeParse(searchParams.get("token"));
+  if (!tokenParse.success) return apiError("Invalid or expired link.", 400);
 
   const { data: appointment } = await supabase
     .from("appointments")
     .select("*")
-    .eq("cancel_token", token)
+    .eq("cancel_token", tokenParse.data)
     .single();
 
   if (!appointment) return apiError("Invalid or expired link.", 404);
@@ -53,12 +58,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!hasSupabaseConfig) return apiError("Not available.", 503);
 
-  const body = await request.json();
-  const { token, newDate, newStartTime } = body;
-
-  if (!token || !newDate || !newStartTime) {
-    return apiError("Token, date, and time are required.", 400);
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return apiError("Invalid JSON body.", 400);
   }
+  const parsed = rescheduleSchema.safeParse(raw);
+  if (!parsed.success) {
+    return apiError(parsed.error.issues[0]?.message || "Invalid request.", 400);
+  }
+  const { token, newDate, newStartTime } = parsed.data;
 
   const { data: appointment } = await supabase
     .from("appointments")
@@ -67,11 +77,16 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (!appointment) return apiError("Invalid link.", 404);
-  if (appointment.status === "cancelled" || appointment.status === "completed") {
+  // Whitelist instead of blacklist — anything outside pending/confirmed
+  // (e.g. "no_show", or future statuses we add) shouldn't be moveable.
+  if (!(RESCHEDULABLE_STATUSES as readonly string[]).includes(appointment.status)) {
     return apiError("Cannot reschedule this appointment.", 400);
   }
 
-  // Check availability
+  // Pre-flight availability check for nicer errors when the slot is
+  // outside business hours. The partial unique index on
+  // (stylist_id, date, start_time) WHERE status<>'cancelled' is the
+  // race-safety net — see the 23505 catch on the UPDATE below.
   const slots = await getAvailableSlots(appointment.stylist_id, appointment.service_id, newDate);
   if (!slots.includes(newStartTime)) {
     return apiError("That slot is no longer available. Please pick another.", 409);
@@ -94,6 +109,12 @@ export async function POST(request: NextRequest) {
     .eq("id", appointment.id);
 
   if (error) {
+    // 23505 from the appointments_active_slot_idx means a concurrent
+    // booking grabbed this slot between getAvailableSlots() and the
+    // UPDATE. Surface the same 409 the pre-check returns.
+    if (error.code === "23505") {
+      return apiError("That slot is no longer available. Please pick another.", 409);
+    }
     logError("reschedule POST", error);
     return apiError("Failed to reschedule.", 500);
   }

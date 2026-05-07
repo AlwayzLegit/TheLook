@@ -2,6 +2,7 @@ import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { createDepositIntent, isStripeEnabled } from "@/lib/stripe";
 import { getSetting } from "@/lib/settings";
+import { depositCreateSchema } from "@/lib/validation";
 import { NextRequest } from "next/server";
 
 // Compute the credit-card processing surcharge on top of the deposit
@@ -32,19 +33,17 @@ export async function POST(request: NextRequest) {
   if (!isStripeEnabled()) return apiError("Payments not configured.", 503);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
-  const body = await request.json();
-  const { appointmentId, amountCents, clientEmail, clientName, clientPhone, description } = body as {
-    appointmentId?: string;
-    amountCents?: number;
-    clientEmail?: string;
-    clientName?: string;
-    clientPhone?: string;
-    description?: string;
-  };
-
-  if (!amountCents || amountCents <= 0) {
-    return apiError("amountCents required.", 400);
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return apiError("Invalid JSON body.", 400);
   }
+  const parsed = depositCreateSchema.safeParse(raw);
+  if (!parsed.success) {
+    return apiError(parsed.error.issues[0]?.message || "Invalid request.", 400);
+  }
+  const { appointmentId, amountCents, clientEmail, clientName, clientPhone, description } = parsed.data;
 
   // Compute the CC surcharge and charge the customer deposit + fee. Both
   // values are captured in metadata so the appointment-side logic can

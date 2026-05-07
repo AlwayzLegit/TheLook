@@ -2,6 +2,7 @@ import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { RATE_LIMITS } from "@/lib/constants";
+import { waitlistCreateSchema } from "@/lib/validation";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -15,20 +16,27 @@ export async function POST(request: NextRequest) {
 
   if (!hasSupabaseConfig) return apiError("Waitlist unavailable right now.", 503);
 
-  const body = await request.json();
-  if (!body.serviceId || !body.clientName || !body.clientEmail) {
-    return apiError("Service, name, and email are required.", 400);
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return apiError("Invalid JSON body.", 400);
   }
+  const parsed = waitlistCreateSchema.safeParse(raw);
+  if (!parsed.success) {
+    return apiError(parsed.error.issues[0]?.message || "Invalid form data.", 400);
+  }
+  const p = parsed.data;
 
   const { error } = await supabase.from("waitlist").insert({
-    service_id: body.serviceId,
-    stylist_id: body.stylistId || null,
-    client_name: body.clientName,
-    client_email: body.clientEmail,
-    client_phone: body.clientPhone || null,
-    preferred_date: body.preferredDate || null,
-    preferred_time_range: body.preferredTimeRange || null,
-    notes: body.notes || null,
+    service_id: p.serviceId,
+    stylist_id: p.stylistId ?? null,
+    client_name: p.clientName,
+    client_email: p.clientEmail,
+    client_phone: p.clientPhone ?? null,
+    preferred_date: p.preferredDate ?? null,
+    preferred_time_range: p.preferredTimeRange ?? null,
+    notes: p.notes ?? null,
   });
 
   if (error) {

@@ -1,15 +1,23 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, apiSuccess } from "@/lib/apiResponse";
+import { discountValidateSchema } from "@/lib/validation";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
   if (!hasSupabaseConfig) return apiError("Not available.", 503);
 
-  const body = await request.json();
-  const code = (body.code || "").toUpperCase().trim();
-  const servicePrice = body.servicePrice || 0; // in cents
-
-  if (!code) return apiError("Discount code is required.", 400);
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return apiError("Invalid JSON body.", 400);
+  }
+  const parsed = discountValidateSchema.safeParse(raw);
+  if (!parsed.success) {
+    return apiError(parsed.error.issues[0]?.message || "Invalid request.", 400);
+  }
+  const code = parsed.data.code.toUpperCase();
+  const servicePrice = parsed.data.servicePrice;
 
   const { data: discount, error } = await supabase
     .from("discounts")
