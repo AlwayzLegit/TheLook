@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     date,
     startTime,
     cancelUrl: `${baseUrl}/book/cancel?token=${cancelToken}`,
-  }).catch((e) => console.error("booking email failed", e));
+  });
 
   return NextResponse.json({
     id: inserted.id,

@@ -1,6 +1,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import type { NextRequest } from "next/server";
+import { logger } from "./logger";
 
 type Limiter = {
   limit: (key: string) => Promise<{ success: boolean; reset: number; remaining: number; limit: number }>;
@@ -26,7 +27,7 @@ function build(prefix: string, max: number, windowSec: number): Limiter {
   const redis = getRedis();
   if (!redis) {
     if (process.env.NODE_ENV === "production") {
-      console.warn(`[ratelimit] ${prefix}: UPSTASH_REDIS_REST_* env vars missing; rate limit disabled`);
+      logger.warn("ratelimit disabled: UPSTASH_REDIS_REST_* env vars missing", { prefix });
     }
     return noopLimiter;
   }

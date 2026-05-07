@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     stylistName: stylist?.name || "Your Stylist",
     date: cancelled.date,
     startTime: cancelled.startTime,
-  }).catch((e) => console.error("cancellation email failed", e));
+  });
 
   return NextResponse.json({ message: "Appointment cancelled" });
 }

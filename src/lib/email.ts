@@ -1,7 +1,13 @@
 import { Resend } from "resend";
+import { logger } from "./logger";
 
-function getResend() {
-  return new Resend(process.env.RESEND_API_KEY || "re_placeholder");
+let _resend: Resend | null = null;
+
+function getResend(): Resend | null {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  if (!_resend) _resend = new Resend(key);
+  return _resend;
 }
 
 const FROM = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
@@ -15,6 +21,31 @@ interface AppointmentDetails {
   date: string;
   startTime: string;
   cancelUrl?: string;
+}
+
+export interface EmailResult {
+  ok: boolean;
+  skipped?: boolean;
+  error?: unknown;
+}
+
+const HTML_ESCAPE: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+
+function escape(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => HTML_ESCAPE[c]);
+}
+
+function escapeUrl(value: string): string {
+  // URLs go into href="..." — escape quotes/<>/&. Reject anything that
+  // isn't an http(s) URL so we never produce a javascript: href.
+  if (!/^https?:\/\//i.test(value)) return "#";
+  return escape(value);
 }
 
 function formatDate(date: string): string {
@@ -33,8 +64,31 @@ function formatTime(time: string): string {
   return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
 }
 
-export async function sendBookingConfirmation(details: AppointmentDetails) {
-  const { clientName, clientEmail, serviceName, stylistName, date, startTime, cancelUrl } = details;
+async function send(
+  topic: string,
+  payload: { to: string; subject: string; html: string },
+): Promise<EmailResult> {
+  const resend = getResend();
+  if (!resend) {
+    logger.warn("email skipped: RESEND_API_KEY not set", { topic, to: payload.to });
+    return { ok: false, skipped: true };
+  }
+  try {
+    await resend.emails.send({ from: FROM, ...payload });
+    return { ok: true };
+  } catch (error) {
+    logger.error("email send failed", { topic, to: payload.to, error });
+    return { ok: false, error };
+  }
+}
+
+export async function sendBookingConfirmation(details: AppointmentDetails): Promise<EmailResult> {
+  const clientName = escape(details.clientName);
+  const serviceName = escape(details.serviceName);
+  const stylistName = escape(details.stylistName);
+  const dateText = escape(formatDate(details.date));
+  const timeText = escape(formatTime(details.startTime));
+  const cancelUrl = details.cancelUrl ? escapeUrl(details.cancelUrl) : null;
 
   const html = `
     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
@@ -48,8 +102,8 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
         <table style="width: 100%; border-collapse: collapse;">
           <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Service</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${serviceName}</td></tr>
           <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Stylist</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${stylistName}</td></tr>
-          <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Date</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${formatDate(date)}</td></tr>
-          <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Time</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${formatTime(startTime)}</td></tr>
+          <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Date</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${dateText}</td></tr>
+          <tr><td style="padding: 10px 0; color: #999; font-size: 14px;">Time</td><td style="padding: 10px 0; color: #282936; font-weight: bold;">${timeText}</td></tr>
         </table>
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
           <p style="color: #666; font-size: 13px; margin: 0;">919 South Central Ave Suite #E, Glendale, CA 91204</p>
@@ -63,77 +117,71 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
     </div>
   `;
 
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: clientEmail,
-      subject: `Booking Confirmed — ${formatDate(date)} at ${formatTime(startTime)}`,
-      html,
-    });
-
-    // Notify salon
-    await getResend().emails.send({
-      from: FROM,
-      to: SALON_EMAIL,
-      subject: `New Booking: ${clientName} — ${serviceName} with ${stylistName}`,
-      html: html.replace("BOOKING CONFIRMATION", "NEW BOOKING ALERT"),
-    });
-  } catch (error) {
-    console.error("Failed to send email:", error);
-  }
+  const subject = `Booking Confirmed — ${formatDate(details.date)} at ${formatTime(details.startTime)}`;
+  const clientResult = await send("booking_confirmation_client", {
+    to: details.clientEmail,
+    subject,
+    html,
+  });
+  await send("booking_confirmation_salon", {
+    to: SALON_EMAIL,
+    subject: `New Booking: ${details.clientName} — ${details.serviceName} with ${details.stylistName}`,
+    html: html.replace("BOOKING CONFIRMATION", "NEW BOOKING ALERT"),
+  });
+  return clientResult;
 }
 
-export async function sendCancellationEmail(details: Omit<AppointmentDetails, "cancelUrl">) {
-  const { clientName, clientEmail, serviceName, date, startTime } = details;
+export async function sendCancellationEmail(
+  details: Omit<AppointmentDetails, "cancelUrl">,
+): Promise<EmailResult> {
+  const clientName = escape(details.clientName);
+  const serviceName = escape(details.serviceName);
+  const dateText = escape(formatDate(details.date));
+  const timeText = escape(formatTime(details.startTime));
 
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: clientEmail,
-      subject: `Appointment Cancelled — ${formatDate(date)}`,
-      html: `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
-          </div>
-          <div style="background: white; padding: 30px; border: 1px solid #eee;">
-            <p style="color: #282936;">Hi ${clientName},</p>
-            <p style="color: #666;">Your appointment for <strong>${serviceName}</strong> on <strong>${formatDate(date)}</strong> at <strong>${formatTime(startTime)}</strong> has been cancelled.</p>
-            <p style="color: #666;">We'd love to see you again! Call us at (818) 662-5665 or visit our website to rebook.</p>
-          </div>
+  return send("cancellation_client", {
+    to: details.clientEmail,
+    subject: `Appointment Cancelled — ${formatDate(details.date)}`,
+    html: `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
         </div>
-      `,
-    });
-  } catch (error) {
-    console.error("Failed to send cancellation email:", error);
-  }
+        <div style="background: white; padding: 30px; border: 1px solid #eee;">
+          <p style="color: #282936;">Hi ${clientName},</p>
+          <p style="color: #666;">Your appointment for <strong>${serviceName}</strong> on <strong>${dateText}</strong> at <strong>${timeText}</strong> has been cancelled.</p>
+          <p style="color: #666;">We'd love to see you again! Call us at (818) 662-5665 or visit our website to rebook.</p>
+        </div>
+      </div>
+    `,
+  });
 }
 
-export async function sendReminderEmail(details: AppointmentDetails) {
-  const { clientName, clientEmail, serviceName, stylistName, date, startTime, cancelUrl } = details;
+export async function sendReminderEmail(details: AppointmentDetails): Promise<EmailResult> {
+  const clientName = escape(details.clientName);
+  const serviceName = escape(details.serviceName);
+  const stylistName = escape(details.stylistName);
+  const dateText = escape(formatDate(details.date));
+  const timeText = escape(formatTime(details.startTime));
+  const cancelUrl = details.cancelUrl ? escapeUrl(details.cancelUrl) : null;
 
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: clientEmail,
-      subject: `Reminder: Your appointment tomorrow at ${formatTime(startTime)}`,
-      html: `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
-            <p style="color: #c9a96e; font-size: 12px; letter-spacing: 3px; margin-top: 8px;">APPOINTMENT REMINDER</p>
-          </div>
-          <div style="background: white; padding: 30px; border: 1px solid #eee;">
-            <p style="color: #282936;">Hi ${clientName},</p>
-            <p style="color: #666;">Just a friendly reminder about your appointment tomorrow:</p>
-            <p style="color: #282936; font-weight: bold; font-size: 16px; margin: 15px 0;">${serviceName} with ${stylistName}<br/>${formatDate(date)} at ${formatTime(startTime)}</p>
-            <p style="color: #666; font-size: 13px;">919 South Central Ave Suite #E, Glendale, CA 91204</p>
-            ${cancelUrl ? `<p style="margin-top: 15px;"><a href="${cancelUrl}" style="color: #c2274b; font-size: 13px;">Need to cancel or reschedule?</a></p>` : ""}
-          </div>
+  return send("reminder_client", {
+    to: details.clientEmail,
+    subject: `Reminder: Your appointment tomorrow at ${formatTime(details.startTime)}`,
+    html: `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #faf8f5; padding: 40px 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="font-family: Georgia, serif; color: #282936; font-size: 28px; margin: 0;">THE LOOK HAIR SALON</h1>
+          <p style="color: #c9a96e; font-size: 12px; letter-spacing: 3px; margin-top: 8px;">APPOINTMENT REMINDER</p>
         </div>
-      `,
-    });
-  } catch (error) {
-    console.error("Failed to send reminder email:", error);
-  }
+        <div style="background: white; padding: 30px; border: 1px solid #eee;">
+          <p style="color: #282936;">Hi ${clientName},</p>
+          <p style="color: #666;">Just a friendly reminder about your appointment tomorrow:</p>
+          <p style="color: #282936; font-weight: bold; font-size: 16px; margin: 15px 0;">${serviceName} with ${stylistName}<br/>${dateText} at ${timeText}</p>
+          <p style="color: #666; font-size: 13px;">919 South Central Ave Suite #E, Glendale, CA 91204</p>
+          ${cancelUrl ? `<p style="margin-top: 15px;"><a href="${cancelUrl}" style="color: #c2274b; font-size: 13px;">Need to cancel or reschedule?</a></p>` : ""}
+        </div>
+      </div>
+    `,
+  });
 }

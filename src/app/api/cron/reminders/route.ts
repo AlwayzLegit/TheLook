@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { appointments, services, stylists } from "@/lib/schema";
 import { sendReminderEmail } from "@/lib/email";
+import { logger } from "@/lib/logger";
 import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -45,28 +46,33 @@ export async function GET(request: NextRequest) {
 
   for (const row of upcoming) {
     const appt = row.appointment;
-    try {
-      await sendReminderEmail({
-        clientName: appt.clientName,
-        clientEmail: appt.clientEmail,
-        serviceName: row.serviceName ?? "Your Service",
-        stylistName: row.stylistName ?? "Your Stylist",
-        date: appt.date,
-        startTime: appt.startTime,
-        cancelUrl: appt.cancelToken
-          ? `${baseUrl}/book/cancel?token=${appt.cancelToken}`
-          : undefined,
-      });
+    const result = await sendReminderEmail({
+      clientName: appt.clientName,
+      clientEmail: appt.clientEmail,
+      serviceName: row.serviceName ?? "Your Service",
+      stylistName: row.stylistName ?? "Your Stylist",
+      date: appt.date,
+      startTime: appt.startTime,
+      cancelUrl: appt.cancelToken
+        ? `${baseUrl}/book/cancel?token=${appt.cancelToken}`
+        : undefined,
+    });
 
+    if (!result.ok) {
+      failures.push(appt.id);
+      logger.error("reminder failed", { appointmentId: appt.id, skipped: result.skipped });
+      continue;
+    }
+
+    try {
       await db
         .update(appointments)
         .set({ reminderSent: true })
         .where(eq(appointments.id, appt.id));
-
       sent++;
     } catch (err) {
       failures.push(appt.id);
-      console.error(`reminder failed for ${appt.id}:`, err);
+      logger.error("reminder flag update failed", { appointmentId: appt.id, error: err });
     }
   }
 
