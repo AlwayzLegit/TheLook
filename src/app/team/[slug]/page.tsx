@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import Script from "next/script";
 import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -9,6 +10,7 @@ import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { BOOKING } from "@/lib/constants";
 import { getBranding, telHref } from "@/lib/branding";
 import { isOptimizableImageHost } from "@/lib/imageHosts";
+import { personJsonLd } from "@/lib/seo";
 import type { Metadata } from "next";
 
 interface PortfolioItem {
@@ -167,8 +169,21 @@ export default async function TeamMemberPage({ params }: any) {
   const [staff, stylist, brand] = await Promise.all([getStaff(slug), getStylist(slug), getBranding()]);
 
   if (staff) {
+    const staffLd = await personJsonLd({
+      name: staff.name,
+      jobTitle: staff.title || defaultRoleTitle(staff.role),
+      bio: staff.bio,
+      imageUrl: staff.image_url,
+      slug: staff.slug,
+    });
     return (
       <>
+        <Script
+          id="ldjson-person-staff"
+          type="application/ld+json"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(staffLd) }}
+        />
         <Navbar />
         <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
           <div className="max-w-4xl mx-auto px-6">
@@ -234,8 +249,23 @@ export default async function TeamMemberPage({ params }: any) {
     servicesByCategory[s.category].push(s);
   });
 
+  const stylistLd = await personJsonLd({
+    name: stylist.name,
+    jobTitle: "Hair Stylist",
+    bio: stylist.bio,
+    imageUrl: stylist.image_url,
+    slug: stylist.slug,
+    knowsAbout: Array.isArray(stylist.specialties) ? stylist.specialties : [],
+  });
+
   return (
     <>
+      <Script
+        id="ldjson-person-stylist"
+        type="application/ld+json"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(stylistLd) }}
+      />
       <Navbar />
       <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-6xl mx-auto px-6">

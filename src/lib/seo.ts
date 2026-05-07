@@ -139,3 +139,93 @@ export async function pageMetadata(opts: {
     ...(description ? { description } : {}),
   };
 }
+
+// Resolve a relative path against the canonical site URL — JSON-LD
+// requires absolute URLs in @id / itemListElement entries.
+function abs(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${siteUrl}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+// schema.org FAQPage. Caller passes the same Q/A list rendered on the
+// page so Google's rich-result preview matches what visitors see — any
+// drift between the two would disqualify the page from FAQ snippets.
+export function faqJsonLd(faqs: ReadonlyArray<{ question: string; answer: string }>): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.question,
+      acceptedAnswer: { "@type": "Answer", text: f.answer },
+    })),
+  };
+}
+
+// schema.org BreadcrumbList. Items are passed in display order (root
+// first, current page last). Relative URLs are resolved against the
+// site URL so Google sees absolute @id values.
+export function breadcrumbJsonLd(
+  items: ReadonlyArray<{ name: string; url: string }>,
+): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      item: abs(item.url),
+    })),
+  };
+}
+
+// schema.org Person. Used on /team/[slug] to feed the Knowledge Panel
+// and surface stylist names in "balayage Glendale" type queries. Empty
+// fields are omitted so we don't ship blank strings to Google.
+export async function personJsonLd(person: {
+  name: string;
+  jobTitle?: string | null;
+  bio?: string | null;
+  imageUrl?: string | null;
+  slug?: string | null;
+  knowsAbout?: ReadonlyArray<string>;
+}): Promise<Record<string, unknown>> {
+  const brand = await getBranding();
+  const data: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: person.name,
+    worksFor: {
+      "@type": "HairSalon",
+      name: brand.name,
+      url: siteUrl,
+    },
+  };
+  if (person.jobTitle) data.jobTitle = person.jobTitle;
+  if (person.bio) data.description = person.bio;
+  if (person.imageUrl) data.image = abs(person.imageUrl);
+  if (person.slug) data.url = abs(`/team/${person.slug}`);
+  if (person.knowsAbout && person.knowsAbout.length > 0) {
+    data.knowsAbout = [...person.knowsAbout];
+  }
+  return data;
+}
+
+// schema.org ItemList for /team — Google uses this to understand the
+// page is a roster, not a single profile. Each entry points at the
+// stylist's detail page so the crawler can follow.
+export function teamItemListJsonLd(
+  members: ReadonlyArray<{ name: string; slug: string }>,
+): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: members.map((m, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: abs(`/team/${m.slug}`),
+      name: m.name,
+    })),
+  };
+}

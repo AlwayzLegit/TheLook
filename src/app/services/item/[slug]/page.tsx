@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import Script from "next/script";
 import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -8,6 +9,7 @@ import MobileBookButton from "@/components/MobileBookButton";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { getBranding } from "@/lib/branding";
 import { isOptimizableImageHost } from "@/lib/imageHosts";
+import { breadcrumbJsonLd } from "@/lib/seo";
 
 export const revalidate = 60;
 
@@ -105,8 +107,21 @@ export default async function ServiceDetailPage(
   if (!result) notFound();
   const { service, variants } = result;
 
+  const breadcrumbsLd = breadcrumbJsonLd([
+    { name: "Home", url: "/" },
+    { name: "Services", url: "/services" },
+    { name: service.category, url: `/services/${categorySlug(service.category)}` },
+    { name: service.name, url: `/services/item/${slug}` },
+  ]);
+
   return (
     <>
+      <Script
+        id="ldjson-breadcrumb-service-item"
+        type="application/ld+json"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbsLd) }}
+      />
       <Navbar />
       <main className="pt-20 pb-20 min-h-[100dvh] bg-cream">
         {/* Breadcrumbs */}
