@@ -67,6 +67,12 @@ export async function POST(request: NextRequest) {
     : payload.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const basePayload = {
     category: payload.category,
+    // Empty-string from the dropdown collapses to null so the DB
+    // column stays cleanly nullable (the home gallery branches on
+    // null/non-null for the un-split fallback).
+    subcategory: payload.subcategory && payload.subcategory.trim().length > 0
+      ? payload.subcategory.trim()
+      : null,
     name: payload.name,
     slug: baseSlug,
     price_text: payload.price_text,

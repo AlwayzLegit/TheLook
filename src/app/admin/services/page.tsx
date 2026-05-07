@@ -15,6 +15,7 @@ import Image from "next/image";
 interface Service {
   id: string;
   category: string;
+  subcategory?: string | null;
   name: string;
   slug?: string | null;
   price_text: string;
@@ -47,6 +48,7 @@ export default function ServicesPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     category: "Haircuts",
+    subcategory: "",
     name: "",
     slug: "",
     price_text: "",
@@ -127,6 +129,7 @@ export default function ServicesPage() {
         setEditing(null);
         setFormData({
           category: "Haircuts",
+          subcategory: "",
           name: "",
           slug: "",
           price_text: "",
@@ -170,6 +173,7 @@ export default function ServicesPage() {
     // block.
     setFormData({
       category: service.category || "Haircuts",
+      subcategory: service.subcategory || "",
       name: service.name || "",
       slug: service.slug || "",
       price_text: service.price_text || "",
@@ -250,6 +254,7 @@ export default function ServicesPage() {
     setEditing(null);
     setFormData({
       category: "Haircuts",
+      subcategory: "",
       name: "",
       slug: "",
       price_text: "",
@@ -338,6 +343,29 @@ export default function ServicesPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Subcategory: only meaningful for Haircuts today
+                  (splits the homepage gallery into Women's / Men's
+                  sub-sections). Hidden for other categories so the
+                  form doesn't push owners to set values that no
+                  template renders against. */}
+              {formData.category === "Haircuts" && (
+                <div>
+                  <label className="block text-sm font-body text-navy/60 mb-1">Subcategory</label>
+                  <select
+                    value={formData.subcategory || ""}
+                    onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                    className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
+                  >
+                    <option value="">— None (renders un-split) —</option>
+                    <option value="Women's">Women&apos;s</option>
+                    <option value="Men's">Men&apos;s</option>
+                  </select>
+                  <p className="text-xs font-body text-navy/50 mt-1">
+                    Splits the homepage Haircuts gallery into Women&apos;s and Men&apos;s sub-sections, each with its own hero photo.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-body text-navy/60 mb-1">Service Name *</label>

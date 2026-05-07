@@ -22,6 +22,11 @@ export interface HomeServicePhoto {
   name: string;
   image_url: string;
   sort_order: number;
+  // Sub-grouping within a category — Haircuts uses "Women's" / "Men's"
+  // to split the homepage gallery into two hero+grid sections under a
+  // single "Haircuts" header. Null for services that belong in the
+  // category's default (un-split) group.
+  subcategory: string | null;
 }
 
 // Maps the home-page section to the DB category name. Service
@@ -40,7 +45,7 @@ async function fetchAllHomeSectionServices(): Promise<HomeServicePhoto[]> {
   try {
     const { data, error } = await supabase
       .from("services")
-      .select("id, slug, name, image_url, category, sort_order, active")
+      .select("id, slug, name, image_url, category, subcategory, sort_order, active")
       .eq("active", true)
       .not("image_url", "is", null)
       .order("category", { ascending: true })
@@ -54,6 +59,7 @@ async function fetchAllHomeSectionServices(): Promise<HomeServicePhoto[]> {
       name: string;
       image_url: string | null;
       category: string;
+      subcategory: string | null;
       sort_order: number;
     }>)
       .filter((row) => typeof row.image_url === "string" && row.image_url.trim().length > 0)
@@ -63,6 +69,7 @@ async function fetchAllHomeSectionServices(): Promise<HomeServicePhoto[]> {
         name: row.name,
         image_url: row.image_url as string,
         sort_order: row.sort_order,
+        subcategory: row.subcategory,
         // Stash category on the row so the public helper can
         // filter without re-querying. Hidden from the exported
         // type via the surrounding map().
@@ -87,5 +94,12 @@ export async function getServicesForHomeSection(section: HomeSection): Promise<H
   const want = SECTION_TO_CATEGORY[section];
   return (all as Array<HomeServicePhoto & { _category?: string }>)
     .filter((row) => row._category === want)
-    .map(({ id, slug, name, image_url, sort_order }) => ({ id, slug, name, image_url, sort_order }));
+    .map(({ id, slug, name, image_url, sort_order, subcategory }) => ({
+      id,
+      slug,
+      name,
+      image_url,
+      sort_order,
+      subcategory,
+    }));
 }

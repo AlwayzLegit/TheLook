@@ -56,6 +56,10 @@ export const contactCreateSchema = z.object({
 
 export const adminServiceSchema = z.object({
   category: z.string().trim().min(1).max(100),
+  // Sub-grouping within a category. Today only Haircuts uses it
+  // ("Women's" / "Men's") to split the homepage gallery — null is
+  // valid for everything else and renders the un-split layout.
+  subcategory: z.string().trim().max(60).nullable().optional(),
   name: z.string().trim().min(1).max(255),
   // Optional — server auto-generates from name when blank.
   slug: z.string().trim().max(160).nullable().optional(),

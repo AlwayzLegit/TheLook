@@ -41,6 +41,11 @@ export async function PATCH(
   const nextSlug = slugSource.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const basePayload = {
     category: payload.category,
+    // Empty-string from the dropdown collapses to null — see comment
+    // in the create route.
+    subcategory: payload.subcategory && payload.subcategory.trim().length > 0
+      ? payload.subcategory.trim()
+      : null,
     name: payload.name,
     slug: nextSlug,
     price_text: payload.price_text,
