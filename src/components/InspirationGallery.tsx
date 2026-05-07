@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 
 // Trend / style-reference tiles curated by the owner. Renders as a
 // filterable grid: two axes — gender ("women" / "men" / "unisex") and
@@ -155,9 +156,7 @@ export default function InspirationGallery() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {filtered.map((row, i) => {
               const src = row.image_url;
-              const isExternal = /^https?:\/\//.test(src);
-              const useUnoptimized =
-                isExternal && !/\.supabase\.co\//.test(src) && !src.includes("images.unsplash.com");
+              const useUnoptimized = !isOptimizableImageHost(src);
               return (
                 <AnimatedSection key={row.id} delay={Math.min(i * 0.03, 0.3)}>
                   <figure className="group relative aspect-[3/4] overflow-hidden bg-cream-dark">

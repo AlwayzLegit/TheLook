@@ -5,6 +5,7 @@ import Image from "next/image";
 import SalonHours from "./SalonHours";
 import { telHref, mailtoHref } from "@/lib/branding";
 import { useBranding } from "./BrandingProvider";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 
 // Client component: reads branding from <BrandingProvider> in the root
 // layout. Keeping it client-side (vs async server) so it can be rendered
@@ -33,6 +34,7 @@ export default function Footer() {
           loading="lazy"
           className="object-cover object-center opacity-70"
           sizes="100vw"
+          unoptimized={!isOptimizableImageHost(brand.images.footerBg)}
         />
       </div>
       <div className="absolute inset-0 bg-charcoal/55" />

@@ -90,6 +90,7 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
           className="object-cover"
           sizes="100vw"
           priority
+          unoptimized={!isOptimizableImageHost(heroImage)}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-navy/70 via-navy/30 to-navy/10" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
@@ -243,13 +244,19 @@ export default function ServiceCategory({ category }: ServiceCategoryProps) {
                   className="block relative overflow-hidden border border-navy/6 hover:border-gold/30 transition-all duration-500 group hover:shadow-[0_8px_30px_rgba(196,162,101,0.1)] hover:-translate-y-1 bg-white"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden">
-                    <Image
-                      src={brandedHeroFor(cat.slug, branding, cat.heroImage)}
-                      alt={cat.title}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      className="object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
+                    {(() => {
+                      const otherHero = brandedHeroFor(cat.slug, branding, cat.heroImage);
+                      return (
+                        <Image
+                          src={otherHero}
+                          alt={cat.title}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                          className="object-cover transition-transform duration-700 group-hover:scale-110"
+                          unoptimized={!isOptimizableImageHost(otherHero)}
+                        />
+                      );
+                    })()}
                     <div className="absolute inset-0 bg-gradient-to-t from-navy/40 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
                   </div>
                   <div className="p-5 text-center">

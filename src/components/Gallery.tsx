@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedSection from "./AnimatedSection";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 
 // The gallery is now admin-managed via /admin/gallery. The public
 // component fetches /api/gallery/public on mount and renders whatever
@@ -156,7 +157,7 @@ export default function Gallery({ items: itemsProp, heading }: GalleryProps = {}
                     alt={`${item.title || label || "Salon work"} — The Look Hair Salon`}
                     fill
                     className="object-cover transition-all duration-700 group-hover:scale-110"
-                    unoptimized={src.startsWith("http")}
+                    unoptimized={!isOptimizableImageHost(src)}
                   />
                   {/* Improved hover overlay with gradient */}
                   <div className="absolute inset-0 bg-gradient-to-t from-navy/80 via-navy/30 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col items-center justify-end pb-5">
@@ -222,7 +223,7 @@ export default function Gallery({ items: itemsProp, heading }: GalleryProps = {}
                 alt={(activeItem.title || labelOf(activeItem) || "Gallery image")}
                 fill
                 className="object-contain"
-                unoptimized={srcOf(activeItem).startsWith("http")}
+                unoptimized={!isOptimizableImageHost(srcOf(activeItem))}
               />
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-charcoal/90 via-charcoal/40 to-transparent p-6">
                 {activeItem.title ? <p className="font-heading text-xl text-white">{activeItem.title}</p> : null}

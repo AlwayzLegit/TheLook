@@ -8,6 +8,7 @@ import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { BOOKING } from "@/lib/constants";
 import { normalizeSpecialties } from "@/lib/stylistSpecialties";
 import { pageMetadata } from "@/lib/seo";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
@@ -214,7 +215,7 @@ export default async function TeamPage() {
                             fill
                             sizes="220px"
                             className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                            unoptimized={!/\.supabase\.co\//.test(s.image_url) && !s.image_url.includes("images.unsplash.com")}
+                            unoptimized={!isOptimizableImageHost(s.image_url)}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center font-heading text-5xl text-navy/25">

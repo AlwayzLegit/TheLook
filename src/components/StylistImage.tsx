@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 
 interface Props {
   src: string | null | undefined;
@@ -54,6 +55,9 @@ export default function StylistImage({
   // Supabase-hosted + whitelisted-external (unsplash) go through next/image.
   // Anything else (data URLs, unknown CDNs) falls back to <img> so we
   // don't hit the "hostname not configured" error at render time.
+  // Supabase URLs pass `unoptimized` so they bypass /_next/image — we
+  // exhausted Vercel's optimization quota and Supabase Storage already
+  // serves through a CDN. Unsplash continues to optimize.
   if (isSupabase || url.includes("images.unsplash.com")) {
     return (
       <Image
@@ -63,6 +67,7 @@ export default function StylistImage({
         sizes={sizes}
         onError={() => setFailed(true)}
         className={`object-cover ${objectPosition} ${className}`}
+        unoptimized={!isOptimizableImageHost(url)}
       />
     );
   }

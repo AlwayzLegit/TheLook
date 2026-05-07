@@ -6,6 +6,7 @@ import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion
 import { useEffect, useRef, useState } from "react";
 import { useBranding } from "./BrandingProvider";
 import { telHref } from "@/lib/branding";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 
 // Hydration-safe Hero. Three classes of mismatch lived here at various
 // points; here's how each is contained:
@@ -69,6 +70,7 @@ export default function Hero() {
           sizes="100vw"
           className="object-cover scale-105"
           priority
+          unoptimized={!isOptimizableImageHost(brand.images.homeHero)}
         />
       </motion.div>
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 
 // Curated "Selected work" rail for /team/<slug>. Mixes single gallery
 // items + before/after pairs into one chronologically-sorted strip,
@@ -140,7 +141,7 @@ export default function StylistPortfolio({ stylistName, stylistSlug, items, pair
                 fill
                 sizes="(max-width: 768px) 50vw, 33vw"
                 className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                unoptimized={!/\.supabase\.co\//.test(tile.src) && !tile.src.includes("images.unsplash.com")}
+                unoptimized={!isOptimizableImageHost(tile.src)}
               />
             ) : (
               // Slim two-up rendering for before/after — same square
@@ -154,7 +155,7 @@ export default function StylistPortfolio({ stylistName, stylistSlug, items, pair
                     fill
                     sizes="(max-width: 768px) 25vw, 16vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                    unoptimized={!/\.supabase\.co\//.test(tile.before) && !tile.before.includes("images.unsplash.com")}
+                    unoptimized={!isOptimizableImageHost(tile.before)}
                   />
                   <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] tracking-[0.2em] uppercase font-body px-1.5 py-0.5">
                     Before
@@ -167,7 +168,7 @@ export default function StylistPortfolio({ stylistName, stylistSlug, items, pair
                     fill
                     sizes="(max-width: 768px) 25vw, 16vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                    unoptimized={!/\.supabase\.co\//.test(tile.after) && !tile.after.includes("images.unsplash.com")}
+                    unoptimized={!isOptimizableImageHost(tile.after)}
                   />
                   <span className="absolute bottom-1 left-1 bg-rose text-white text-[9px] tracking-[0.2em] uppercase font-body px-1.5 py-0.5">
                     After
@@ -239,7 +240,7 @@ export default function StylistPortfolio({ stylistName, stylistSlug, items, pair
                     alt={activeTile.title || activeTile.caption || `Work by ${stylistName}`}
                     fill
                     className="object-contain"
-                    unoptimized={!/\.supabase\.co\//.test(activeTile.src) && !activeTile.src.includes("images.unsplash.com")}
+                    unoptimized={!isOptimizableImageHost(activeTile.src)}
                   />
                 </div>
               ) : (
@@ -250,7 +251,7 @@ export default function StylistPortfolio({ stylistName, stylistSlug, items, pair
                       alt={`Before — ${activeTile.alt || ""}`}
                       fill
                       className="object-contain"
-                      unoptimized={!/\.supabase\.co\//.test(activeTile.before) && !activeTile.before.includes("images.unsplash.com")}
+                      unoptimized={!isOptimizableImageHost(activeTile.before)}
                     />
                     <span className="absolute top-3 left-3 bg-black/60 text-white text-[10px] tracking-[0.2em] uppercase font-body px-2 py-1">
                       Before
@@ -262,7 +263,7 @@ export default function StylistPortfolio({ stylistName, stylistSlug, items, pair
                       alt={`After — ${activeTile.alt || ""}`}
                       fill
                       className="object-contain"
-                      unoptimized={!/\.supabase\.co\//.test(activeTile.after) && !activeTile.after.includes("images.unsplash.com")}
+                      unoptimized={!isOptimizableImageHost(activeTile.after)}
                     />
                     <span className="absolute top-3 left-3 bg-rose text-white text-[10px] tracking-[0.2em] uppercase font-body px-2 py-1">
                       After

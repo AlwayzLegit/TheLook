@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import AnimatedSection from "./AnimatedSection";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 
 interface GalleryImage {
   src: string;
@@ -118,6 +119,7 @@ export default function ServiceGallery({
                       fill
                       sizes="(max-width: 1024px) 100vw, 50vw"
                       className="object-cover transition-transform duration-700 group-hover:scale-105"
+                      unoptimized={!isOptimizableImageHost(images[0]?.src)}
                     />
                     <div className="absolute inset-0 bg-navy/0 group-hover:bg-navy/10 transition-colors duration-300" />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -172,6 +174,7 @@ export default function ServiceGallery({
                     fill
                     sizes="(max-width: 768px) 50vw, 25vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    unoptimized={!isOptimizableImageHost(image.src)}
                   />
                   {/* Persistent gradient at the bottom carries the
                       caption (service name). Always visible — no
@@ -247,6 +250,7 @@ export default function ServiceGallery({
               alt="Gallery image"
               fill
               className="object-contain"
+              unoptimized={!isOptimizableImageHost(selectedImage)}
             />
           </div>
         </div>

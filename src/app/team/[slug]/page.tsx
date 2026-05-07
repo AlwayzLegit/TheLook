@@ -8,6 +8,7 @@ import StylistPortfolio from "@/components/StylistPortfolio";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { BOOKING } from "@/lib/constants";
 import { getBranding, telHref } from "@/lib/branding";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 import type { Metadata } from "next";
 
 interface PortfolioItem {
@@ -182,7 +183,7 @@ export default async function TeamMemberPage({ params }: any) {
                     fill
                     sizes="(max-width: 768px) 208px, 256px"
                     className="object-cover object-center"
-                    unoptimized={!/\.supabase\.co\//.test(staff.image_url) && !staff.image_url.includes("images.unsplash.com")}
+                    unoptimized={!isOptimizableImageHost(staff.image_url)}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center font-heading text-6xl text-navy/25">

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { BOOKING } from "@/lib/constants";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 
 interface Stylist {
   id: string;
@@ -153,6 +154,7 @@ export default function StylistPicker({
                     alt={stylist.name}
                     fill
                     className="object-cover"
+                    unoptimized={!isOptimizableImageHost(stylist.imageUrl)}
                   />
                 ) : (
                   // No photo uploaded — show the stylist's initial on the brand

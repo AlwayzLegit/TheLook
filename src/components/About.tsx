@@ -3,6 +3,7 @@
 import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
 import { useBranding } from "./BrandingProvider";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 
 export default function About() {
   const brand = useBranding();
@@ -23,6 +24,7 @@ export default function About() {
                   alt={`Balayage hair styling at ${brand.name}`}
                   fill
                   className="object-cover"
+                  unoptimized={!isOptimizableImageHost(brand.images.aboutImage)}
                 />
                 {/* Subtle gradient overlay at bottom */}
                 <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-navy/20 to-transparent" />
