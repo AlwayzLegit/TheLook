@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import Script from "next/script";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import StylistImage from "@/components/StylistImage";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { BOOKING } from "@/lib/constants";
 import { normalizeSpecialties } from "@/lib/stylistSpecialties";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, teamItemListJsonLd } from "@/lib/seo";
 import { isOptimizableImageHost } from "@/lib/imageHosts";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -122,8 +123,29 @@ function defaultTitle(role: string): string {
 export default async function TeamPage() {
   const [staff, stylists] = await Promise.all([getPublicStaff(), getStylists()]);
 
+  // Both managers (with public slugs) and stylists feed the ItemList so
+  // crawlers see the whole roster as one list. Entries without a slug
+  // can't be linked to a detail page, so we drop them.
+  const teamLd = teamItemListJsonLd(
+    [
+      ...staff
+        .filter((s): s is typeof s & { slug: string } => !!s.slug)
+        .map((s) => ({ name: s.name, slug: s.slug })),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...(stylists as Array<any>)
+        .filter((s) => !!s.slug)
+        .map((s) => ({ name: s.name as string, slug: s.slug as string })),
+    ],
+  );
+
   return (
     <>
+      <Script
+        id="ldjson-team-itemlist"
+        type="application/ld+json"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(teamLd) }}
+      />
       <Navbar />
       <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
         <div className="max-w-6xl mx-auto px-6">
