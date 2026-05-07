@@ -2,10 +2,19 @@ import { db } from "@/lib/db";
 import { appointments, services, stylists } from "@/lib/schema";
 import { sendCancellationEmail } from "@/lib/email";
 import { cancelTokenSchema } from "@/lib/validation";
+import { cancelLimiter, clientKey } from "@/lib/ratelimit";
 import { and, eq, ne } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
+  const rl = await cancelLimiter.limit(clientKey(request));
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many cancellation attempts. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": Math.ceil((rl.reset - Date.now()) / 1000).toString() } },
+    );
+  }
+
   const { searchParams } = request.nextUrl;
   const tokenParam = searchParams.get("token");
 

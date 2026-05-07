@@ -3,6 +3,7 @@ import { appointments, services, stylists } from "@/lib/schema";
 import { getAvailableSlots } from "@/lib/availability";
 import { sendBookingConfirmation } from "@/lib/email";
 import { badRequest, createAppointmentSchema } from "@/lib/validation";
+import { bookingLimiter, clientKey } from "@/lib/ratelimit";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -29,6 +30,14 @@ const SLOT_TAKEN = NextResponse.json(
 );
 
 export async function POST(request: NextRequest) {
+  const rl = await bookingLimiter.limit(clientKey(request));
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many booking attempts. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": Math.ceil((rl.reset - Date.now()) / 1000).toString() } },
+    );
+  }
+
   let raw: unknown;
   try {
     raw = await request.json();
