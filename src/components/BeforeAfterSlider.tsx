@@ -92,6 +92,16 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className 
       role="img"
       aria-label={alt ? `Before and after — ${alt}` : "Before and after slider"}
     >
+      {/* Both halves use object-cover so they fill the 4:5 frame
+          identically. object-contain (the previous behavior) preserved
+          each photo's natural aspect ratio independently — when before
+          and after had different ratios, the two halves rendered at
+          different scales and overflowed / underfilled at the seam. With
+          object-cover any tiny edge crop is uniform across the divider,
+          so the comparison reads cleanly. object-position center is the
+          default; for hair shots both top (hairline) and bottom (length)
+          can matter, so we don't anchor either side. */}
+
       {/* AFTER — full canvas; this is the "default" half the customer
           starts seeing more of by convention. */}
       <Image
@@ -99,7 +109,7 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className 
         alt={alt ? `After — ${alt}` : "After"}
         fill
         sizes="(max-width: 768px) 100vw, 768px"
-        className="object-contain pointer-events-none"
+        className="object-cover pointer-events-none"
         unoptimized={afterUnoptimized}
         priority={false}
       />
@@ -116,7 +126,7 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className 
           alt={alt ? `Before — ${alt}` : "Before"}
           fill
           sizes="(max-width: 768px) 100vw, 768px"
-          className="object-contain"
+          className="object-cover"
           unoptimized={beforeUnoptimized}
           priority={false}
         />

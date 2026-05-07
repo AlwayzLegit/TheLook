@@ -38,11 +38,11 @@ export default function BeforeAfterCarousel({ pairs, title = "Before / After", s
 
   return (
     <AnimatedSection className={className}>
-      {/* Tighter sizing pass: previously max-w-3xl with object-cover
-          which both dominated the page and cropped portrait photos.
-          object-contain in BeforeAfterSlider now shows the full photo
-          (letterboxed against bg-cream-dark) and max-w-md / lg keeps
-          the section proportional on mobile + desktop. */}
+      {/* max-w-md/lg keeps the slider proportional on mobile + desktop
+          without dominating the page. The slider itself uses object-cover
+          so before + after fill the 4:5 frame uniformly (object-contain
+          let each half render at its own aspect ratio, which produced a
+          visible seam when before/after had different proportions). */}
       <div className="max-w-md md:max-w-lg mx-auto">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-4 mb-3">
