@@ -72,45 +72,52 @@ export async function POST(
     .eq("appointment_id", id)
     .order("sort_order", { ascending: true });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const svcIds = (mappings || []).map((m: any) => m.service_id as string);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const varIds = (mappings || []).map((m: any) => m.variant_id).filter(Boolean) as string[];
+  type MappingRow = { service_id: string; variant_id: string | null; sort_order: number };
+  type ServiceRow = { id: string; name: string; price_min: number };
+  type VariantRow = { id: string; service_id: string; name: string; price_min: number };
+
+  const mappingRows = (mappings || []) as MappingRow[];
+  const svcIds = mappingRows.map((m) => m.service_id);
+  const varIds = mappingRows.map((m) => m.variant_id).filter((v): v is string => !!v);
 
   const lookupIds = svcIds.length > 0 ? svcIds : [appt.service_id as string];
   const { data: svcs } = await supabase
     .from("services")
     .select("id, name, price_min")
     .in("id", lookupIds);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const svcById: Record<string, any> = Object.fromEntries((svcs || []).map((s: any) => [s.id, s]));
+  const svcById = new Map<string, ServiceRow>(
+    ((svcs || []) as ServiceRow[]).map((s) => [s.id, s]),
+  );
 
   const { data: variants } = varIds.length > 0
     ? await supabase
         .from("service_variants")
         .select("id, service_id, name, price_min")
         .in("id", varIds)
-    : { data: [] };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const varById = Object.fromEntries((variants || []).map((v: any) => [v.id, v]));
+    : { data: [] as VariantRow[] };
+  const varById = new Map<string, VariantRow>(
+    ((variants || []) as VariantRow[]).map((v) => [v.id, v]),
+  );
 
   const names: string[] = [];
-  if (mappings && mappings.length > 0) {
-    for (const m of mappings) {
-      const v = m.variant_id ? varById[m.variant_id as string] : null;
-      const s = svcById[m.service_id as string];
+  if (mappingRows.length > 0) {
+    for (const m of mappingRows) {
+      const v = m.variant_id ? varById.get(m.variant_id) : null;
+      const s = svcById.get(m.service_id);
       if (v) {
-        appointmentTotalCents += v.price_min as number;
+        appointmentTotalCents += v.price_min;
         names.push(`${s?.name ?? "Service"} — ${v.name}`);
       } else if (s) {
-        appointmentTotalCents += (s.price_min as number) || 0;
-        names.push(s.name as string);
+        appointmentTotalCents += s.price_min || 0;
+        names.push(s.name);
       }
     }
-  } else if (svcById[appt.service_id as string]) {
-    const s = svcById[appt.service_id as string];
-    appointmentTotalCents += (s.price_min as number) || 0;
-    names.push(s.name as string);
+  } else {
+    const s = svcById.get(appt.service_id as string);
+    if (s) {
+      appointmentTotalCents += s.price_min || 0;
+      names.push(s.name);
+    }
   }
   if (names.length > 0) appointmentLabel = names.join(", ");
 
@@ -119,8 +126,7 @@ export async function POST(
     return apiError("Computed fee is $0 — nothing to charge.", 400);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adminEmail = (session.user as any)?.email || (session.user as any)?.name || "admin";
+  const adminEmail = session.user?.email || session.user?.name || "admin";
 
   const result = await chargeOffSession({
     customerId: appt.stripe_customer_id as string,

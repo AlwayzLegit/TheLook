@@ -26,8 +26,7 @@ export async function GET(
     return apiError("Failed to fetch stylist services.", 500);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serviceIds = (data || []).map((r: any) => r.service_id);
+  const serviceIds = ((data || []) as Array<{ service_id: string }>).map((r) => r.service_id);
   return apiSuccess(serviceIds);
 }
 

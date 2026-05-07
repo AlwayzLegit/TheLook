@@ -172,11 +172,13 @@ export async function POST(request: NextRequest) {
   if (serviceError || !servicesRaw || servicesRaw.length === 0) {
     return apiError("One or more services not found.", 404);
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serviceMap = new Map(servicesRaw.map((s: any) => [s.id, s]));
+  type ServiceRow = { id: string; name: string; duration: number; price_text: string; price_min: number };
+  const serviceMap = new Map<string, ServiceRow>(
+    (servicesRaw as ServiceRow[]).map((s) => [s.id, s]),
+  );
   const services = ids
     .map((id) => serviceMap.get(id))
-    .filter(Boolean) as { id: string; name: string; duration: number; price_text: string; price_min: number }[];
+    .filter((s): s is ServiceRow => !!s);
   if (services.length !== ids.length) {
     return apiError("One or more services not found.", 404);
   }
@@ -192,8 +194,8 @@ export async function POST(request: NextRequest) {
       .in("id", pickedVariantIds)
       .eq("active", true);
     if (vErr) logError("appointments POST (variants)", vErr);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const v of (vrows || []) as any[]) variantsById.set(v.id, v);
+    type VariantRow = { id: string; service_id: string; name: string; duration: number; price_min: number; price_text: string };
+    for (const v of (vrows || []) as VariantRow[]) variantsById.set(v.id, v);
     // Validate every picked variant belongs to the paired service id.
     for (let i = 0; i < ids.length; i++) {
       const vid = vIds[i];

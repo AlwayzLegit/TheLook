@@ -16,8 +16,7 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateData: Record<string, any> = {
+  const updateData: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
 

@@ -22,8 +22,26 @@ export async function GET(request: NextRequest) {
     return apiError("Failed to fetch services.", 500);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const variantsByService = new Map<string, any[]>();
+  type ServiceRow = {
+    id: string;
+    category: string;
+    name: string;
+    price_text: string;
+    price_min: number;
+    duration: number;
+    active: boolean | null;
+    sort_order: number | null;
+  } & Record<string, unknown>;
+  type VariantRow = {
+    id: string;
+    service_id: string;
+    name: string;
+    price_text: string;
+    price_min: number;
+    duration: number;
+    sort_order: number;
+  };
+  const variantsByService = new Map<string, VariantRow[]>();
   if (includeVariants) {
     const ids = (allServices || []).map((s: { id: string }) => s.id);
     if (ids.length > 0) {
@@ -36,8 +54,7 @@ export async function GET(request: NextRequest) {
       if (vErr) {
         logError("services GET (variants)", vErr);
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const v of (variants || []) as any[]) {
+        for (const v of (variants || []) as VariantRow[]) {
           const list = variantsByService.get(v.service_id) || [];
           list.push(v);
           variantsByService.set(v.service_id, list);
@@ -48,9 +65,9 @@ export async function GET(request: NextRequest) {
 
   // Group by category. Each service carries its variants array when the
   // include flag was set.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const grouped: Record<string, any[]> = {};
-  for (const s of allServices || []) {
+  type GroupedService = ServiceRow & { variants?: VariantRow[] };
+  const grouped: Record<string, GroupedService[]> = {};
+  for (const s of (allServices || []) as ServiceRow[]) {
     if (!grouped[s.category]) grouped[s.category] = [];
     if (includeVariants) {
       grouped[s.category].push({ ...s, variants: variantsByService.get(s.id) || [] });

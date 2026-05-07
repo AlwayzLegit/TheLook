@@ -66,14 +66,18 @@ export async function GET(request: NextRequest) {
       .from("service_variants")
       .select("id, duration")
       .in("id", pickedV);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const vById = new Map<string, number>(((vrows || []) as any[]).map((v) => [v.id, v.duration || 0]));
+    type DurationRow = { id: string; duration: number | null };
+    const vById = new Map<string, number>(
+      ((vrows || []) as DurationRow[]).map((v) => [v.id, v.duration || 0]),
+    );
     const { data: srows } = await supabase
       .from("services")
       .select("id, duration")
       .in("id", [...new Set(ids)]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sById = new Map<string, number>(((srows || []) as any[]).map((s) => [s.id, s.duration || 0]));
+    type SvcDurationRow = { id: string; duration: number | null };
+    const sById = new Map<string, number>(
+      ((srows || []) as SvcDurationRow[]).map((s) => [s.id, s.duration || 0]),
+    );
     durationOverride = ids.reduce((sum, sid, i) => {
       const vid = variantIds[i];
       if (vid && vById.has(vid)) return sum + (vById.get(vid) || 0);
@@ -98,8 +102,8 @@ export async function GET(request: NextRequest) {
     .select("stylist_id, service_id")
     .in("service_id", ids);
   const counts = new Map<string, number>();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const p of (pairs || []) as any[]) {
+  type PairRow = { stylist_id: string };
+  for (const p of (pairs || []) as PairRow[]) {
     counts.set(p.stylist_id, (counts.get(p.stylist_id) || 0) + 1);
   }
   const eligibleIds = [...counts.entries()]

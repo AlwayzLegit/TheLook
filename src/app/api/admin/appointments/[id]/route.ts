@@ -68,8 +68,7 @@ export async function PATCH(
   const approvalStamp: Record<string, unknown> = {};
   if (payload.status === "confirmed") {
     approvalStamp.approved_at = new Date().toISOString();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    approvalStamp.approved_by = (session.user as any)?.email || (session.user as any)?.name || "admin";
+    approvalStamp.approved_by = session.user.email || session.user.name || "admin";
   }
 
   updateData.updated_at = new Date().toISOString();
@@ -144,8 +143,15 @@ export async function PATCH(
       // zero line items. Best-effort — if the restore also fails the
       // admin will see an explicit error and can re-edit.
       if (previous && previous.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const restoreRows = (previous as any[]).map((p) => ({
+        type SnapshotRow = {
+          service_id: string;
+          variant_id: string | null;
+          sort_order: number;
+          price_min: number;
+          duration: number;
+          duration_minutes: number | null;
+        };
+        const restoreRows = (previous as SnapshotRow[]).map((p) => ({
           appointment_id: id,
           service_id: p.service_id,
           variant_id: p.variant_id,
@@ -176,13 +182,15 @@ export async function PATCH(
       .select("service_id, sort_order")
       .eq("appointment_id", id)
       .order("sort_order", { ascending: true });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ids = (mappings || []).map((m: any) => m.service_id);
+    type MappingRow = { service_id: string };
+    const ids = ((mappings || []) as MappingRow[]).map((m) => m.service_id);
     const lookupIds = ids.length > 0 ? ids : [data.service_id];
     const { data: services } = await supabase.from("services").select("id, name").in("id", lookupIds);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const byId = Object.fromEntries((services || []).map((s: any) => [s.id, s.name]));
-    const serviceName = lookupIds.map((sid: string) => byId[sid]).filter(Boolean).join(", ") || "Your Service";
+    type NamedRow = { id: string; name: string };
+    const byId = new Map<string, string>(
+      ((services || []) as NamedRow[]).map((s) => [s.id, s.name]),
+    );
+    const serviceName = lookupIds.map((sid: string) => byId.get(sid)).filter(Boolean).join(", ") || "Your Service";
     const { data: stylist } = await supabase.from("stylists").select("name").eq("id", data.stylist_id).single();
     sendStatusChangeEmail({
       clientName: data.client_name,
@@ -245,16 +253,18 @@ export async function PATCH(
       .select("service_id, sort_order")
       .eq("appointment_id", id)
       .order("sort_order", { ascending: true });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const idsAfter = (mappingsAfter || []).map((m: any) => m.service_id);
+    type MappingAfterRow = { service_id: string };
+    const idsAfter = ((mappingsAfter || []) as MappingAfterRow[]).map((m) => m.service_id);
     const lookupIdsAfter = idsAfter.length > 0 ? idsAfter : [data.service_id];
     const { data: servicesAfter } = await supabase
       .from("services")
       .select("id, name")
       .in("id", lookupIdsAfter);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const byIdAfter = Object.fromEntries((servicesAfter || []).map((s: any) => [s.id, s.name]));
-    const serviceNameAfter = lookupIdsAfter.map((sid: string) => byIdAfter[sid]).filter(Boolean).join(", ") || "Your Service";
+    type NamedRowAfter = { id: string; name: string };
+    const byIdAfter = new Map<string, string>(
+      ((servicesAfter || []) as NamedRowAfter[]).map((s) => [s.id, s.name]),
+    );
+    const serviceNameAfter = lookupIdsAfter.map((sid: string) => byIdAfter.get(sid)).filter(Boolean).join(", ") || "Your Service";
     const { data: stylistAfter } = await supabase
       .from("stylists")
       .select("name")

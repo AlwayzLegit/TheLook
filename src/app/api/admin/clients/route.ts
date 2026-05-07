@@ -60,8 +60,16 @@ export async function GET(request: NextRequest) {
   const priceById = Object.fromEntries((allServices || []).map((s: { id: string; price_min: number }) => [s.id, s.price_min]));
 
   const stats: Record<string, { visits: number; noShows: number; totalSpent: number; lastVisit: string; phone: string | null; name: string | null }> = {};
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const a of (appts || []) as any[]) {
+  type ApptStatRow = {
+    client_email: string | null;
+    client_name: string | null;
+    client_phone: string | null;
+    status: string;
+    date: string | null;
+    service_id: string;
+    stylist_id: string;
+  };
+  for (const a of (appts || []) as ApptStatRow[]) {
     const key = (a.client_email || "").toLowerCase();
     if (!stats[key]) stats[key] = { visits: 0, noShows: 0, totalSpent: 0, lastVisit: "", phone: null, name: null };
     const s = stats[key];
@@ -77,8 +85,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let clients = (profiles || []).map((p: any) => {
+  type ProfileRow = {
+    email: string;
+    name: string | null;
+    phone: string | null;
+    birthday: string | null;
+    banned: boolean | null;
+    banned_reason: string | null;
+    imported_at: string | null;
+  };
+  let clients = ((profiles || []) as ProfileRow[]).map((p) => {
     const s = stats[p.email.toLowerCase()] || { visits: 0, noShows: 0, totalSpent: 0, lastVisit: "", phone: null, name: null };
     return {
       email: p.email,
@@ -97,10 +113,10 @@ export async function GET(request: NextRequest) {
 
   if (hasVisits) clients = clients.filter((c: { visits: number }) => c.visits > 0);
 
-  if (sort === "visits") clients.sort((a: { visits: number }, b: { visits: number }) => b.visits - a.visits);
-  else if (sort === "spent") clients.sort((a: { totalSpent: number }, b: { totalSpent: number }) => b.totalSpent - a.totalSpent);
-  else if (sort === "name") clients.sort((a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name));
-  else clients.sort((a: { lastVisit: string | null }, b: { lastVisit: string | null }) => (b.lastVisit || "").localeCompare(a.lastVisit || ""));
+  if (sort === "visits") clients.sort((a, b) => b.visits - a.visits);
+  else if (sort === "spent") clients.sort((a, b) => b.totalSpent - a.totalSpent);
+  else if (sort === "name") clients.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  else clients.sort((a, b) => (b.lastVisit || "").localeCompare(a.lastVisit || ""));
 
   return apiSuccess({ total: count ?? clients.length, page, pageSize, clients });
 }

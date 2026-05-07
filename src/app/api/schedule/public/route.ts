@@ -45,8 +45,17 @@ export async function GET() {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = (data || []) as any[];
+  type ScheduleRuleRow = {
+    stylist_id: string | null;
+    rule_type: string;
+    day_of_week: number | null;
+    specific_date: string | null;
+    start_time: string | null;
+    end_time: string | null;
+    is_closed: boolean | null;
+    note: string | null;
+  };
+  const rows = (data || []) as ScheduleRuleRow[];
   const salonRows = rows.filter((r) => !r.stylist_id);
   const weeklySalonRows = salonRows.filter((r) => r.rule_type === "weekly");
   const hasAnyWeekly = weeklySalonRows.length > 0;

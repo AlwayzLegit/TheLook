@@ -27,9 +27,19 @@ export async function GET() {
   }
 
   const header = ["Name", "Email", "Phone", "Date of Birth", "Banned", "Banned Reason", "Imported At", "Created At", "Updated At"];
+  type ClientProfileRow = {
+    email: string | null;
+    name: string | null;
+    phone: string | null;
+    birthday: string | null;
+    banned: boolean | null;
+    banned_reason: string | null;
+    imported_at: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+  };
   const rows: string[] = [header.map(csvEscape).join(",")];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const r of (data || []) as any[]) {
+  for (const r of (data || []) as ClientProfileRow[]) {
     rows.push([
       csvEscape(r.name),
       csvEscape(r.email),

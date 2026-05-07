@@ -64,8 +64,8 @@ export async function GET() {
     return apiError("Failed to load settings.", 500);
   }
   const map: Record<string, string | null> = {};
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const row of (data || []) as any[]) map[row.key] = row.value;
+  type SettingRow = { key: string; value: string | null };
+  for (const row of (data || []) as SettingRow[]) map[row.key] = row.value;
   return apiSuccess(map);
 }
 

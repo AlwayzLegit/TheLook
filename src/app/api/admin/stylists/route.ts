@@ -40,8 +40,9 @@ export async function GET(request: NextRequest) {
     return apiError("Failed to fetch stylists.", 500);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filtered = includeInactive ? (data || []) : (data || []).filter((s: any) => s.active);
+  type StylistRow = { active: boolean | null } & Record<string, unknown>;
+  const rows = (data || []) as StylistRow[];
+  const filtered = includeInactive ? rows : rows.filter((s) => s.active);
   return apiSuccess(filtered);
 }
 

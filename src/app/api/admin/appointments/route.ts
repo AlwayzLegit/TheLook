@@ -261,26 +261,33 @@ export async function POST(request: NextRequest) {
   if (svcErr || !services || services.length === 0) {
     return apiError("One or more services not found.", 404);
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const svcMap = new Map((services as any[]).map((s) => [s.id, s]));
+  type SvcRow = { id: string; name: string; duration: number; price_min: number };
+  type VariantRow = {
+    id: string;
+    service_id: string;
+    name: string;
+    duration: number;
+    price_min: number;
+    price_text: string;
+  };
+  const svcMap = new Map<string, SvcRow>(
+    ((services || []) as SvcRow[]).map((s) => [s.id, s]),
+  );
 
   const pickedVariantIds = (p.variantIds || []).filter((v) => v && v.length > 0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const variantsById = new Map<string, any>();
+  const variantsById = new Map<string, VariantRow>();
   if (pickedVariantIds.length > 0) {
     const { data: vrows } = await supabase
       .from("service_variants")
       .select("id, service_id, name, duration, price_min, price_text")
       .in("id", pickedVariantIds);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const v of (vrows || []) as any[]) variantsById.set(v.id, v);
+    for (const v of (vrows || []) as VariantRow[]) variantsById.set(v.id, v);
   }
 
   const effective = p.serviceIds.map((sid, i) => {
     const vid = (p.variantIds || [])[i];
     const v = vid ? variantsById.get(vid) : null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const svc = svcMap.get(sid) as any;
+    const svc = svcMap.get(sid);
     if (!svc) throw new Error("service missing");
     return {
       serviceId: sid,
@@ -333,8 +340,7 @@ export async function POST(request: NextRequest) {
     policy_accepted_at: new Date().toISOString(),
     deposit_required_cents: adminDepositCalc.depositCents,
     approved_at: p.status === "confirmed" ? new Date().toISOString() : null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    approved_by: p.status === "confirmed" ? ((session.user as any)?.email || "admin") : null,
+    approved_by: p.status === "confirmed" ? (session.user.email || "admin") : null,
   };
   const { error: insertErr } = await supabase.from("appointments").insert(insertPayload);
   if (insertErr) {

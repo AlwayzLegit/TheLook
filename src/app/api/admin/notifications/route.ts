@@ -39,8 +39,19 @@ export async function GET(request: NextRequest) {
     return apiError("Failed to load notifications.", 500);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const items = (data || []).map((n: any) => ({
+  type NotificationRow = {
+    id: string;
+    type: string;
+    title: string;
+    body: string | null;
+    appointment_id: string | null;
+    url: string | null;
+    read_at: string | null;
+    created_at: string;
+    recipient_role: string | null;
+    recipient_stylist_id: string | null;
+  };
+  const items = ((data || []) as NotificationRow[]).map((n) => ({
     id: n.id,
     type: n.type,
     title: n.title,
@@ -52,8 +63,7 @@ export async function GET(request: NextRequest) {
     recipientRole: n.recipient_role,
     recipientStylistId: n.recipient_stylist_id,
   }));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const unreadCount = items.filter((n: any) => !n.readAt).length;
+  const unreadCount = items.filter((n) => !n.readAt).length;
   return apiSuccess({ items, unreadCount });
 }
 

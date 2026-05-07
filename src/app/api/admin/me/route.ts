@@ -54,8 +54,7 @@ export async function PATCH(request: NextRequest) {
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const body = await request.json().catch(() => ({}));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const update: Record<string, any> = { updated_at: new Date().toISOString() };
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
   for (const [k, v] of Object.entries(body)) {
     if (!EDITABLE_FIELDS.has(k)) continue;

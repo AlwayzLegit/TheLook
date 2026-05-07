@@ -29,8 +29,7 @@ export async function GET() {
     return apiError("Failed to load services.", 500);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return apiSuccess((data || []).map((r: any) => r.service_id));
+  return apiSuccess(((data || []) as Array<{ service_id: string }>).map((r) => r.service_id));
 }
 
 // PUT: replace the current stylist's service assignments
