@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { appointments, services, stylists } from "@/lib/schema";
 import { getAvailableSlots } from "@/lib/availability";
 import { sendBookingConfirmation } from "@/lib/email";
+import { badRequest, createAppointmentSchema } from "@/lib/validation";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -17,12 +18,19 @@ function timeToMinutes(time: string): number {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { serviceId, stylistId, date, startTime, clientName, clientEmail, clientPhone, notes } = body;
-
-  if (!serviceId || !stylistId || !date || !startTime || !clientName || !clientEmail) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
+
+  const parsed = createAppointmentSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(badRequest(parsed.error), { status: 400 });
+  }
+  const { serviceId, stylistId, date, startTime, clientName, clientEmail, clientPhone, notes } =
+    parsed.data;
 
   // Verify the slot is still available (prevent double-booking)
   const available = await getAvailableSlots(stylistId, serviceId, date);

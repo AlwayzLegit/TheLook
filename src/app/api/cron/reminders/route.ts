@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { appointments, services, stylists } from "@/lib/schema";
 import { sendReminderEmail } from "@/lib/email";
@@ -5,9 +6,15 @@ import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
-  // Verify cron secret
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+  }
+  const authHeader = request.headers.get("authorization") ?? "";
+  const expected = `Bearer ${cronSecret}`;
+  const a = Buffer.from(authHeader);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

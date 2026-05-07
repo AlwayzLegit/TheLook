@@ -1,16 +1,19 @@
 import { db } from "@/lib/db";
 import { appointments, services, stylists } from "@/lib/schema";
 import { sendCancellationEmail } from "@/lib/email";
+import { cancelTokenSchema } from "@/lib/validation";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const token = searchParams.get("token");
+  const tokenParam = searchParams.get("token");
 
-  if (!token) {
-    return NextResponse.json({ error: "Cancel token required" }, { status: 400 });
+  const parsed = cancelTokenSchema.safeParse(tokenParam);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid cancel token" }, { status: 400 });
   }
+  const token = parsed.data;
 
   const [appointment] = await db
     .select()

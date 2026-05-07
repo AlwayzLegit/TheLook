@@ -1,18 +1,33 @@
 import { db } from "@/lib/db";
 import { appointments, services, stylists } from "@/lib/schema";
 import { requireAdmin } from "@/lib/api-auth";
+import { APPOINTMENT_STATUSES, badRequest } from "@/lib/validation";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
+
+const listQuerySchema = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  status: z.enum(APPOINTMENT_STATUSES).nullable().optional(),
+  stylistId: z.string().uuid().nullable().optional(),
+});
 
 export async function GET(request: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
   const { searchParams } = request.nextUrl;
-  const dateFrom = searchParams.get("from");
-  const dateTo = searchParams.get("to");
-  const status = searchParams.get("status");
-  const stylistId = searchParams.get("stylistId");
+  const parsedQuery = listQuerySchema.safeParse({
+    from: searchParams.get("from"),
+    to: searchParams.get("to"),
+    status: searchParams.get("status"),
+    stylistId: searchParams.get("stylistId"),
+  });
+  if (!parsedQuery.success) {
+    return NextResponse.json(badRequest(parsedQuery.error), { status: 400 });
+  }
+  const { from: dateFrom, to: dateTo, status, stylistId } = parsedQuery.data;
 
   const conditions = [];
   if (dateFrom) conditions.push(gte(appointments.date, dateFrom));
