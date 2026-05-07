@@ -348,11 +348,26 @@ export default async function TeamMemberPage({ params }: any) {
                         // name length.
                         <div key={svc.id} className="grid grid-cols-[1fr_auto_auto] gap-4 items-baseline">
                           <div>
-                            <p className="font-body text-sm">{svc.name}</p>
+                            {svc.slug ? (
+                              <Link
+                                href={`/services/item/${svc.slug}`}
+                                className="font-body text-sm text-navy hover:text-rose transition-colors"
+                              >
+                                {svc.name}
+                              </Link>
+                            ) : (
+                              <p className="font-body text-sm">{svc.name}</p>
+                            )}
                             <p className="text-navy/70 text-xs font-body">{svc.duration} min</p>
                           </div>
                           <span className="text-gold font-heading text-right tabular-nums min-w-[70px]">{svc.price_text}</span>
-                          <Link href={`/book?service=${svc.id}&stylist=${stylist.id}`} className="text-[10px] font-body text-rose hover:underline">Book</Link>
+                          <Link
+                            href={`/book?service=${svc.id}&stylist=${stylist.id}`}
+                            className="text-[10px] font-body text-rose hover:underline"
+                            aria-label={`Book ${svc.name} with ${stylist.name}`}
+                          >
+                            Book
+                          </Link>
                         </div>
                       ))}
                     </div>
