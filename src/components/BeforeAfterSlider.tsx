@@ -102,7 +102,7 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className 
         alt={alt ? `After — ${alt}` : "After"}
         fill
         sizes="(max-width: 768px) 100vw, 768px"
-        className="object-cover pointer-events-none"
+        className="object-contain pointer-events-none"
         unoptimized={afterUnoptimized}
         priority={false}
       />
@@ -119,7 +119,7 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className 
           alt={alt ? `Before — ${alt}` : "Before"}
           fill
           sizes="(max-width: 768px) 100vw, 768px"
-          className="object-cover"
+          className="object-contain"
           unoptimized={beforeUnoptimized}
           priority={false}
         />
