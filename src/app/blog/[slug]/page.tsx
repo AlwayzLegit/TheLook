@@ -126,7 +126,13 @@ export default async function BlogPostPage({ params }: PageProps) {
           {/* Hero */}
           <header className="relative">
             {post.cover_image_url ? (
-              <div className="relative aspect-[16/7] md:aspect-[16/6] bg-gradient-to-br from-navy/10 to-gold/10 overflow-hidden">
+              // Cap the cover at sensible heights — aspect-[16/6] on a
+              // 1920px screen rendered ~720px which dominated the post
+              // and butted directly against the fixed navbar with no
+              // breathing room. Fixed-step heights keep the hero
+              // proportional but never out-of-control on wide
+              // monitors.
+              <div className="relative h-[260px] sm:h-[340px] md:h-[420px] lg:h-[460px] bg-gradient-to-br from-navy/10 to-gold/10 overflow-hidden">
                 <Image
                   src={post.cover_image_url}
                   alt={post.cover_image_alt || post.title}
