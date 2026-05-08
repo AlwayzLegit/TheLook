@@ -94,16 +94,20 @@ export async function POST(request: NextRequest) {
   const publishedAt = input.published_at
     ?? (status === "published" ? new Date().toISOString() : null);
 
-  // Look up the existing row's status (if any) so we can detect
-  // "draft → published" transitions and notify only on the first
-  // crossing. Idempotent re-POSTs of an already-published post don't
-  // re-fire the notification this way.
+  // Look up the existing row's published_at (if any) so we can detect
+  // the row's first lifetime publish and notify only on that crossing.
+  // Using published_at (not status) is the right gate because un-
+  // publishing back to "draft" leaves published_at intact, so a
+  // draft → published → draft → published cycle correctly fires
+  // exactly one notification (on the first publish), not one per
+  // crossing. Idempotent re-POSTs of an already-published post
+  // also stay quiet.
   const { data: prior } = await supabase
     .from("blog_posts")
-    .select("status")
+    .select("published_at")
     .eq("slug", input.slug)
     .maybeSingle();
-  const wasPublished = (prior as { status?: string } | null)?.status === "published";
+  const wasEverPublished = !!(prior as { published_at?: string | null } | null)?.published_at;
 
   // Build row. Drop undefined/category_slug before upsert.
   const row = {
@@ -147,12 +151,13 @@ export async function POST(request: NextRequest) {
     slug: input.slug, status, actor: gate.user.email,
   }));
 
-  // Notify all admins on the first transition into "published". We
-  // skip this for drafts/scheduled (still in flight), and skip for
-  // already-published posts that just got re-saved (the routine's
-  // idempotent retry path). Fire-and-forget so a notification write
-  // failure can't break the publish.
-  if (status === "published" && !wasPublished) {
+  // Notify all admins on the row's first lifetime publish. Skips
+  // drafts/scheduled (still in flight), already-published re-saves
+  // (the routine's idempotent retry path), AND a draft → published →
+  // draft → published cycle (priorPublishedAt stays set across
+  // un-publish so the second crossing is silent). Fire-and-forget
+  // so a notification write failure can't break the publish.
+  if (status === "published" && !wasEverPublished) {
     createNotification({
       toAllAdmins: true,
       type: "blog.post.published",

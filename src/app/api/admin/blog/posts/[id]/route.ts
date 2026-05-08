@@ -91,7 +91,6 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     .select("status, published_at, slug, title, excerpt")
     .eq("id", id)
     .maybeSingle();
-  const priorStatus = (priorRow as { status?: string } | null)?.status;
   const priorPublishedAt = (priorRow as { published_at?: string | null } | null)?.published_at;
 
   if (input.status === "published" && !input.published_at && !priorPublishedAt) {
@@ -115,9 +114,14 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     id, fields: Object.keys(input), actor: gate.user.email,
   }));
 
-  // Notify all admins on the first transition into "published" only.
-  // Re-saves of an already-published post don't re-notify.
-  if (input.status === "published" && priorStatus !== "published") {
+  // Notify all admins on the row's first lifetime publish, gated on
+  // priorPublishedAt being null. Using priorStatus would misfire on
+  // draft → published → draft → published cycles (each crossing has
+  // priorStatus="draft" yet only the first one is genuinely "new
+  // content"). published_at is the right marker because we never
+  // null it on un-publish, so it acts as a "was-ever-published"
+  // sentinel that survives status flips.
+  if (input.status === "published" && !priorPublishedAt) {
     type Saved = {
       slug: string;
       title: string;
