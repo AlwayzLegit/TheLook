@@ -18,8 +18,15 @@ export async function POST(request: NextRequest) {
 
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   const signature = request.headers.get("stripe-signature");
-  if (!secret || !signature) {
-    return apiError("Webhook not configured.", 503);
+  // Distinguish caller error (no signature header) from server misconfig
+  // (no STRIPE_WEBHOOK_SECRET env var). 400 lets Stripe stop retrying a
+  // malformed request; 503 keeps Stripe retrying so a missing secret
+  // surfaces in the dashboard until ops fixes it.
+  if (!signature) {
+    return apiError("Missing stripe-signature header.", 400);
+  }
+  if (!secret) {
+    return apiError("Webhook secret not configured.", 503);
   }
 
   const rawBody = await request.text();
