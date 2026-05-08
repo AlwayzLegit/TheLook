@@ -24,7 +24,7 @@ export default async function StylingGallery() {
       subtitle="Blowouts & Updos"
       description="From polished everyday blowouts to elevated event styling, our team creates looks that feel effortless and photograph beautifully. Whether you're heading to brunch, a wedding, or a night out, you'll leave confident and camera-ready."
       images={images}
-      ctaText="Book Styling"
+      ctaText="Book your styling"
       ctaHref="/book"
     />
   );

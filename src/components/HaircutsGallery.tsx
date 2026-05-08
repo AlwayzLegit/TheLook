@@ -79,7 +79,7 @@ export default async function HaircutsGallery() {
         subtitle={HOMEPAGE_GROUPS[0].eyebrow}
         description={HOMEPAGE_GROUPS[0].description}
         images={fallbackImages.map((img) => ({ ...img, href: "/services/haircuts" }))}
-        ctaText="Book a Haircut"
+        ctaText="Book your haircut"
         ctaHref="/book"
       />
     );
@@ -94,12 +94,17 @@ export default async function HaircutsGallery() {
     bySub.set(key, arr);
   }
 
-  // Collapse the grouped buckets into the two homepage groups.
+  // Collapse the grouped buckets into the two homepage groups, then
+  // re-sort by sort_order across the merged list. The DB picks rows in
+  // (subcategory, sort_order) order, but the homepage renders the
+  // grouped subcategories as one visual section — so the owner's
+  // drag-to-reorder in /admin/services should win regardless of which
+  // subcategory tag a row carries (e.g. Precision Wash + Cut + Style at
+  // sort_order=0 leads even though it's tagged Women's, in front of a
+  // Unisex row at sort_order=1).
   const groupedSections = HOMEPAGE_GROUPS.map((group) => {
-    const collected: HomeServicePhoto[] = [];
-    for (const sub of group.subcategories) {
-      collected.push(...(bySub.get(sub) ?? []));
-    }
+    const collected = group.subcategories.flatMap((sub) => bySub.get(sub) ?? []);
+    collected.sort((a, b) => a.sort_order - b.sort_order);
     return { ...group, services: collected };
   }).filter((section) => section.services.length > 0);
 
@@ -114,7 +119,7 @@ export default async function HaircutsGallery() {
         subtitle={HOMEPAGE_GROUPS[0].eyebrow}
         description={HOMEPAGE_GROUPS[0].description}
         images={toGalleryImages(services)}
-        ctaText="Book a Haircut"
+        ctaText="Book your haircut"
         ctaHref="/book"
       />
     );
@@ -129,7 +134,7 @@ export default async function HaircutsGallery() {
           subtitle={section.eyebrow}
           description={section.description}
           images={toGalleryImages(section.services)}
-          ctaText="Book a Haircut"
+          ctaText="Book your haircut"
           ctaHref="/book"
           // Alternate the hero/text orientation so consecutive
           // sections don't visually stack identically.

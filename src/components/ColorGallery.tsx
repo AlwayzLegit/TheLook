@@ -29,7 +29,7 @@ export default async function ColorGallery() {
       subtitle="Dimensional Color"
       description="From sun-kissed balayage to bold fashion colors, our color specialists create dimensional, head-turning results. We use premium products to ensure vibrant, long-lasting color that keeps your hair healthy and luminous."
       images={images}
-      ctaText="Book Color Service"
+      ctaText="Book your color"
       ctaHref="/book"
       reversed={true}
     />
