@@ -1,9 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Forum, Lato } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
+import { VercelTelemetry } from "@/components/providers/VercelTelemetry";
 import "./globals.css";
 import { getBranding } from "@/lib/branding";
 import { BrandingProvider } from "@/components/BrandingProvider";
@@ -72,8 +71,7 @@ export default async function RootLayout({
         <PostHogProvider>
           <BrandingProvider branding={branding}>
             {children}
-            <Analytics />
-            <SpeedInsights />
+            <VercelTelemetry />
           </BrandingProvider>
         </PostHogProvider>
       </body>
