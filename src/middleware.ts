@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { extractClientIp } from "@/lib/ip";
 
 const securityHeaders: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
@@ -84,39 +85,40 @@ const authCheck = auth((req) => {
 }) as unknown as (request: NextRequest) => Promise<NextResponse>;
 
 export default async function middleware(request: NextRequest): Promise<NextResponse> {
-  // Edge rate-limit on the credentials callback. Two layers stack here:
-  //   1. This middleware: per-IP, 10/15min. Bounces brute-force traffic
-  //      before it reaches NextAuth's authorize() hook with a real 429
-  //      so WAF / ops dashboards can see the spike. Tuned 10/15min as
-  //      a middle ground between "too lax to deter bots" (the previous
-  //      30/15min was both too lax for the cowork QA pass and let real
-  //      brute-force traffic in unimpeded) and "shared-office IPs hit
-  //      false positives" (5/15min was too tight).
-  //   2. lib/auth.ts authorize(): per-account lockout after 5 wrong
-  //      passwords. NextAuth swallows that into a generic "Invalid
-  //      credentials" so attackers can't enumerate which accounts
-  //      exist — see logAuthEvent("auth.login.locked") for the audit
-  //      trail. That layer covers credential-stuffing across rotated
-  //      accounts which a per-IP limit alone wouldn't.
+  // Edge rate-limit on the NextAuth credentials submit
+  // (POST /api/auth/callback/credentials — that's the only path the
+  // login form actually hits; cowork's QA spec assumed a custom
+  // /api/admin/auth/login that doesn't exist). Three layers stack:
+  //   1. This middleware:    per-IP, 10/15min. Bounces brute-force
+  //      traffic before NextAuth's authorize() hook runs at all so
+  //      WAF / ops dashboards see the 429 spike.
+  //   2. lib/auth.ts authorize() per-email rl: 10/15min. Stops slow
+  //      password-spray attacks on a known admin email even when the
+  //      attacker rotates source IPs.
+  //   3. lib/auth.ts authorize() DB-backed IP cap: 30/15min counted
+  //      from admin_log. Defence-in-depth in case middleware buckets
+  //      diverge across edge POPs (in-memory fallback when Upstash is
+  //      down isn't shared between instances).
+  // NextAuth swallows all three into a generic "Invalid credentials"
+  // response so attackers can't enumerate which gate fired.
   if (
     request.method === "POST" &&
     request.nextUrl.pathname.startsWith("/api/auth/callback/credentials")
   ) {
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      "unknown";
+    const ip = extractClientIp(request.headers);
+    const limit = 10;
+    const windowMs = 15 * 60 * 1000;
     const rl = await checkRateLimit({
       key: `auth-edge-ip:${ip}`,
-      limit: 10,
-      windowMs: 15 * 60 * 1000,
+      limit,
+      windowMs,
     });
     if (!rl.ok) {
-      // Audit the cap firing so the round-8 finding (no admin_log row
-      // when middleware blocks 31st attempt) is fixed. Fire-and-forget
-      // — never block the 429 response on a write. Lazy-import so the
-      // edge runtime doesn't pull supabase + auditLog into the
-      // middleware bundle when it's not needed.
+      // Audit the cap firing so admin_log captures the 11th attempt
+      // (the round-8 finding was a missing row when middleware blocks).
+      // Fire-and-forget — never block the 429 response on a write.
+      // Lazy-import so the edge runtime doesn't pull supabase + auditLog
+      // into the middleware bundle when it's not needed.
       try {
         const { logAuthEvent } = await import("./lib/auditLog");
         logAuthEvent("auth.login.locked", null, {
@@ -127,6 +129,10 @@ export default async function middleware(request: NextRequest): Promise<NextResp
       } catch {
         /* never let audit failure block rate-limit response */
       }
+      // Cache-Control: no-store keeps the CDN from accidentally caching
+      // a 429 and serving it to a different client. Vary names every
+      // header that affects the keying so any well-behaved cache that
+      // ignores no-store still partitions per-IP.
       return addSecurityHeaders(
         new NextResponse(
           JSON.stringify({ error: "Too many login attempts. Try again in a few minutes." }),
@@ -134,7 +140,11 @@ export default async function middleware(request: NextRequest): Promise<NextResp
             status: 429,
             headers: {
               "Content-Type": "application/json",
-              "Retry-After": "900",
+              "Cache-Control": "no-store, max-age=0",
+              "Vary": "cf-connecting-ip, x-real-ip, x-forwarded-for",
+              "Retry-After": String(Math.ceil(windowMs / 1000)),
+              "X-RateLimit-Limit": String(limit),
+              "X-RateLimit-Remaining": "0",
             },
           },
         ),

@@ -42,20 +42,31 @@ async function checkUpstashRateLimit({
   const ttlSeconds = Math.max(1, Math.ceil(windowMs / 1000));
 
   try {
-    const incrRes = await fetch(`${url}/incr/${safeKey}`, {
-      headers: { Authorization: `Bearer ${token}` },
+    // INCR + EXPIRE NX as a single pipeline so the two commands are
+    // atomic from Upstash's POV. Previously we issued INCR, awaited the
+    // result, then conditionally fired EXPIRE on count==1; if that
+    // second fetch failed (network blip, edge timeout) the key was left
+    // without a TTL and incremented forever — every subsequent request
+    // looked over-limit and got 429 indefinitely (effectively a
+    // permanent ban for that bucket). EXPIRE with NX preserves the
+    // existing fixed-window semantics: TTL is set once on the first
+    // hit of the window and never refreshed by later increments.
+    const pipelineRes = await fetch(`${url}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
       cache: "no-store",
+      body: JSON.stringify([
+        ["INCR", safeKey],
+        ["EXPIRE", safeKey, String(ttlSeconds), "NX"],
+      ]),
     });
-    if (!incrRes.ok) return null;
-    const incrJson = (await incrRes.json()) as { result?: number };
-    const count = Number(incrJson.result || 0);
-
-    if (count === 1) {
-      await fetch(`${url}/expire/${safeKey}/${ttlSeconds}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-    }
+    if (!pipelineRes.ok) return null;
+    const pipelineJson = (await pipelineRes.json()) as Array<{ result?: number }>;
+    const count = Number(pipelineJson?.[0]?.result || 0);
+    if (!count) return null;
 
     return {
       ok: count <= limit,

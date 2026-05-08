@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { headers } from "next/headers";
 import { checkRateLimit } from "./rateLimit";
 import { logAuthEvent } from "./auditLog";
+import { extractClientIp } from "./ip";
 import type { UserRole } from "./roles";
 
 const failedAttempts = new Map<string, { count: number; lockedUntil: number }>();
@@ -77,7 +78,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // on a known admin email; the IP key stops someone cycling through
         // emails from a single host. Either limit trips the lockout path.
         const h = await headers().catch(() => null);
-        const ip = h?.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+        const ip = extractClientIp(h);
         const [rlEmail, rlIp] = await Promise.all([
           checkRateLimit({ key: `login:${inputEmail}`, limit: 10, windowMs: 15 * 60 * 1000 }),
           checkRateLimit({ key: `login-ip:${ip}`, limit: 30, windowMs: 15 * 60 * 1000 }),
