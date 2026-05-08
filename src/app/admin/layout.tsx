@@ -63,6 +63,7 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/admin/services",    label: "Services" },
       { href: "/admin/gallery",     label: "Gallery" },
+      { href: "/admin/blog",        label: "Blog" },
       { href: "/admin/products",    label: "Inventory" },
       { href: "/admin/discounts",   label: "Discounts" },
       { href: "/admin/commissions", label: "Commissions" },

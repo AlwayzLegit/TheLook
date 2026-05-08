@@ -98,6 +98,60 @@ async function dynamicEntries(): Promise<MetadataRoute.Sitemap> {
     }
   } catch {}
 
+  // Blog posts (published or scheduled-and-due) — excerpted from the
+  // RLS query so the public sitemap matches what visitors can crawl.
+  try {
+    const nowIso = new Date().toISOString();
+    const { data: posts } = await supabase
+      .from("blog_posts")
+      .select("slug, updated_at, published_at, cover_image_url")
+      .or(`status.eq.published,and(status.eq.scheduled,scheduled_for.lte.${nowIso})`);
+    for (const row of (posts || []) as Array<{
+      slug: string | null;
+      updated_at: string | null;
+      published_at: string | null;
+      cover_image_url: string | null;
+    }>) {
+      if (!row.slug) continue;
+      const img = toAbsImage(row.cover_image_url);
+      out.push({
+        url: `${baseUrl}/blog/${row.slug}`,
+        lastModified: row.updated_at
+          ? new Date(row.updated_at)
+          : row.published_at
+            ? new Date(row.published_at)
+            : new Date(),
+        changeFrequency: "monthly",
+        priority: 0.7,
+        ...(img ? { images: [img] } : {}),
+      });
+    }
+  } catch {}
+
+  // Blog category landing pages — only active categories with at
+  // least one visible post are worth listing.
+  try {
+    const { data: categories } = await supabase
+      .from("blog_categories")
+      .select("slug, updated_at, cover_image_url")
+      .eq("active", true);
+    for (const row of (categories || []) as Array<{
+      slug: string | null;
+      updated_at: string | null;
+      cover_image_url: string | null;
+    }>) {
+      if (!row.slug) continue;
+      const img = toAbsImage(row.cover_image_url);
+      out.push({
+        url: `${baseUrl}/blog/category/${row.slug}`,
+        lastModified: row.updated_at ? new Date(row.updated_at) : new Date(),
+        changeFrequency: "weekly",
+        priority: 0.6,
+        ...(img ? { images: [img] } : {}),
+      });
+    }
+  } catch {}
+
   return out;
 }
 
@@ -165,6 +219,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
       ...(galleryImgs.length ? { images: galleryImgs } : {}),
     },
+    { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
     { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
     { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${baseUrl}/book`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },

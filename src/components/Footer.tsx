@@ -103,6 +103,7 @@ export default function Footer() {
                 { href: "/services", label: "Services" },
                 { href: "/team", label: "Our Team" },
                 { href: "/gallery", label: "Gallery" },
+                { href: "/blog", label: "Blog" },
                 { href: "/shop", label: "Shop" },
                 { href: "/about", label: "About" },
                 { href: "/book", label: "Book Online" },
