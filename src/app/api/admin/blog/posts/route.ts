@@ -26,6 +26,7 @@ function bustBlogCaches() {
     revalidatePath("/blog/[slug]", "page");
     revalidatePath("/blog/category/[slug]", "page");
     revalidatePath("/sitemap.xml");
+    revalidatePath("/blog/rss.xml");
   } catch {
     // Best-effort.
   }

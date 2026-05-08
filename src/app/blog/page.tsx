@@ -39,7 +39,10 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
   const offset = (page - 1) * PAGE_SIZE;
 
   const [{ posts, total }, categories] = await Promise.all([
-    getPosts({ limit: PAGE_SIZE, offset }),
+    // Page 1 surfaces is_featured posts first (owner-pinned content
+    // gets the hero card). Pagination pages stay strictly
+    // chronological so the order is predictable as you click through.
+    getPosts({ limit: PAGE_SIZE, offset, featuredFirst: page === 1 }),
     getCategories(),
   ]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
