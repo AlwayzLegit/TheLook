@@ -88,6 +88,13 @@ async function fetchPostsUncached(args: {
   limit?: number;
   offset?: number;
   categorySlug?: string | null;
+  // When true, posts with is_featured=true are surfaced first
+  // regardless of publication date. Used by the /blog index hero
+  // pick (page 1 only) so owner-pinned content gets the featured-
+  // card treatment instead of always defaulting to most-recent.
+  // Off for category pages and pagination pages — those stay
+  // strictly chronological so the order is predictable.
+  featuredFirst?: boolean;
 } = {}): Promise<{ posts: BlogPost[]; total: number }> {
   if (!hasSupabaseConfig) return { posts: [], total: 0 };
   const limit = Math.min(50, Math.max(1, args.limit ?? 12));
@@ -109,6 +116,9 @@ async function fetchPostsUncached(args: {
   let q = supabase.from("blog_posts").select(POST_SELECT, { count: "exact" });
   q = applyPublicVisibility(q);
   if (categoryId) q = q.eq("category_id", categoryId);
+  if (args.featuredFirst) {
+    q = q.order("is_featured", { ascending: false });
+  }
   q = q.order("published_at", { ascending: false, nullsFirst: false })
        .range(offset, offset + limit - 1);
 
