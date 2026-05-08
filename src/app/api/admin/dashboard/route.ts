@@ -294,6 +294,78 @@ export async function GET() {
       requested: a.requested,
     }));
 
+    // Blog rollup. Counts are bucketed by status so the dashboard
+    // card can show the publishing pipeline at a glance. "Latest"
+    // is the newest published post (used to surface the freshest
+    // SEO content on the dashboard), and recentActivity is the
+    // last 8 admin_log rows whose action starts with "blog." —
+    // gives the operator a quick "who edited what" feed without
+    // jumping to the full activity log.
+    const monthStartIso = monthStart.toISOString();
+    const [
+      blogTotalRes,
+      blogPublishedRes,
+      blogDraftRes,
+      blogScheduledRes,
+      blogArchivedRes,
+      blogPubMonthRes,
+      blogLatestRes,
+      blogActivityRes,
+    ] = await Promise.all([
+      supabase.from("blog_posts").select("id", { count: "exact", head: true }),
+      supabase.from("blog_posts").select("id", { count: "exact", head: true }).eq("status", "published"),
+      supabase.from("blog_posts").select("id", { count: "exact", head: true }).eq("status", "draft"),
+      supabase.from("blog_posts").select("id", { count: "exact", head: true }).eq("status", "scheduled"),
+      supabase.from("blog_posts").select("id", { count: "exact", head: true }).eq("status", "archived"),
+      supabase
+        .from("blog_posts")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "published")
+        .gte("published_at", monthStartIso),
+      supabase
+        .from("blog_posts")
+        .select("id, slug, title, author_name, published_at, cover_image_url, view_count, category:blog_categories(slug, name)")
+        .eq("status", "published")
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("admin_log")
+        .select("id, action, details, actor_email, created_at")
+        .like("action", "blog.%")
+        .order("created_at", { ascending: false })
+        .limit(8),
+    ]);
+
+    type LatestRow = {
+      id: string;
+      slug: string;
+      title: string;
+      author_name: string;
+      published_at: string | null;
+      cover_image_url: string | null;
+      view_count: number | null;
+      category: { slug: string; name: string } | null;
+    } | null;
+    const blogLatest = (blogLatestRes.data as LatestRow) ?? null;
+
+    type ActivityRow = {
+      id: string;
+      action: string;
+      details: string | null;
+      actor_email: string | null;
+      created_at: string;
+    };
+    const blogActivity = ((blogActivityRes.data || []) as ActivityRow[]).map((r) => ({
+      id: r.id,
+      action: r.action,
+      // details is JSON we wrote at log time — try to surface the
+      // post slug + status as plain fields for the UI.
+      ...parseBlogActivityDetails(r.details),
+      actorEmail: r.actor_email,
+      createdAt: r.created_at,
+    }));
+
     return apiSuccess({
       today: {
         date: today,
@@ -326,10 +398,42 @@ export async function GET() {
         lowInventory: lowInventoryCount,
       },
       health: { noShows, cancellations, cancelRate, totalWeek: weekAppts.length },
+      blog: {
+        total: blogTotalRes.count ?? 0,
+        published: blogPublishedRes.count ?? 0,
+        drafts: blogDraftRes.count ?? 0,
+        scheduled: blogScheduledRes.count ?? 0,
+        archived: blogArchivedRes.count ?? 0,
+        publishedThisMonth: blogPubMonthRes.count ?? 0,
+        latest: blogLatest,
+        recentActivity: blogActivity,
+      },
     });
   } catch (err) {
     logError("admin/dashboard", err);
     return apiError("Failed to load dashboard.", 500);
+  }
+}
+
+// admin_log.details is the JSON.stringify(...) we wrote in the blog
+// admin handlers — extract slug / status / id so the dashboard UI
+// doesn't have to parse JSON in the browser. Returns plain
+// fields that the UI can consume directly.
+function parseBlogActivityDetails(raw: string | null): {
+  slug: string | null;
+  status: string | null;
+  postId: string | null;
+} {
+  if (!raw) return { slug: null, status: null, postId: null };
+  try {
+    const parsed = JSON.parse(raw) as { slug?: unknown; status?: unknown; id?: unknown };
+    return {
+      slug: typeof parsed.slug === "string" ? parsed.slug : null,
+      status: typeof parsed.status === "string" ? parsed.status : null,
+      postId: typeof parsed.id === "string" ? parsed.id : null,
+    };
+  } catch {
+    return { slug: null, status: null, postId: null };
   }
 }
 
@@ -341,5 +445,6 @@ function emptyPayload() {
     workload: [],
     attention: { pending: 0, pendingUpcoming: 0, pendingOverdue: 0, unreadMessages: 0, waitlist: 0, lowInventory: 0 },
     health: { noShows: 0, cancellations: 0, cancelRate: 0, totalWeek: 0 },
+    blog: { total: 0, published: 0, drafts: 0, scheduled: 0, archived: 0, publishedThisMonth: 0, latest: null, recentActivity: [] },
   };
 }
