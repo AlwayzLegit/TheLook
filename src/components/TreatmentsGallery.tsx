@@ -26,7 +26,7 @@ export default async function TreatmentsGallery() {
       subtitle="Repair & Restore"
       description="Bring dry, stressed hair back to life with treatments tailored to your texture and goals. From smoothing keratin services to moisture-rich deep conditioning, we rebuild strength, softness, and lasting shine."
       images={images}
-      ctaText="Book Treatment"
+      ctaText="Book your treatment"
       ctaHref="/book"
       reversed={true}
     />
