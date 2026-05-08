@@ -26,23 +26,46 @@ import rehypeStringify from "rehype-stringify";
 // className on code blocks, target/rel on links, and id/data-* on
 // the headings the slug plugin generates.
 
+// hast-util-sanitize merges attribute rules per element, BUT it only
+// honours one `["className", ...]` entry per element — duplicates
+// silently drop the others. The default schema already declares
+// `["className", "data-footnote-backref"]` on <a>, so naïvely
+// appending our own `["className", "heading-anchor-link"]` produced
+// `class=""` on the rendered anchor (heading-anchor-link was
+// recognised as a className attribute but its value rejected). Strip
+// the default rule and replace it with one that lists every
+// className we need to keep allowed: GFM's footnote-backref class
+// plus the anchor flavours we generate ourselves.
+function withoutClassNameRule<T>(attrs: T[] | undefined): T[] {
+  return (attrs ?? []).filter(
+    (a) => !(Array.isArray(a) && a[0] === "className"),
+  );
+}
+
 const sanitizeSchema: SanitizeOptions = {
   ...defaultSchema,
   attributes: {
     ...(defaultSchema.attributes ?? {}),
     a: [
-      ...(defaultSchema.attributes?.a ?? []),
+      ...withoutClassNameRule(defaultSchema.attributes?.a),
       "target",
       "rel",
-      ["className", "anchor", "header-anchor"],
+      "ariaLabel",
+      [
+        "className",
+        "anchor",
+        "header-anchor",
+        "heading-anchor-link",
+        "data-footnote-backref",
+      ],
     ],
     code: [
-      ...(defaultSchema.attributes?.code ?? []),
+      ...withoutClassNameRule(defaultSchema.attributes?.code),
       ["className", /^language-./],
     ],
     span: [
-      ...(defaultSchema.attributes?.span ?? []),
-      ["className", /^hljs-/],
+      ...withoutClassNameRule(defaultSchema.attributes?.span),
+      ["className", /^hljs-/, "heading-anchor-icon"],
     ],
     h1: ["id"],
     h2: ["id"],
@@ -58,9 +81,25 @@ const processor = unified()
   .use(remarkGfm)
   .use(remarkRehype, { allowDangerousHtml: false })
   .use(rehypeSlug)
+  // `behavior: "append"` puts the anchor link AFTER the heading text,
+  // not around it — so the heading itself stays plain text and only
+  // the small ¶ icon is the click target. The previous "wrap" pattern
+  // turned every <h2>/<h3> into a clickable link with link styling
+  // bleed-through, which read like an authoring mistake on the
+  // reader's first impression. Hover-only ¶ visibility lives in
+  // globals.css under `.heading-anchor-icon`.
   .use(rehypeAutolinkHeadings, {
-    behavior: "wrap",
-    properties: { className: ["header-anchor"] },
+    behavior: "append",
+    properties: {
+      className: ["heading-anchor-link"],
+      ariaLabel: "Link to section",
+    },
+    content: {
+      type: "element",
+      tagName: "span",
+      properties: { className: ["heading-anchor-icon"] },
+      children: [{ type: "text", value: "¶" }],
+    },
   })
   .use(rehypeSanitize, sanitizeSchema)
   .use(rehypeStringify);
