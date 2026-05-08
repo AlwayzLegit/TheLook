@@ -6,16 +6,22 @@ import { getServicesForHomeSection, type HomeServicePhoto } from "@/lib/homeGall
 // service preselected (and the service name shown as a caption
 // on the photo).
 //
-// Haircuts is the only home section with a subcategory split
-// today: services are tagged Women's / Men's in /admin/services
-// and we render one ServiceGallery sub-section per group, each
-// with its own hero photo + tile grid. Services without a
-// subcategory fall back into a single combined gallery (the same
-// shape every other category renders) so a fresh install or a
-// salon that doesn't want to split keeps the simple layout.
+// Haircuts splits into two visual photo groups today, with
+// owner-supplied marketing copy. Tagging in /admin/services drives
+// the grouping:
+//   - Unisex + Women's services → first section ("Signature Cuts
+//     & Styling"). Owner's copy treats this as the broad / styled
+//     side of the menu.
+//   - Men's services → second section ("Classic Cuts & Modern
+//     Fades"). Same shape (hero + grid + Book a Haircut CTA), just
+//     with the men-targeted hero/copy.
+// Untagged services fall into the first section so a row mid-edit
+// never disappears. /book still uses the three-bucket Unisex /
+// Women's / Men's split because that's an admin/booking UI where
+// the labels are functional, not marketing.
 //
-// Fallback: when no Haircut services have a photo set, render
-// the old stock photos so the section never goes blank.
+// Fallback: when no Haircut services have a photo set, render the
+// old stock photos so the section never goes blank.
 const fallbackImages = [
   { src: "/images/services/Haircuts/haircut-01.jpg", alt: "Precision men's haircut" },
   { src: "/images/services/Haircuts/haircut-02.jpg", alt: "Women's layered cut" },
@@ -23,11 +29,29 @@ const fallbackImages = [
   { src: "/images/services/Haircuts/haircut-04.jpg", alt: "Modern textured style" },
 ];
 
-// Render order on the homepage. Unisex leads because its services
-// fit any client and act as a broad-appeal anchor; gendered groups
-// follow. Owner can re-classify in /admin/services to change which
-// services land where.
-const SUBCATEGORY_ORDER = ["Unisex", "Women's", "Men's"] as const;
+// Two homepage groups. Each lists which subcategory tags collapse
+// into it (in render order). Tweak here when the owner adds a new
+// subcategory tag.
+const HOMEPAGE_GROUPS = [
+  {
+    key: "signature",
+    eyebrow: "Precision & Style",
+    title: "Signature Cuts & Styling",
+    description:
+      "From soft layers and precision trims to bold transformations and modern styling, our talented stylists create looks designed to complement your lifestyle and personal beauty. Whether you're maintaining healthy hair, trying something new, or getting ready for a special occasion, we focus on detail, movement, and effortless style in every cut. Leave feeling refreshed, confident, and beautifully you.",
+    // Untagged services land here too so a row mid-edit never
+    // disappears from the homepage entirely.
+    subcategories: ["Unisex", "Women's", ""] as const,
+  },
+  {
+    key: "modern",
+    eyebrow: "Fresh & Modern Cuts",
+    title: "Classic Cuts & Modern Fades",
+    description:
+      "From classic gentleman's cuts to sharp fades and modern textured styles, our experienced barbers and stylists deliver clean, customized looks with precision. Whether you prefer a polished professional cut or a fresh trend-forward style, we tailor every service to fit your personality and routine. Fast, consistent, and confidence-boosting — with walk-ins always welcome.",
+    subcategories: ["Men's"] as const,
+  },
+] as const;
 
 function toGalleryImages(services: HomeServicePhoto[]) {
   return services.map((s) => ({
@@ -51,9 +75,9 @@ export default async function HaircutsGallery() {
   if (services.length === 0) {
     return (
       <ServiceGallery
-        title="Haircuts"
-        subtitle="Precision & Style"
-        description="From classic scissor cuts to modern fades, our experienced stylists craft the perfect look for every client. Whether you're after a subtle trim or a bold new style, we listen first and cut with confidence. Walk-ins welcome!"
+        title={HOMEPAGE_GROUPS[0].title}
+        subtitle={HOMEPAGE_GROUPS[0].eyebrow}
+        description={HOMEPAGE_GROUPS[0].description}
         images={fallbackImages.map((img) => ({ ...img, href: "/services/haircuts" }))}
         ctaText="Book a Haircut"
         ctaHref="/book"
@@ -61,8 +85,7 @@ export default async function HaircutsGallery() {
     );
   }
 
-  // Group by subcategory. Anything null bucket-falls into "Other"
-  // so a service the owner forgot to tag still renders.
+  // Group by subcategory tag.
   const bySub = new Map<string, HomeServicePhoto[]>();
   for (const s of services) {
     const key = s.subcategory ?? "";
@@ -71,16 +94,25 @@ export default async function HaircutsGallery() {
     bySub.set(key, arr);
   }
 
-  // If the owner hasn't tagged ANY haircut with a subcategory, fall
-  // through to the single-gallery layout. Same path renders today, so
-  // existing salons that don't want a split see no change.
-  const hasAnySubcategory = SUBCATEGORY_ORDER.some((sub) => (bySub.get(sub)?.length ?? 0) > 0);
-  if (!hasAnySubcategory) {
+  // Collapse the grouped buckets into the two homepage groups.
+  const groupedSections = HOMEPAGE_GROUPS.map((group) => {
+    const collected: HomeServicePhoto[] = [];
+    for (const sub of group.subcategories) {
+      collected.push(...(bySub.get(sub) ?? []));
+    }
+    return { ...group, services: collected };
+  }).filter((section) => section.services.length > 0);
+
+  // If the data ended up with no Men's tag at all, fall back to the
+  // single-gallery layout — fresh installs without the subcategory
+  // seed migration applied see the same simple shape that pre-dated
+  // the split.
+  if (groupedSections.length <= 1) {
     return (
       <ServiceGallery
-        title="Haircuts"
-        subtitle="Precision & Style"
-        description="From classic scissor cuts to modern fades, our experienced stylists craft the perfect look for every client. Whether you're after a subtle trim or a bold new style, we listen first and cut with confidence. Walk-ins welcome!"
+        title={HOMEPAGE_GROUPS[0].title}
+        subtitle={HOMEPAGE_GROUPS[0].eyebrow}
+        description={HOMEPAGE_GROUPS[0].description}
         images={toGalleryImages(services)}
         ctaText="Book a Haircut"
         ctaHref="/book"
@@ -88,54 +120,22 @@ export default async function HaircutsGallery() {
     );
   }
 
-  // Render Women's first, then Men's, then any Other (untagged)
-  // services last so nothing disappears if a row is mid-edit.
-  const orderedSubs: string[] = [
-    ...SUBCATEGORY_ORDER.filter((sub) => (bySub.get(sub)?.length ?? 0) > 0),
-    ...(bySub.get("")?.length ? [""] : []),
-  ];
-
   return (
     <>
-      {orderedSubs.map((sub, i) => {
-        const subServices = bySub.get(sub) ?? [];
-        const isFirst = i === 0;
-        // "Unisex Haircuts" reads awkwardly; just "Haircuts" works
-        // when Unisex leads. Anything else gets the qualifier.
-        const subTitle =
-          sub === "Unisex"
-            ? "Haircuts"
-            : sub === ""
-              ? "More Haircuts"
-              : `${sub} Haircuts`;
-        return (
-          <ServiceGallery
-            key={sub || "other"}
-            title={subTitle}
-            // Only the first sub-section gets the prominent
-            // "Precision & Style" eyebrow — repeating it on every
-            // sub-section visually shouts. Subsequent sub-sections
-            // use their gender label (or "Haircuts" for Unisex)
-            // as the eyebrow instead, which doubles as a quiet
-            // visual divider.
-            subtitle={isFirst ? "Precision & Style" : sub || "Haircuts"}
-            // Lead description is part of the Haircuts section as a
-            // whole; only show it on the first sub-section so we
-            // don't duplicate copy.
-            description={
-              isFirst
-                ? "From classic scissor cuts to modern fades, our experienced stylists craft the perfect look for every client. Whether you're after a subtle trim or a bold new style, we listen first and cut with confidence. Walk-ins welcome!"
-                : undefined
-            }
-            images={toGalleryImages(subServices)}
-            ctaText={isFirst ? "Book a Haircut" : undefined}
-            ctaHref={isFirst ? "/book" : undefined}
-            // Alternate the hero/text orientation so consecutive
-            // sub-sections don't visually stack identically.
-            reversed={i % 2 === 1}
-          />
-        );
-      })}
+      {groupedSections.map((section, i) => (
+        <ServiceGallery
+          key={section.key}
+          title={section.title}
+          subtitle={section.eyebrow}
+          description={section.description}
+          images={toGalleryImages(section.services)}
+          ctaText="Book a Haircut"
+          ctaHref="/book"
+          // Alternate the hero/text orientation so consecutive
+          // sections don't visually stack identically.
+          reversed={i % 2 === 1}
+        />
+      ))}
     </>
   );
 }

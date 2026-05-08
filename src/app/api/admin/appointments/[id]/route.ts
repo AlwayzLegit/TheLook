@@ -95,7 +95,22 @@ export async function PATCH(
   }
 
   if (error) {
+    // The partial unique index on (stylist_id, date, start_time)
+    // WHERE status<>'cancelled' rejects moves into an already-active
+    // slot with Postgres code 23505. Translate that to a 409 with the
+    // same message customers see on /book/reschedule, instead of a
+    // generic 500 the admin UI showed only as the toast fallback
+    // ("Failed to update appointment.").
+    if (error.code === "23505") {
+      return apiError(
+        "That slot is already booked for this stylist on this date. Pick another time or reassign the stylist.",
+        409,
+      );
+    }
     logError("admin/appointments PATCH", error);
+    // Surface the real PG message — the previous "${error.message || 'unknown'}"
+    // template was correct but worth keeping; comment is here so a future
+    // refactor doesn't strip it back to a constant string and re-blind us.
     return apiError(`Failed to update appointment: ${error.message || "unknown error"}`, 500);
   }
 
@@ -110,10 +125,49 @@ export async function PATCH(
     const { data: previous, error: fetchPrevErr } = await supabase
       .from("appointment_services")
       .select("service_id, variant_id, sort_order, price_min, duration, duration_minutes")
-      .eq("appointment_id", id);
+      .eq("appointment_id", id)
+      .order("sort_order", { ascending: true });
     if (fetchPrevErr) {
       logError("admin/appointments PATCH (services snapshot)", fetchPrevErr);
     }
+
+    // The admin form sends `services` on EVERY save — it doesn't try
+    // to detect whether the line items actually changed. That used to
+    // mean every status flip / time bump churned appointment_services
+    // unnecessarily, and any RLS hiccup or race in the delete-then-
+    // insert dance produced a "Failed to update services" error after
+    // the appointments row had already been moved. Skip the rewrite
+    // when the incoming list matches what's already on disk by
+    // (service_id, sort_order, price_min, duration), so a pure
+    // time-only edit no longer touches appointment_services at all.
+    type LineKey = { service_id: string; sort_order: number; price_min: number; duration: number };
+    const normalize = (rows: Array<Partial<LineKey>>): string =>
+      rows
+        .map((r) => ({
+          service_id: String(r.service_id),
+          sort_order: Number(r.sort_order ?? 0),
+          price_min: Number(r.price_min ?? 0),
+          duration: Number(r.duration ?? 0),
+        }))
+        .sort((a, b) => a.sort_order - b.sort_order || a.service_id.localeCompare(b.service_id))
+        .map((r) => `${r.service_id}|${r.sort_order}|${r.price_min}|${r.duration}`)
+        .join(";");
+    const previousSig = normalize((previous || []) as Array<Partial<LineKey>>);
+    const incomingSig = normalize(
+      payload.services.map((s, i) => ({
+        service_id: s.service_id,
+        sort_order: typeof s.sort_order === "number" ? s.sort_order : i,
+        price_min: s.price_min,
+        duration: s.duration,
+      })),
+    );
+    if (previousSig === incomingSig) {
+      // Nothing changed — fall through to the notification flows
+      // below without rewriting appointment_services. Don't `return`
+      // here: status transitions (e.g. → completed) still need to
+      // fire emails / SMS / the auto review request.
+    } else {
+
     const { error: deleteErr } = await supabase
       .from("appointment_services")
       .delete()
@@ -164,6 +218,7 @@ export async function PATCH(
       }
       return apiError(`Failed to save updated services: ${insertErr.message || "unknown"}`, 500);
     }
+    } // close: previousSig !== incomingSig
   }
 
   logAdminAction("appointment.update", JSON.stringify(payload), id);
