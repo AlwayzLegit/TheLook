@@ -27,10 +27,19 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [animating, setAnimating] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const isHome = pathname === "/";
   const brand = useBranding();
+
+  // SSR returns a static-rendered tree where pathname-driven active-link
+  // markers (the underline <span>) don't appear, but the first client
+  // render does add them — that structural mismatch fires React #418 on
+  // the home page. Gate active-state classes + the marker span behind a
+  // mounted flag so SSR and the first hydration render produce identical
+  // HTML; the active treatment paints in on the second pass.
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -47,7 +56,10 @@ export default function Navbar() {
     setIsOpen(false);
   }, [pathname]);
 
-  const showSolid = scrolled || !isHome;
+  // Pre-mount, force solid styling so the SSR HTML (which treats pathname
+  // as unknown and effectively non-home) matches the first client render.
+  // After mount, transparency follows the real scroll/route state.
+  const showSolid = !mounted || scrolled || !isHome;
 
   const handleClose = () => {
     setAnimating(true);
@@ -86,8 +98,9 @@ export default function Navbar() {
   };
 
   const isActive = (href: string) => {
+    if (!mounted) return false;
     if (href === "/") return pathname === "/";
-    return pathname.startsWith(href);
+    return pathname?.startsWith(href) ?? false;
   };
 
   return (
@@ -150,7 +163,7 @@ export default function Navbar() {
                               key={sub.href}
                               href={sub.href}
                               className={`block px-5 py-2.5 text-[10px] tracking-[0.15em] uppercase font-body transition-colors duration-200 ${
-                                pathname === sub.href
+                                mounted && pathname === sub.href
                                   ? "text-gold"
                                   : "text-white/60 hover:text-gold hover:bg-white/5"
                               }`}
@@ -279,7 +292,7 @@ export default function Navbar() {
                         href={sub.href}
                         onClick={handleLinkClick}
                         className={`text-xs tracking-[0.15em] uppercase font-body transition-colors ${
-                          pathname === sub.href ? "text-gold/80" : "text-white/60 hover:text-gold/70"
+                          mounted && pathname === sub.href ? "text-gold/80" : "text-white/60 hover:text-gold/70"
                         }`}
                       >
                         {sub.label}
