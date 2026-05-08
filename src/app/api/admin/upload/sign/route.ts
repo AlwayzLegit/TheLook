@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 30) || "upload";
-  const folder = ["stylists", "gallery", "before-after", "inspiration", "services", "staff"].includes(folderRaw)
+  const folder = ["stylists", "gallery", "before-after", "inspiration", "services", "staff", "blog"].includes(folderRaw)
     ? folderRaw
     : "stylists";
   const fileExt = ext === "heif" ? "heic" : ext === "tif" ? "tiff" : ext;

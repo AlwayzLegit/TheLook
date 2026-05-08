@@ -10,7 +10,7 @@ interface Props {
   // Defaults to "stylists" to preserve historical placement; admin
   // surfaces with their own organisation (gallery, before-after,
   // inspiration, services, staff) can pass an explicit folder.
-  folder?: "stylists" | "gallery" | "before-after" | "inspiration" | "services" | "staff";
+  folder?: "stylists" | "gallery" | "before-after" | "inspiration" | "services" | "staff" | "blog";
 }
 
 export default function ImageUpload({ value, onChange, name, folder = "stylists" }: Props) {
