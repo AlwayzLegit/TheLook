@@ -118,18 +118,46 @@ export async function GET(request: NextRequest) {
     return apiSuccess({ slots: ["10:00", "11:00", "13:00", "14:00", "15:00", "16:00"] });
   }
 
+  // Eligibility for the Any-Stylist union: a stylist must offer every
+  // service in the cart that ANY stylist is tagged with. Services with
+  // zero tagged stylists fall back to "any stylist can do it" — the
+  // alternative is that an admin tagging gap dead-ends customer
+  // bookings completely (cowork-2026-05-07: cart=[Cut, Wash] returned
+  // 0 slots because none of 5 active stylists were tagged with the
+  // Hair Wash add-on, even though every stylist obviously could rinse
+  // hair for 10 min). Untagged-fallback ensures a missing tag is a
+  // soft warning rather than a hard outage.
+  const uniqueIds = Array.from(new Set(ids));
   const { data: pairs } = await supabase
     .from("stylist_services")
     .select("stylist_id, service_id")
-    .in("service_id", ids);
-  const counts = new Map<string, number>();
-  type PairRow = { stylist_id: string };
+    .in("service_id", uniqueIds);
+  type PairRow = { stylist_id: string; service_id: string };
+  const stylistsByService = new Map<string, Set<string>>();
+  for (const sid of uniqueIds) stylistsByService.set(sid, new Set());
   for (const p of (pairs || []) as PairRow[]) {
-    counts.set(p.stylist_id, (counts.get(p.stylist_id) || 0) + 1);
+    stylistsByService.get(p.service_id)?.add(p.stylist_id);
   }
-  const eligibleIds = [...counts.entries()]
-    .filter(([, c]) => c >= ids.length)
-    .map(([id]) => id);
+  const constrainingServices = uniqueIds.filter(
+    (sid) => (stylistsByService.get(sid)?.size ?? 0) > 0,
+  );
+
+  // Pull the active stylist roster (excluding the Any sentinel — the
+  // sentinel would never be in stylist_services anyway, and its row
+  // is inactive on prod). Eligibility = covers every constraining
+  // service. When there are no constraining services (e.g. a cart
+  // entirely of untagged add-ons), every active stylist qualifies.
+  const { data: allActive } = await supabase
+    .from("stylists")
+    .select("id, active")
+    .eq("active", true)
+    .neq("id", BOOKING.ANY_STYLIST_ID);
+
+  const eligibleIds = ((allActive || []) as Array<{ id: string }>)
+    .map((s) => s.id)
+    .filter((id) =>
+      constrainingServices.every((sid) => stylistsByService.get(sid)?.has(id)),
+    );
 
   if (eligibleIds.length === 0) {
     return apiSuccess({ slots: [] });

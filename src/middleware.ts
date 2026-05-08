@@ -84,11 +84,20 @@ const authCheck = auth((req) => {
 }) as unknown as (request: NextRequest) => Promise<NextResponse>;
 
 export default async function middleware(request: NextRequest): Promise<NextResponse> {
-  // Edge rate-limit on the credentials callback. The Credentials.authorize
-  // hook in lib/auth.ts already throttles, but NextAuth swallows that into
-  // a generic 401 so it's invisible to clients (and to QA). Doing it here
-  // in the middleware bounces brute-force traffic with a real 429 before
-  // it even hits NextAuth, and lets ops dashboards see the spike.
+  // Edge rate-limit on the credentials callback. Two layers stack here:
+  //   1. This middleware: per-IP, 10/15min. Bounces brute-force traffic
+  //      before it reaches NextAuth's authorize() hook with a real 429
+  //      so WAF / ops dashboards can see the spike. Tuned 10/15min as
+  //      a middle ground between "too lax to deter bots" (the previous
+  //      30/15min was both too lax for the cowork QA pass and let real
+  //      brute-force traffic in unimpeded) and "shared-office IPs hit
+  //      false positives" (5/15min was too tight).
+  //   2. lib/auth.ts authorize(): per-account lockout after 5 wrong
+  //      passwords. NextAuth swallows that into a generic "Invalid
+  //      credentials" so attackers can't enumerate which accounts
+  //      exist — see logAuthEvent("auth.login.locked") for the audit
+  //      trail. That layer covers credential-stuffing across rotated
+  //      accounts which a per-IP limit alone wouldn't.
   if (
     request.method === "POST" &&
     request.nextUrl.pathname.startsWith("/api/auth/callback/credentials")
@@ -99,7 +108,7 @@ export default async function middleware(request: NextRequest): Promise<NextResp
       "unknown";
     const rl = await checkRateLimit({
       key: `auth-edge-ip:${ip}`,
-      limit: 30,
+      limit: 10,
       windowMs: 15 * 60 * 1000,
     });
     if (!rl.ok) {

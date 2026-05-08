@@ -1,4 +1,18 @@
 User-agent: *
 Allow: /
 
+# Auth-protected — listing here is signalling, not a security control.
+# /admin requires login and /api/admin returns 401 without a session.
+# Keeping crawlers out of these paths saves them the bounce + protects
+# us from accidental indexing of error or callback states.
+Disallow: /admin/
+Disallow: /api/
+
+# Booking flow's mid-state URLs carry session-bearing query strings
+# that look like distinct pages to crawlers (e.g. ?service=...&date=...).
+# Allow /book itself (the marketing landing) but not the deeper steps.
+Disallow: /book/cancel
+Disallow: /book/reschedule
+Disallow: /book/waitlist
+
 Sitemap: https://www.thelookhairsalonla.com/sitemap.xml

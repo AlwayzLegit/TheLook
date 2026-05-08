@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BOOKING } from "@/lib/constants";
 import { isOptimizableImageHost } from "@/lib/imageHosts";
 
@@ -64,13 +64,37 @@ export default function StylistPicker({
   // the customer sees the empty-state message on the next step.
   const [nextMap, setNextMap] = useState<Record<string, { date: string; time: string } | null | "loading">>({});
 
+  // Services with zero stylists tagged in the entire roster (admin
+  // gap) shouldn't constrain the picker — otherwise a customer who
+  // adds a generic "Hair Wash (Add-On)" sees every stylist greyed
+  // out. Mirrors the same fallback /api/availability uses on the
+  // server. Defensive: if every service has at least one stylist
+  // tagged, this set is empty and the existing strict filter
+  // applies unchanged.
+  const universalServiceIds = useMemo(() => {
+    const tagged = new Set<string>();
+    for (const s of stylists) {
+      if (s.id === BOOKING.ANY_STYLIST_ID) continue;
+      for (const sid of s.serviceIds) tagged.add(sid);
+    }
+    return new Set(serviceIds.filter((id) => !tagged.has(id)));
+  }, [stylists, serviceIds]);
+
+  const offersAllRequired = useCallback(
+    (s: Stylist): boolean =>
+      serviceIds.every(
+        (id) => universalServiceIds.has(id) || s.serviceIds.includes(id),
+      ),
+    [serviceIds, universalServiceIds],
+  );
+
   useEffect(() => {
     if (serviceIds.length === 0) return;
     let cancelled = false;
     const eligible = stylists.filter(
       (s) => s.id !== BOOKING.ANY_STYLIST_ID
         && s.name.trim().toLowerCase() !== "any stylist"
-        && serviceIds.every((id) => s.serviceIds.includes(id)),
+        && offersAllRequired(s),
     );
     // Initialise every tile to "loading" so the hint area reserves
     // vertical space — avoids layout shift when results land.
@@ -121,7 +145,7 @@ export default function StylistPicker({
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
         {tiles.map((stylist) => {
           const isAny = stylist.id === BOOKING.ANY_STYLIST_ID;
-          const offersAll = isAny || serviceIds.every((id) => stylist.serviceIds.includes(id));
+          const offersAll = isAny || offersAllRequired(stylist);
           const isSelected =
             selected === "any"
               ? isAny

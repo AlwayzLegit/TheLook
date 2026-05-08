@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, Suspense } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
@@ -71,13 +71,33 @@ function PostHogPageView() {
   return null;
 }
 
+// PostHogPageView reads useSearchParams() which forces Next 15 to mark
+// the surrounding tree as dynamic. Wrapping it in <Suspense> "fixes"
+// the build error but emits a BAILOUT_TO_CLIENT_SIDE_RENDERING
+// template into the SSR HTML — and then the client renders null, not
+// the template. React detects the structural mismatch and fires
+// hydration error #418 on every page load (see
+// admin_log "client.hydration_mismatch", first reported 2026-04 era,
+// rediagnosed by cowork 2026-05-07).
+//
+// Since PostHogPageView itself returns null and runs entirely inside
+// useEffect, there's no need to render it during SSR at all. Gate
+// it behind a mounted flag so SSR + first client render both emit
+// nothing — matching markup, no bailout template, no #418. After the
+// effect fires we render PostHogPageView as a normal client component
+// and useSearchParams() works without needing Suspense.
+function MountedPostHogPageView() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return <PostHogPageView />;
+}
+
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   return (
     <PHProvider client={posthog}>
       <PostHogInit />
-      <Suspense fallback={null}>
-        <PostHogPageView />
-      </Suspense>
+      <MountedPostHogPageView />
       {children}
     </PHProvider>
   );
