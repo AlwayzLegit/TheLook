@@ -3,59 +3,69 @@
 import Link from "next/link";
 import Image from "next/image";
 import AnimatedSection from "./AnimatedSection";
+import { useBranding } from "./BrandingProvider";
+import { isOptimizableImageHost } from "@/lib/imageHosts";
 
-const highlights = [
-  {
-    name: "Haircuts",
-    price: "From $28",
-    desc: "Men's, women's & children's",
-    image: "/images/Haircuts.jpg",
-    href: "/services/haircuts",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M14.121 14.121L7.05 21.192a2.121 2.121 0 11-3-3l7.071-7.07m2.828 2.828l3.536-3.536a2.121 2.121 0 00-3-3L18.05 7.05m-3.929 3.929L7.05 3.93a2.121 2.121 0 10-3 3l7.07 7.071" />
-      </svg>
-    ),
-  },
-  {
-    name: "Color & Highlights",
-    price: "From $50",
-    desc: "Balayage, ombré, full color",
-    image: "/images/Highlights.jpg",
-    href: "/services/color",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
-      </svg>
-    ),
-  },
-  {
-    name: "Styling",
-    price: "From $40",
-    desc: "Blowouts, updos, extensions",
-    image: "/images/Styling.jpg",
-    href: "/services/styling",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-      </svg>
-    ),
-  },
-  {
-    name: "Treatments",
-    price: "From $30",
-    desc: "Keratin, deep conditioning",
-    image: "/images/Treatments.jpg",
-    href: "/services/treatments",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-      </svg>
-    ),
-  },
-];
+// Owner-uploaded category heroes saved in /admin/branding land in the
+// BrandingProvider context as branding.images.cat<Category>. The static
+// /images/<Category>.jpg paths in src/lib/branding.ts (fallbackImages)
+// are the no-override defaults — when an owner uploads a new file we
+// read the override from context here so the homepage preview matches
+// what /services/<slug> already shows.
 
 export default function ServicesPreview() {
+  const branding = useBranding();
+  const highlights = [
+    {
+      name: "Haircuts",
+      price: "From $28",
+      desc: "Men's, women's & children's",
+      image: branding.images.catHaircuts,
+      href: "/services/haircuts",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M14.121 14.121L7.05 21.192a2.121 2.121 0 11-3-3l7.071-7.07m2.828 2.828l3.536-3.536a2.121 2.121 0 00-3-3L18.05 7.05m-3.929 3.929L7.05 3.93a2.121 2.121 0 10-3 3l7.07 7.071" />
+        </svg>
+      ),
+    },
+    {
+      name: "Color & Highlights",
+      price: "From $50",
+      desc: "Balayage, ombré, full color",
+      image: branding.images.catColor,
+      href: "/services/color",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
+        </svg>
+      ),
+    },
+    {
+      name: "Styling",
+      price: "From $40",
+      desc: "Blowouts, updos, extensions",
+      image: branding.images.catStyling,
+      href: "/services/styling",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+        </svg>
+      ),
+    },
+    {
+      name: "Treatments",
+      price: "From $30",
+      desc: "Keratin, deep conditioning",
+      image: branding.images.catTreatments,
+      href: "/services/treatments",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+        </svg>
+      ),
+    },
+  ];
+
   return (
     <section className="py-24 md:py-32 bg-white relative overflow-hidden">
       {/* Subtle decorative background */}
@@ -92,6 +102,7 @@ export default function ServicesPreview() {
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    unoptimized={!isOptimizableImageHost(s.image)}
                   />
                   {/* Gradient overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-navy/30 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
