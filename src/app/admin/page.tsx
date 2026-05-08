@@ -40,6 +40,33 @@ interface Payload {
     lowInventory: number;
   };
   health: { noShows: number; cancellations: number; cancelRate: number; totalWeek: number };
+  blog: {
+    total: number;
+    published: number;
+    drafts: number;
+    scheduled: number;
+    archived: number;
+    publishedThisMonth: number;
+    latest: {
+      id: string;
+      slug: string;
+      title: string;
+      author_name: string;
+      published_at: string | null;
+      cover_image_url: string | null;
+      view_count: number | null;
+      category: { slug: string; name: string } | null;
+    } | null;
+    recentActivity: Array<{
+      id: string;
+      action: string;
+      slug: string | null;
+      status: string | null;
+      postId: string | null;
+      actorEmail: string | null;
+      createdAt: string;
+    }>;
+  };
 }
 
 interface AudiencePayload {
@@ -464,6 +491,9 @@ export default function AdminDashboard() {
           )}
         </Card>
       </div>
+
+      {/* ─────── Blog row ─────── */}
+      <BlogRow blog={payload?.blog} loading={loading} />
     </div>
   );
 }
@@ -555,4 +585,178 @@ function StylistBars<T extends { stylistId: string; name: string; color: string 
       })}
     </ul>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Blog row — pipeline stats, latest published post, recent activity
+// ─────────────────────────────────────────────────────────────────
+
+type BlogBlock = Payload["blog"];
+
+function BlogRow({ blog, loading }: { blog: BlogBlock | undefined; loading: boolean }) {
+  return (
+    <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr_1fr] gap-6">
+      {/* Latest + 4-up stat band */}
+      <Card padded={false}>
+        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+          <Eyebrow>Blog · latest</Eyebrow>
+          <Link
+            href="/admin/blog"
+            className="text-[0.6875rem] uppercase tracking-[0.15em] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+          >
+            Manage →
+          </Link>
+        </div>
+        {loading ? (
+          <div className="px-5 pb-5"><Skeleton className="h-32 w-full" /></div>
+        ) : !blog?.latest ? (
+          <div className="px-5 pb-5">
+            <EmptyState
+              compact
+              title="No published posts yet"
+              description="Write your first post to start ranking on long-tail hair queries."
+              action={<Link href="/admin/blog/new" className="inline-block bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-5 py-2">New post</Link>}
+            />
+          </div>
+        ) : (
+          <Link
+            href={`/blog/${blog.latest.slug}`}
+            className="group flex gap-4 px-5 pb-4 hover:bg-[var(--color-cream-50)] transition-colors"
+          >
+            {blog.latest.cover_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={blog.latest.cover_image_url}
+                alt=""
+                className="h-20 w-32 object-cover rounded shrink-0 border border-[var(--color-border)]"
+                loading="lazy"
+              />
+            ) : (
+              <div className="h-20 w-32 rounded shrink-0 bg-gradient-to-br from-navy/10 to-gold/10" aria-hidden />
+            )}
+            <div className="min-w-0 flex-1">
+              {blog.latest.category ? (
+                <p className="text-[0.6875rem] uppercase tracking-[0.15em] text-[var(--color-accent-gold)]">
+                  {blog.latest.category.name}
+                </p>
+              ) : null}
+              <p className="font-heading text-base text-[var(--color-text)] group-hover:text-rose transition-colors mt-0.5 line-clamp-2">
+                {blog.latest.title}
+              </p>
+              <p className="text-[0.75rem] text-[var(--color-text-muted)] mt-1">
+                {blog.latest.author_name}
+                {blog.latest.published_at ? ` · ${formatRelativeDate(blog.latest.published_at)}` : ""}
+              </p>
+            </div>
+          </Link>
+        )}
+
+        <dl className="grid grid-cols-4 border-t border-[var(--color-border)] divide-x divide-[var(--color-border)] text-center">
+          <BlogStat label="Published" value={blog?.published} loading={loading} />
+          <BlogStat label="Drafts" value={blog?.drafts} loading={loading} />
+          <BlogStat label="Scheduled" value={blog?.scheduled} loading={loading} />
+          <BlogStat label="This month" value={blog?.publishedThisMonth} loading={loading} highlight />
+        </dl>
+      </Card>
+
+      {/* Recent activity */}
+      <Card className="lg:col-span-2">
+        <div className="flex items-center justify-between">
+          <Eyebrow>Blog activity</Eyebrow>
+          <Link
+            href="/admin/activity"
+            className="text-[0.6875rem] uppercase tracking-[0.15em] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+          >
+            Full log →
+          </Link>
+        </div>
+        {loading ? (
+          <div className="mt-3 space-y-2">
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-5 w-5/6" />
+          </div>
+        ) : !blog?.recentActivity.length ? (
+          <EmptyState compact title="No blog activity yet" description="Publishing actions will show up here." />
+        ) : (
+          <ul className="mt-3 divide-y divide-[var(--color-border)]">
+            {blog.recentActivity.map((row) => (
+              <li key={row.id} className="py-2 flex items-baseline gap-3">
+                <span className="text-[0.6875rem] uppercase tracking-[0.12em] text-[var(--color-text-subtle)] tabular-nums shrink-0 w-12">
+                  {formatRelativeShort(row.createdAt)}
+                </span>
+                <span className="text-[0.8125rem] text-[var(--color-text)] flex-1 min-w-0 truncate">
+                  <span className="text-[var(--color-text-muted)]">{describeBlogAction(row.action)}</span>
+                  {row.slug ? (
+                    <Link
+                      href={row.action.startsWith("blog.category") ? "/admin/blog/categories" : (row.postId ? `/admin/blog/${row.postId}` : `/admin/blog`)}
+                      className="ml-1.5 font-mono text-[0.75rem] hover:text-rose"
+                    >
+                      /{row.slug}
+                    </Link>
+                  ) : null}
+                </span>
+                {row.actorEmail ? (
+                  <span className="text-[0.6875rem] text-[var(--color-text-subtle)] truncate max-w-[140px]" title={row.actorEmail}>
+                    {row.actorEmail.split("@")[0]}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function BlogStat({ label, value, loading, highlight }: { label: string; value: number | undefined; loading: boolean; highlight?: boolean }) {
+  return (
+    <div className="px-3 py-3">
+      <dt className="text-[0.6875rem] uppercase tracking-[0.12em] text-[var(--color-text-subtle)]">{label}</dt>
+      <dd className={`mt-1 text-xl font-heading tabular-nums ${highlight ? "text-rose" : "text-[var(--color-text)]"}`}>
+        {loading ? <Skeleton className="h-6 w-10 mx-auto" /> : (value ?? 0).toLocaleString()}
+      </dd>
+    </div>
+  );
+}
+
+// "blog.post.upsert" / "blog.post.update" / "blog.post.delete" /
+// "blog.category.upsert" / "blog.category.update" / "blog.category.delete"
+function describeBlogAction(action: string): string {
+  switch (action) {
+    case "blog.post.upsert": return "Saved post";
+    case "blog.post.update": return "Updated post";
+    case "blog.post.delete": return "Deleted post";
+    case "blog.category.upsert": return "Saved category";
+    case "blog.category.update": return "Updated category";
+    case "blog.category.delete": return "Deleted category";
+    default: return action;
+  }
+}
+
+function formatRelativeDate(iso: string): string {
+  const d = new Date(iso);
+  const diffMs = Date.now() - d.getTime();
+  const diffH = Math.floor(diffMs / 3_600_000);
+  if (diffH < 1) {
+    const m = Math.max(1, Math.floor(diffMs / 60_000));
+    return `${m}m ago`;
+  }
+  if (diffH < 24) return `${diffH}h ago`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 30) return `${diffD}d ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatRelativeShort(iso: string): string {
+  const d = new Date(iso);
+  const diffMs = Date.now() - d.getTime();
+  const diffM = Math.floor(diffMs / 60_000);
+  if (diffM < 1) return "now";
+  if (diffM < 60) return `${diffM}m`;
+  const diffH = Math.floor(diffM / 60);
+  if (diffH < 24) return `${diffH}h`;
+  const diffD = Math.floor(diffH / 24);
+  return `${diffD}d`;
 }

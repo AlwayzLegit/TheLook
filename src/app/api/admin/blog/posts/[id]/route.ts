@@ -4,6 +4,7 @@ import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { requireAdminOrManager } from "@/lib/apiAuth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
+import { createNotification } from "@/lib/notifications";
 import { blogPostPatchSchema } from "@/lib/blog/validation";
 import { BLOG_CACHE_TAG } from "@/lib/blog/posts";
 
@@ -81,16 +82,20 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   // category_slug is a write-only alias — never persist it.
   delete (input as { category_slug?: unknown }).category_slug;
 
-  // If we're transitioning into 'published' without an explicit
-  // published_at, stamp now(). Caller can still pass an explicit
-  // backdated value to preserve original publication time on edits.
-  if (input.status === "published" && !input.published_at) {
-    const { data: existing } = await supabase
-      .from("blog_posts")
-      .select("published_at")
-      .eq("id", id)
-      .maybeSingle();
-    if (!existing?.published_at) input.published_at = new Date().toISOString();
+  // Pull the row's current state once. Used both to stamp
+  // published_at on a status flip without overwriting an existing
+  // backdated value, AND to detect first-time draft → published
+  // transitions so we only notify on the crossing.
+  const { data: priorRow } = await supabase
+    .from("blog_posts")
+    .select("status, published_at, slug, title, excerpt")
+    .eq("id", id)
+    .maybeSingle();
+  const priorStatus = (priorRow as { status?: string } | null)?.status;
+  const priorPublishedAt = (priorRow as { published_at?: string | null } | null)?.published_at;
+
+  if (input.status === "published" && !input.published_at && !priorPublishedAt) {
+    input.published_at = new Date().toISOString();
   }
 
   const { data, error } = await supabase
@@ -109,6 +114,26 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   await logAdminAction("blog.post.update", JSON.stringify({
     id, fields: Object.keys(input), actor: gate.user.email,
   }));
+
+  // Notify all admins on the first transition into "published" only.
+  // Re-saves of an already-published post don't re-notify.
+  if (input.status === "published" && priorStatus !== "published") {
+    type Saved = {
+      slug: string;
+      title: string;
+      excerpt: string | null;
+    };
+    const saved = data as Saved | null;
+    if (saved) {
+      createNotification({
+        toAllAdmins: true,
+        type: "blog.post.published",
+        title: `New blog post: ${saved.title}`,
+        body: saved.excerpt ?? undefined,
+        url: `/blog/${saved.slug}`,
+      }).catch(() => {});
+    }
+  }
   return apiSuccess(data);
 }
 

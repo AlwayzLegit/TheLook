@@ -4,6 +4,7 @@ import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { requireAdminOrManager } from "@/lib/apiAuth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
+import { createNotification } from "@/lib/notifications";
 import { blogPostWriteSchema } from "@/lib/blog/validation";
 import { BLOG_CACHE_TAG } from "@/lib/blog/posts";
 
@@ -93,6 +94,17 @@ export async function POST(request: NextRequest) {
   const publishedAt = input.published_at
     ?? (status === "published" ? new Date().toISOString() : null);
 
+  // Look up the existing row's status (if any) so we can detect
+  // "draft → published" transitions and notify only on the first
+  // crossing. Idempotent re-POSTs of an already-published post don't
+  // re-fire the notification this way.
+  const { data: prior } = await supabase
+    .from("blog_posts")
+    .select("status")
+    .eq("slug", input.slug)
+    .maybeSingle();
+  const wasPublished = (prior as { status?: string } | null)?.status === "published";
+
   // Build row. Drop undefined/category_slug before upsert.
   const row = {
     slug: input.slug,
@@ -134,5 +146,20 @@ export async function POST(request: NextRequest) {
   await logAdminAction("blog.post.upsert", JSON.stringify({
     slug: input.slug, status, actor: gate.user.email,
   }));
+
+  // Notify all admins on the first transition into "published". We
+  // skip this for drafts/scheduled (still in flight), and skip for
+  // already-published posts that just got re-saved (the routine's
+  // idempotent retry path). Fire-and-forget so a notification write
+  // failure can't break the publish.
+  if (status === "published" && !wasPublished) {
+    createNotification({
+      toAllAdmins: true,
+      type: "blog.post.published",
+      title: `New blog post: ${input.title}`,
+      body: input.excerpt ?? undefined,
+      url: `/blog/${input.slug}`,
+    }).catch(() => {});
+  }
   return apiSuccess(data, 201);
 }
