@@ -27,10 +27,62 @@ export async function sendRawEmail(args: {
   text: string;
   html?: string;
   replyTo?: string;
+  // Tag for admin_log so the operator can search for "why didn't I get
+  // an email about my test booking" — defaults to "email.send" when
+  // the caller doesn't pass anything more specific.
+  event?: string;
 }): Promise<boolean> {
+  return sendThroughResend({
+    from: FROM,
+    to: args.to,
+    cc: args.cc,
+    subject: args.subject,
+    text: args.text,
+    html: args.html,
+    replyTo: args.replyTo,
+    event: args.event ?? "email.send",
+  });
+}
+
+// Single chokepoint for outbound mail. Every email — booking
+// confirmation, staff alert, reminder, review request, status change,
+// status update, broadcast — passes through here so:
+//   1. Resend's `{ data, error }` return shape is checked for soft
+//      failures the older code missed (we used to only catch thrown
+//      exceptions, so a 422 from Resend with a verified-domain error
+//      came back as `{ ok }` and we logged the recipient as
+//      successful).
+//   2. Every attempt writes an admin_log row tagged with the event,
+//      the recipient(s), and either Resend's message id or the
+//      failure reason — so when a booker says "I didn't get an
+//      email" the operator can confirm whether one was even
+//      attempted, and what Resend said about it.
+//   3. Missing-config (no RESEND_API_KEY in dev) is surfaced as a
+//      `skipped` log row instead of a thrown exception that gets
+//      swallowed by the caller's `.catch(console.error)`.
+async function sendThroughResend(args: {
+  from: string;
+  to: string | string[];
+  cc?: string | string[];
+  subject: string;
+  text: string;
+  html?: string;
+  replyTo?: string;
+  event: string;
+}): Promise<boolean> {
+  const recipients = Array.isArray(args.to) ? args.to.join(", ") : args.to;
+  const detail = (extra: Record<string, unknown>) =>
+    JSON.stringify({ to: recipients, subject: args.subject, ...extra });
+
+  if (!process.env.RESEND_API_KEY) {
+    // Dev / preview without Resend wired up. Don't throw, but make
+    // sure the operator can see the email never went out.
+    await logEmail(`${args.event}.skipped`, detail({ reason: "RESEND_API_KEY not set" }));
+    return false;
+  }
   try {
     const res = await getResend().emails.send({
-      from: FROM,
+      from: args.from,
       to: args.to,
       cc: args.cc,
       subject: args.subject,
@@ -38,16 +90,32 @@ export async function sendRawEmail(args: {
       html: args.html,
       replyTo: args.replyTo,
     });
-    // Resend's emails.send() returns { data, error } where `error`
-    // is non-null when the API rejected the message.
     if (res?.error) {
-      console.error("sendRawEmail failed:", res.error);
+      const reason = (res.error && (res.error as { message?: string }).message) || JSON.stringify(res.error);
+      await logEmail(`${args.event}.failed`, detail({ reason }));
+      console.error(`Email send failed (${args.event}):`, res.error);
       return false;
     }
+    const id = (res?.data as { id?: string } | null | undefined)?.id ?? null;
+    await logEmail(`${args.event}.sent`, detail({ resendId: id }));
     return true;
   } catch (err) {
-    console.error("sendRawEmail exception:", err);
+    const reason = err instanceof Error ? err.message : String(err);
+    await logEmail(`${args.event}.failed`, detail({ reason }));
+    console.error(`Email send exception (${args.event}):`, err);
     return false;
+  }
+}
+
+// Fire-and-forget admin_log writer. Lazy-imported so the email module
+// doesn't drag the audit log into routes that only call into render
+// helpers (e.g. brandedFromText) at module-eval time.
+async function logEmail(action: string, details: string): Promise<void> {
+  try {
+    const { logAdminAction } = await import("./auditLog");
+    await logAdminAction(action, details);
+  } catch {
+    // Logging the log shouldn't crash the email path.
   }
 }
 
@@ -160,43 +228,49 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
     signoff: `See you soon — ${brand.name}`,
   });
 
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: clientEmail,
-      subject: `We got your booking request — ${formatDate(date)} at ${formatTime(startTime)}`,
-      html,
-    });
-
-    // Simultaneously notify the salon.
-    await getResend().emails.send({
-      from: FROM,
-      to: SALON_EMAIL,
-      subject: `New booking: ${clientName} — ${serviceName} with ${stylistDisplay}`,
-      html: brandedEmail({
-        brand,
-        preheader: `New booking for ${clientName} on ${formatDate(date)}.`,
-        kicker: "New booking alert",
-        headline: `${clientName} just booked`,
-        bodyHtml: `
-          ${detailsTable([
-            ["Client", `${clientName}<br/><span style="color:#999; font-size:12px;">${clientEmail}</span>`],
-            ["Service", serviceName],
-            ["Stylist", anyStylist ? `${stylistDisplay} <span style="background:#999;color:#fff;padding:2px 6px;font-size:10px;">ANY</span> (resolved → ${stylistName})` : stylistName],
-            ["Date", formatDate(date)],
-            ["Time", formatTime(startTime)],
-          ])}
-          <p style="margin: 18px 0 0;">Head into admin to approve or reschedule.</p>
-        `,
-        ctaLabel: "Review in admin",
-        ctaUrl: `${SITE}/admin/appointments`,
-        signoff: `Auto-sent by ${brand.name} booking system`,
-        includePolicyFooter: false,
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to send email:", error);
-  }
+  // Both sends go through sendThroughResend so a Resend rejection
+  // (unverified domain, blocked recipient, malformed payload, etc.)
+  // is recorded in admin_log instead of getting swallowed by the
+  // caller's `.catch(console.error)`. The two were independently
+  // failing silently before — operator reported a test booking
+  // received SMS but no email; admin_log will now show
+  // booking.client_confirmation.{sent,skipped,failed} and
+  // booking.staff_alert.{sent,skipped,failed} per attempt.
+  await sendThroughResend({
+    from: FROM,
+    to: clientEmail,
+    subject: `We got your booking request — ${formatDate(date)} at ${formatTime(startTime)}`,
+    html,
+    text: "",
+    event: "email.booking.client_confirmation",
+  });
+  await sendThroughResend({
+    from: FROM,
+    to: SALON_EMAIL,
+    subject: `New booking: ${clientName} — ${serviceName} with ${stylistDisplay}`,
+    html: brandedEmail({
+      brand,
+      preheader: `New booking for ${clientName} on ${formatDate(date)}.`,
+      kicker: "New booking alert",
+      headline: `${clientName} just booked`,
+      bodyHtml: `
+        ${detailsTable([
+          ["Client", `${clientName}<br/><span style="color:#999; font-size:12px;">${clientEmail}</span>`],
+          ["Service", serviceName],
+          ["Stylist", anyStylist ? `${stylistDisplay} <span style="background:#999;color:#fff;padding:2px 6px;font-size:10px;">ANY</span> (resolved → ${stylistName})` : stylistName],
+          ["Date", formatDate(date)],
+          ["Time", formatTime(startTime)],
+        ])}
+        <p style="margin: 18px 0 0;">Head into admin to approve or reschedule.</p>
+      `,
+      ctaLabel: "Review in admin",
+      ctaUrl: `${SITE}/admin/appointments`,
+      signoff: `Auto-sent by ${brand.name} booking system`,
+      includePolicyFooter: false,
+    }),
+    text: "",
+    event: "email.booking.staff_alert",
+  });
 }
 
 export async function sendCancellationEmail(details: Omit<AppointmentDetails, "cancelUrl">) {
