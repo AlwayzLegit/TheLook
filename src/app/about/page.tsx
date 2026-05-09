@@ -21,7 +21,7 @@ export default function AboutPage() {
     <>
       <Navbar />
       <main className="pt-20">
-        <About />
+        <About headingLevel="h1" />
         <Team />
         <YelpReviews />
       </main>

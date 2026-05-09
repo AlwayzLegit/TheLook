@@ -226,5 +226,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
     { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
   ];
-  return [...statics, ...(await dynamicEntries())];
+  // De-dupe by absolute URL — Round-26 SEO audit flagged the
+  // sitemap.xml as "invalid format" once a stylist and an
+  // admin_users row started sharing a slug (both queries here emit
+  // /team/<slug>). Keeping the *first* entry preserves the priority
+  // from the dedicated stylist entry over the staff fallback.
+  const seen = new Set<string>();
+  const all: MetadataRoute.Sitemap = [];
+  for (const entry of [...statics, ...(await dynamicEntries())]) {
+    if (seen.has(entry.url)) continue;
+    seen.add(entry.url);
+    all.push(entry);
+  }
+  return all;
 }

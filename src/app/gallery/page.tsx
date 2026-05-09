@@ -116,6 +116,29 @@ export default async function GalleryPage() {
     <>
       <Navbar />
       <main className="pt-20">
+        {/* Page-level intro — gives /gallery the h1 it was missing
+            (Round-26 SEO audit: 372 pages flagged for missing h1) and
+            adds a short body copy block so the route isn't almost
+            entirely images, which had been pushing the route into
+            "Low text-to-HTML ratio" / "Low word count" territory. */}
+        <section className="bg-cream pt-12 pb-6 md:pt-16 md:pb-8">
+          <div className="max-w-4xl mx-auto px-6 text-center">
+            <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-4">
+              Our Work
+            </p>
+            <h1 className="font-heading text-4xl md:text-5xl text-navy mb-5 leading-tight">
+              Hair Salon Gallery — Glendale, CA
+            </h1>
+            <p className="text-navy/75 font-body leading-relaxed max-w-2xl mx-auto">
+              Browse real transformations from our chairs at The Look Hair
+              Salon — balayage, highlights and ombré, color corrections,
+              precision cuts, blowouts, keratin treatments, and styling for
+              every occasion. Filter by stylist to see a specific
+              artist&apos;s portfolio, or scroll the full feed for a sense
+              of what our team can do.
+            </p>
+          </div>
+        </section>
         {/* Suspense boundary required because GalleryWithStylistFilter
             calls useSearchParams() to read ?stylist=... — without this,
             Next.js can't prerender /gallery statically. */}
