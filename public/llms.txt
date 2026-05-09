@@ -1,0 +1,55 @@
+# The Look Hair Salon
+
+> Family-owned hair salon in Glendale, CA. Specializing in haircuts, color
+> (balayage, highlights, ombré, color correction), styling, extensions, and
+> keratin treatments. Open since 11.11.11.
+
+The Look Hair Salon is located at 919 South Central Ave Suite #E,
+Glendale, CA 91204. The salon serves men, women, and children with
+professional cutting, coloring, and styling services performed by a
+team with 25+ years of combined industry experience. Walk-ins are
+welcome, and most services can be booked online.
+
+## Booking & contact
+
+- [Book an appointment](https://www.thelookhairsalonla.com/book): Online
+  booking flow — pick service, stylist, and time slot.
+- [Contact](https://www.thelookhairsalonla.com/contact): Address, phone,
+  email, hours, and directions.
+- [About & team](https://www.thelookhairsalonla.com/about): Salon
+  history and stylist roster.
+
+## Services
+
+- [All services](https://www.thelookhairsalonla.com/services): Full
+  service menu and pricing.
+- [Haircuts](https://www.thelookhairsalonla.com/services/haircuts):
+  Men's, women's, and children's cuts.
+- [Color & highlights](https://www.thelookhairsalonla.com/services/color):
+  Balayage, ombré, full color, root touch-up, color correction, gloss.
+- [Styling](https://www.thelookhairsalonla.com/services/styling):
+  Blowouts, thermal styling, formal updos, extensions, braids.
+- [Treatments](https://www.thelookhairsalonla.com/services/treatments):
+  Keratin straightening, deep conditioning, scalp oil, intensive
+  repair.
+- [Facial services](https://www.thelookhairsalonla.com/services/facial-services):
+  Eyebrow shaping, lip and chin threading or waxing.
+
+## Team & portfolio
+
+- [Meet our team](https://www.thelookhairsalonla.com/team): Stylist
+  profiles with bios and specialties.
+- [Gallery](https://www.thelookhairsalonla.com/gallery): Real
+  before/after transformations from our chairs, filterable by
+  stylist.
+
+## Reading
+
+- [Blog](https://www.thelookhairsalonla.com/blog): Hair care tips,
+  color trends, styling guides, and salon news.
+
+## Policies
+
+- [Privacy policy](https://www.thelookhairsalonla.com/privacy)
+- [Terms of service](https://www.thelookhairsalonla.com/terms)
+- [Accessibility](https://www.thelookhairsalonla.com/accessibility)

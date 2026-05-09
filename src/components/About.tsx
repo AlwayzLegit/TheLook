@@ -5,8 +5,18 @@ import AnimatedSection from "./AnimatedSection";
 import { useBranding } from "./BrandingProvider";
 import { isOptimizableImageHost } from "@/lib/imageHosts";
 
-export default function About() {
+// `headingLevel` lets the caller pick whether this section's primary
+// heading should render as <h1> or <h2>. The home page already mounts
+// Hero (with its own <h1>), so it passes "h2" to keep a single h1 per
+// page. The standalone /about page passes "h1" — without it the route
+// shipped no h1 at all (Round-26 SEO audit, "Missing h1": 372 pages).
+export default function About({
+  headingLevel = "h2",
+}: {
+  headingLevel?: "h1" | "h2";
+} = {}) {
   const brand = useBranding();
+  const Heading = headingLevel;
   return (
     <section id="about" className="py-24 md:py-32 bg-cream relative overflow-hidden">
       {/* Subtle background texture */}
@@ -50,11 +60,11 @@ export default function About() {
               </span>
             </div>
 
-            <h2 className="font-heading text-4xl md:text-5xl mb-7 leading-tight">
+            <Heading className="font-heading text-4xl md:text-5xl mb-7 leading-tight">
               Your Neighborhood
               <br />
               <span className="text-rose">Salon Since 2011</span>
-            </h2>
+            </Heading>
 
             <p className="text-navy/75 font-body leading-relaxed mb-5">
               Since opening our doors on 11.11.11, {brand.name} has grown
@@ -63,11 +73,22 @@ export default function About() {
               their best — without breaking the bank.
             </p>
 
-            <p className="text-navy/75 font-body leading-relaxed mb-10">
+            <p className="text-navy/75 font-body leading-relaxed mb-5">
               With over 25 years in the beauty industry, our team specializes in
               men&apos;s, women&apos;s, and children&apos;s hair cutting,
               coloring, balayage, ombr&eacute;, highlights, extensions, and
               styling. Walk-ins are always welcome!
+            </p>
+
+            <p className="text-navy/75 font-body leading-relaxed mb-10">
+              Every appointment starts with a quick consultation so we can
+              understand your hair&apos;s history, your day-to-day routine,
+              and the look you&apos;re after. Whether it&apos;s a refreshed
+              balayage, a precision cut, a keratin treatment, or a styled
+              blowout for a special occasion, our stylists tailor the
+              experience to you. We use professional, salon-grade products
+              and stay current on the latest color and cutting techniques so
+              you leave feeling confident — and excited to come back.
             </p>
 
             {/* Stats — Yelp count + rating shared with the bottom
