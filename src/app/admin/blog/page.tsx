@@ -28,6 +28,28 @@ const STATUS_BADGE: Record<PostRow["status"], { label: string; tone: "neutral" |
   archived:  { label: "Archived",  tone: "warning" },
 };
 
+// The public read query treats `scheduled AND scheduled_for <= now()`
+// the same as `published`, so once a scheduled post's clock elapses
+// it's effectively live on the site even though the DB row's status
+// column still says "scheduled" until someone manually re-saves it.
+// Without this helper the admin list keeps showing a blue "Scheduled"
+// badge for posts that are already public — confusing if the operator
+// sees a post on /blog but its admin row says "Scheduled".
+//
+// We don't write the database here. A separate cron promoting the
+// row's status to "published" would be more authoritative; this is
+// the cheap UX-only fix (cowork QA 2026-05-09).
+function effectiveStatus(p: PostRow): PostRow["status"] {
+  if (
+    p.status === "scheduled" &&
+    p.scheduled_for &&
+    Date.parse(p.scheduled_for) <= Date.now()
+  ) {
+    return "published";
+  }
+  return p.status;
+}
+
 function fmt(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("en-US", {
@@ -86,7 +108,14 @@ export default function AdminBlogPage() {
   };
 
   const togglePublish = async (post: PostRow) => {
-    const next = post.status === "published" ? "draft" : "published";
+    // Drive the toggle off effective status, not the literal DB value.
+    // For a scheduled-with-time-passed row the badge reads "Published"
+    // and the button reads "Unpublish" — clicking it must put the row
+    // in draft, not flip it from "scheduled" to "published" (the
+    // outcome the literal-status branch would have given). Without
+    // this the label and the action diverge for that one edge case.
+    const eff = effectiveStatus(post);
+    const next = eff === "published" ? "draft" : "published";
     try {
       const r = await fetch(`/api/admin/blog/posts/${post.id}`, {
         method: "PATCH",
@@ -181,7 +210,8 @@ export default function AdminBlogPage() {
             </thead>
             <tbody className="divide-y divide-navy/8">
               {posts.map((p) => {
-                const sb = STATUS_BADGE[p.status];
+                const eff = effectiveStatus(p);
+                const sb = STATUS_BADGE[eff];
                 return (
                   <tr key={p.id} className="hover:bg-cream/30">
                     <td className="px-4 py-3">
@@ -200,7 +230,9 @@ export default function AdminBlogPage() {
                       <Badge tone={sb.tone} size="sm">{sb.label}</Badge>
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell text-navy/70 text-xs">
-                      {p.status === "scheduled" ? `→ ${fmt(p.scheduled_for)}` : fmt(p.published_at)}
+                      {p.status === "scheduled" && eff === "scheduled"
+                        ? `→ ${fmt(p.scheduled_for)}`
+                        : fmt(p.published_at ?? p.scheduled_for)}
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell text-navy/70 text-xs">
                       {fmt(p.updated_at)}
@@ -211,7 +243,7 @@ export default function AdminBlogPage() {
                           onClick={() => togglePublish(p)}
                           className="text-xs px-3 py-1.5 border border-navy/20 hover:border-navy/40 transition-colors"
                         >
-                          {p.status === "published" ? "Unpublish" : "Publish"}
+                          {eff === "published" ? "Unpublish" : "Publish"}
                         </button>
                         <Link
                           href={`/admin/blog/${p.id}`}
