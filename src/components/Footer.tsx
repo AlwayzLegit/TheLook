@@ -72,7 +72,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-1">
             <h3 className="font-heading text-2xl text-white tracking-wider mb-4">
-              THE LOOK
+              {brand.name}
             </h3>
             <div className="w-8 h-[1px] bg-gradient-to-r from-gold to-transparent mb-4" />
             <p className="text-white/78 text-sm font-body font-light leading-relaxed">

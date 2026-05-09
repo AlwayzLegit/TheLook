@@ -218,15 +218,16 @@ function pretty12h(time: string) {
   return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${ampm}`;
 }
 
-// Short-form brand for SMS. Keeps character count down — splits on both
-// whitespace AND hyphens so "TEST-Brand-Salon" shortens to "TEST Brand"
-// the same way "The Look Hair Salon" shortens to "The Look". Hard caps
-// at 20 chars so a single long token ("MegaSalonXYZ123456789Inc") still
-// fits alongside the rest of the SMS body.
-function smsShortName(name: string): string {
-  const tokens = name.trim().split(/[\s-]+/).filter(Boolean);
-  const first = tokens.length <= 2 ? tokens.join(" ") : tokens.slice(0, 2).join(" ");
-  return first.length > 20 ? first.slice(0, 20).trim() : first;
+// SMS sender name. Owner asked for the full salon name in every
+// booking-related message (originally we shortened "The Look Hair
+// Salon" → "The Look" to save characters; the trade-off was one
+// extra Twilio segment per send vs brand-name fidelity, and the
+// owner picked fidelity). The hard cap at 60 chars stops a wildly
+// long DB-side override from blowing the segment budget — short of
+// that we use whatever brand.name says.
+function smsSenderName(name: string): string {
+  const trimmed = name.trim();
+  return trimmed.length > 60 ? trimmed.slice(0, 60).trim() : trimmed;
 }
 
 // Trim the salon address to "street, city" so it stays clickable
@@ -250,7 +251,7 @@ export async function sendBookingConfirmationSMS(
   clientEmail?: string,
 ) {
   const brand = await getBranding();
-  const shortName = smsShortName(brand.name);
+  const shortName = smsSenderName(brand.name);
   const shortAddr = smsShortAddress(brand.address);
   // Round-15: customer reported the booking-confirm SMS used to
   // say "is confirmed for…" the moment they submitted, even
@@ -277,7 +278,7 @@ export async function sendReminderSMS(
   clientEmail?: string,
 ) {
   const brand = await getBranding();
-  const shortName = smsShortName(brand.name);
+  const shortName = smsSenderName(brand.name);
   // Shorten the address for the SMS — drop the "Suite #…" / ZIP tail so
   // we fit in a single 160-char segment. Owner can override by saving a
   // cleaner brand_address.
@@ -303,7 +304,7 @@ export async function sendStatusChangeSMS(args: {
 }) {
   const { phone, clientName, serviceName, date, time, newStatus, appointmentId, clientEmail } = args;
   const brand = await getBranding();
-  const shortName = smsShortName(brand.name);
+  const shortName = smsSenderName(brand.name);
   const shortAddr = smsShortAddress(brand.address);
   let body: string;
   // Round-15: distinct CONFIRMED wording so the post-admin-approval
@@ -347,7 +348,7 @@ export async function sendCancellationSMS(args: {
 }) {
   const { phone, clientName, serviceName, date, time, appointmentId, clientEmail } = args;
   const brand = await getBranding();
-  const shortName = smsShortName(brand.name);
+  const shortName = smsSenderName(brand.name);
   return sendSMS({
     to: phone,
     event: "booking.cancelled",
@@ -372,7 +373,7 @@ export async function sendRescheduleSMS(args: {
   // characters and keeps the message in a single SMS segment.
   const { phone, serviceName, date, time, appointmentId, clientEmail } = args;
   const brand = await getBranding();
-  const shortName = smsShortName(brand.name);
+  const shortName = smsSenderName(brand.name);
   const shortAddr = smsShortAddress(brand.address);
   // Round-15 broadens the use of this event to any admin-side
   // change (date / start time / stylist / services list) on a
@@ -406,7 +407,7 @@ export async function sendStaffNewBookingSMS(args: {
 }) {
   const { phone, clientName, serviceName, stylistName, requestedStylist, date, time, appointmentId } = args;
   const brand = await getBranding();
-  const shortName = smsShortName(brand.name);
+  const shortName = smsSenderName(brand.name);
   const stylistTag = `${stylistName} (${requestedStylist ? "requested" : "any"})`;
   return sendSMS({
     to: phone,
@@ -418,7 +419,7 @@ export async function sendStaffNewBookingSMS(args: {
 
 export async function sendAdminTestSMS(phone: string) {
   const brand = await getBranding();
-  const shortName = smsShortName(brand.name);
+  const shortName = smsSenderName(brand.name);
   return sendSMS({
     to: phone,
     event: "admin.test",
