@@ -1,5 +1,5 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { getSessionUser, isAdminOrManager } from "@/lib/roles";
+import { getSessionUser, userCanAccessAdmin } from "@/lib/roles";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { revalidatePath } from "next/cache";
@@ -32,7 +32,7 @@ function slugify(s: string): string {
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return apiError("Unauthorized", 401);
-  if (!isAdminOrManager(user)) return apiError("Access denied.", 403);
+  if (!userCanAccessAdmin(user)) return apiError("Access denied.", 403);
   if (!hasSupabaseConfig) return apiSuccess(null);
 
   const { data, error } = await supabase
@@ -50,7 +50,7 @@ export async function GET() {
 export async function PATCH(request: NextRequest) {
   const user = await getSessionUser();
   if (!user) return apiError("Unauthorized", 401);
-  if (!isAdminOrManager(user)) return apiError("Access denied.", 403);
+  if (!userCanAccessAdmin(user)) return apiError("Access denied.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const body = await request.json().catch(() => ({}));

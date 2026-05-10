@@ -1,6 +1,6 @@
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
-import { requireAdminOrManager } from "@/lib/apiAuth";
+import { requirePermission } from "@/lib/apiAuth";
 import { logAdminAction } from "@/lib/auditLog";
 import {
   BRANDING_CACHE_TAG,
@@ -31,7 +31,7 @@ import { NextRequest } from "next/server";
 const ALLOWED_KEYS = new Set<string>(BRANDING_WRITE_KEYS);
 
 export async function GET() {
-  const gate = await requireAdminOrManager();
+  const gate = await requirePermission("manage_settings");
   if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiSuccess({});
 
@@ -51,7 +51,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  const gate = await requireAdminOrManager(request);
+  const gate = await requirePermission("manage_settings", request);
   if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/apiAuth";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
@@ -26,6 +27,8 @@ const CATEGORY_PREFIX: Record<string, string[]> = {
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  const gate = await requirePermission("view_analytics", request);
+  if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const sp = request.nextUrl.searchParams;

@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import { Badge } from "@/components/ui/Badge";
+import { type Permission } from "@/lib/permissions";
 
 // ─────────────────────────────────────────────────────────────────────
 // Phase 0 admin shell — grouped sidebar + top bar + command-palette
@@ -26,80 +27,107 @@ import { Badge } from "@/components/ui/Badge";
 // notifications bell) with the new design language applied.
 // ─────────────────────────────────────────────────────────────────────
 
-type NavItem = { href: string; label: string; icon?: React.ReactNode; adminOnly?: boolean };
+type NavItem = {
+  href: string;
+  label: string;
+  icon?: React.ReactNode;
+  // The permission the user must hold to see this link. Omitted = "any
+  // admin permission is fine" (just being in the shell is enough, e.g.
+  // dashboard). Round-26 swap from the old role-based adminOnly flag.
+  permission?: Permission;
+};
 type NavGroup = { label: string; items: NavItem[] };
 
-// adminOnly: true → hidden from the sidebar for non-admin roles AND
-// the underlying page/API redirects/403s if a manager hand-types
-// the URL. Round-9 introduced this list after QA found managers
-// could see + click links to surfaces they couldn't actually use.
 const NAV: NavGroup[] = [
   {
     label: "Overview",
     items: [
       { href: "/admin",           label: "Dashboard" },
-      { href: "/admin/analytics", label: "Analytics" },
-      { href: "/admin/audience",  label: "Audience" },
+      { href: "/admin/analytics", label: "Analytics", permission: "view_analytics" },
+      { href: "/admin/audience",  label: "Audience",  permission: "view_analytics" },
     ],
   },
   {
     label: "Bookings",
     items: [
-      { href: "/admin/appointments", label: "Appointments" },
-      { href: "/admin/schedule",     label: "Schedule" },
-      { href: "/admin/waitlist",     label: "Waitlist" },
+      { href: "/admin/appointments", label: "Appointments", permission: "manage_bookings" },
+      { href: "/admin/schedule",     label: "Schedule",     permission: "manage_bookings" },
+      { href: "/admin/waitlist",     label: "Waitlist",     permission: "manage_bookings" },
     ],
   },
   {
     label: "People",
     items: [
-      { href: "/admin/clients",  label: "Clients" },
-      { href: "/admin/stylists", label: "Stylists" },
-      { href: "/admin/users",    label: "Users", adminOnly: true },
+      { href: "/admin/clients",  label: "Clients",  permission: "manage_clients" },
+      { href: "/admin/stylists", label: "Stylists", permission: "manage_team" },
+      { href: "/admin/users",    label: "Users",    permission: "manage_users" },
     ],
   },
   {
     label: "Operations",
     items: [
-      { href: "/admin/services",    label: "Services" },
-      { href: "/admin/gallery",     label: "Gallery" },
-      { href: "/admin/blog",        label: "Blog" },
-      { href: "/admin/products",    label: "Inventory" },
-      { href: "/admin/discounts",   label: "Discounts" },
-      { href: "/admin/commissions", label: "Commissions" },
+      { href: "/admin/services",    label: "Services",    permission: "manage_catalog" },
+      { href: "/admin/gallery",     label: "Gallery",     permission: "manage_content" },
+      { href: "/admin/blog",        label: "Blog",        permission: "manage_content" },
+      { href: "/admin/products",    label: "Inventory",   permission: "manage_catalog" },
+      { href: "/admin/discounts",   label: "Discounts",   permission: "manage_catalog" },
+      { href: "/admin/commissions", label: "Commissions", permission: "manage_team" },
     ],
   },
   {
     label: "Communication",
     items: [
-      { href: "/admin/messages",  label: "Messages" },
-      { href: "/admin/reviews",   label: "Reviews" },
-      { href: "/admin/broadcast", label: "Broadcast" },
+      { href: "/admin/messages",  label: "Messages",  permission: "manage_clients" },
+      { href: "/admin/reviews",   label: "Reviews",   permission: "manage_settings" },
+      { href: "/admin/broadcast", label: "Broadcast", permission: "manage_clients" },
     ],
   },
   {
     label: "Brand",
     items: [
-      // Visible to managers + admins. /admin/branding is the
-      // operational image-swap surface — replacing the home hero
-      // or a service-category banner. /admin/settings stays
-      // admin-only for the security-sensitive toggles below.
-      { href: "/admin/branding", label: "Branding" },
+      // /admin/branding is the operational image-swap surface. It now
+      // sits under manage_settings — same gate as the rest of the
+      // settings group below.
+      { href: "/admin/branding", label: "Branding", permission: "manage_settings" },
     ],
   },
   {
     label: "System",
     items: [
-      { href: "/admin/settings", label: "Settings",     adminOnly: true },
-      { href: "/admin/activity", label: "Activity Log", adminOnly: true },
-      { href: "/admin/errors",   label: "Errors",       adminOnly: true },
+      { href: "/admin/settings", label: "Settings",     permission: "manage_settings" },
+      { href: "/admin/activity", label: "Activity Log", permission: "view_analytics" },
+      { href: "/admin/errors",   label: "Errors",       permission: "view_analytics" },
     ],
   },
 ];
 
+// Tiny gate: returns true when the session has `required` in its
+// permissions array, OR when `required` is undefined (open to anyone
+// in the admin shell), OR when the session predates the permissions
+// rollout (no permissions array yet) and the legacy admin/manager
+// role is good enough. The legacy fallback can come out once active
+// sessions have rolled over.
+function sessionHasPermission(
+  permissions: ReadonlyArray<string> | undefined,
+  role: string | undefined,
+  required: Permission | undefined,
+): boolean {
+  if (!required) return true;
+  if (Array.isArray(permissions) && permissions.length > 0) {
+    return permissions.includes(required);
+  }
+  // Pre-permissions session: admin sees everything, manager sees
+  // everything except manage_users.
+  if (role === "admin") return true;
+  if (role === "manager") return required !== "manage_users";
+  return false;
+}
+
 function useBadgeCounts() {
   const { status, data: session } = useSession();
+  const permissions = session?.user?.permissions;
   const role = session?.user?.role;
+  const canViewAnalytics = sessionHasPermission(permissions, role, "view_analytics");
   const [pending, setPending] = useState(0);
   const [messages, setMessages] = useState(0);
   // Sentry unresolved-issue count for the last 24h. Refreshes on the
@@ -130,10 +158,10 @@ function useBadgeCounts() {
         .then((data) => setMessages(Array.isArray(data) ? data.length : 0))
         .catch(() => {});
       // Errors badge — pulls the unresolved Sentry-issue count via our
-      // proxy. Admin-only after round-9 RBAC tightening; managers
-      // wouldn't see the link anyway, and polling it for them would
-      // write an auth.rbac.denied audit row every 30s.
-      if (role === "admin") {
+      // proxy. Gated on view_analytics: users without the permission
+      // won't see the link anyway, and polling it for them would write
+      // an auth.rbac.denied audit row every 30s.
+      if (canViewAnalytics) {
         fetch("/api/admin/errors?count=true&period=24h&query=is:unresolved")
           .then((r) => r.json())
           .then((data) => {
@@ -146,7 +174,7 @@ function useBadgeCounts() {
     load();
     const t = setInterval(load, 30000);
     return () => clearInterval(t);
-  }, [status, role]);
+  }, [status, canViewAnalytics]);
   return { pending, messages, errors };
 }
 
@@ -160,6 +188,7 @@ function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
   const badges = useBadgeCounts();
   const { data: session } = useSession();
   const role = session?.user?.role;
+  const permissions = session?.user?.permissions;
   const badgeFor = (href: string) => {
     if (href === "/admin/appointments") return badges.pending;
     if (href === "/admin/messages") return badges.messages;
@@ -167,12 +196,15 @@ function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
     return 0;
   };
 
-  // Strip admin-only items + any group that ends up empty after the
-  // strip (so we don't render "System" with no children for managers).
+  // Strip items whose permission the user doesn't have, then drop any
+  // group that ends up empty so we don't render "System" with no
+  // children for an operator without view_analytics + manage_settings.
   const visibleNav = NAV
     .map((group) => ({
       ...group,
-      items: group.items.filter((it) => !it.adminOnly || role === "admin"),
+      items: group.items.filter((it) =>
+        sessionHasPermission(permissions, role, it.permission),
+      ),
     }))
     .filter((group) => group.items.length > 0);
 
@@ -233,7 +265,11 @@ function MobileUserFooter({ onNavigate }: { onNavigate: () => void }) {
   const { data: session } = useSession();
   const email = session?.user?.email ?? undefined;
   const role = session?.user?.role ?? undefined;
+  const title = session?.user?.title ?? undefined;
+  const permissions = session?.user?.permissions;
+  const canManageSettings = sessionHasPermission(permissions, role, "manage_settings");
   const initial = (email || "?").charAt(0).toUpperCase();
+  const subtitle = title || role || undefined;
   const go = (href: string) => {
     onNavigate();
     window.location.href = href;
@@ -246,8 +282,8 @@ function MobileUserFooter({ onNavigate }: { onNavigate: () => void }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[0.8125rem] text-white/90">{email || "Admin"}</p>
-          {role ? (
-            <p className="text-[0.6875rem] uppercase tracking-wider text-white/40">{role}</p>
+          {subtitle ? (
+            <p className="truncate text-[0.6875rem] uppercase tracking-wider text-white/40">{subtitle}</p>
           ) : null}
         </div>
       </div>
@@ -257,7 +293,7 @@ function MobileUserFooter({ onNavigate }: { onNavigate: () => void }) {
       >
         My profile
       </button>
-      {role === "admin" && (
+      {canManageSettings && (
         <button
           onClick={() => go("/admin/settings")}
           className="w-full text-left px-3 py-2 rounded text-[0.875rem] text-white/80 hover:bg-white/5"
@@ -285,7 +321,14 @@ function UserMenu() {
   const { data: session } = useSession();
   const email = session?.user?.email ?? undefined;
   const role = session?.user?.role ?? undefined;
+  const title = session?.user?.title ?? undefined;
+  const permissions = session?.user?.permissions;
+  const canManageSettings = sessionHasPermission(permissions, role, "manage_settings");
   const initial = (email || "?").charAt(0).toUpperCase();
+  // Custom title wins over the legacy role label so an operator who
+  // typed "Receptionist" sees that, not "manager".
+  const badgeLabel = title || role;
+  const badgeTone = role === "admin" ? "accent" : "info";
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -299,13 +342,13 @@ function UserMenu() {
       <DropdownMenuContent className="w-56">
         <DropdownMenuLabel className="flex flex-col gap-0.5 normal-case tracking-normal text-[var(--color-text)]">
           <span className="truncate text-[0.8125rem]">{email || "Admin"}</span>
-          {role && <Badge tone={role === "admin" ? "accent" : "info"} size="sm" className="w-fit">{role}</Badge>}
+          {badgeLabel && <Badge tone={badgeTone} size="sm" className="w-fit">{badgeLabel}</Badge>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => { window.location.href = "/admin/profile"; }}>
           My profile
         </DropdownMenuItem>
-        {role === "admin" && (
+        {canManageSettings && (
           <DropdownMenuItem onSelect={() => { window.location.href = "/admin/settings"; }}>
             Settings
           </DropdownMenuItem>

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/apiAuth";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
@@ -20,6 +21,8 @@ import { NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  const gate = await requirePermission("manage_clients", request);
+  if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiSuccess({ total: 0, page: 1, pageSize: 50, clients: [] });
 
   const sp = request.nextUrl.searchParams;

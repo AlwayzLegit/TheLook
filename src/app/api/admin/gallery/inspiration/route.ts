@@ -1,5 +1,5 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { getSessionUser, isAdminOrManager } from "@/lib/roles";
+import { getSessionUser, userHasPermission } from "@/lib/roles";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { revalidatePath } from "next/cache";
@@ -60,7 +60,7 @@ function isMissingTable(msg: string | null | undefined): boolean {
 
 export async function GET() {
   const user = await getSessionUser();
-  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
+  if (!userHasPermission(user, "manage_content")) return apiError("You don't have access to this action.", 403);
   if (!hasSupabaseConfig) return apiSuccess([]);
   const { data, error } = await supabase
     .from("gallery_inspiration")
@@ -76,7 +76,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const user = await getSessionUser();
-  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
+  if (!userHasPermission(user, "manage_content")) return apiError("You don't have access to this action.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const parsed = createSchema.safeParse(await request.json().catch(() => ({})));
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const user = await getSessionUser();
-  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
+  if (!userHasPermission(user, "manage_content")) return apiError("You don't have access to this action.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const body = await request.json().catch(() => ({}));
@@ -189,7 +189,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const user = await getSessionUser();
-  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
+  if (!userHasPermission(user, "manage_content")) return apiError("You don't have access to this action.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const id = request.nextUrl.searchParams.get("id");

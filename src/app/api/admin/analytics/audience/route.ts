@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getSessionUser } from "@/lib/roles";
+import { getSessionUser, userHasPermission } from "@/lib/roles";
 import { apiError, apiSuccess } from "@/lib/apiResponse";
 import { hasPostHogConfig, queryPostHog } from "@/lib/posthog";
 
@@ -67,6 +67,7 @@ const FUNNEL_STEPS: Array<{ key: string; label: string }> = [
 export async function GET(request: NextRequest) {
   const user = await getSessionUser();
   if (!user) return apiError("Unauthorized", 401);
+  if (!userHasPermission(user, "view_analytics")) return apiError("You don't have access to this action.", 403);
 
   const daysParam = parseInt(request.nextUrl.searchParams.get("days") || "30", 10);
   const days = Math.max(1, Math.min(180, Number.isFinite(daysParam) ? daysParam : 30));

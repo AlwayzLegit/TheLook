@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { requireAnyAdminAccess } from "@/lib/apiAuth";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
@@ -11,6 +12,8 @@ import { NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  const gate = await requireAnyAdminAccess(request);
+  if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiSuccess({ clients: [], appointments: [], services: [] });
 
   const q = (request.nextUrl.searchParams.get("q") || "").trim();

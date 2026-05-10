@@ -28,6 +28,10 @@ export async function logAuthEvent(
     path?: string | null;
     method?: string | null;
     role?: string | null;
+    // The user's hydrated permission set at the time of the denial —
+    // gives the audit feed enough to tell "user was missing manage_users
+    // specifically" vs "user had no admin permissions at all".
+    permissions?: ReadonlyArray<string> | null;
   },
 ) {
   if (!hasSupabaseConfig) return;
@@ -53,6 +57,7 @@ export async function logAuthEvent(
   if (extras?.path) detailParts.path = extras.path;
   if (extras?.method) detailParts.method = extras.method;
   if (extras?.role) detailParts.role = extras.role;
+  if (Array.isArray(extras?.permissions)) detailParts.permissions = extras!.permissions;
   if (ua) detailParts.userAgent = ua;
   const detailsStr = Object.keys(detailParts).length > 0 ? JSON.stringify(detailParts) : null;
 

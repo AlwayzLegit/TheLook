@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
-import { requireAdminOrManager, requireAdmin } from "@/lib/apiAuth";
+import { requirePermission, requireAnyAdminAccess } from "@/lib/apiAuth";
 import { syncExternalReviews, readCacheStatus } from "@/lib/externalReviewsSync";
 import { logAdminAction } from "@/lib/auditLog";
 
@@ -12,8 +12,8 @@ import { logAdminAction } from "@/lib/auditLog";
 // "Refresh now" button without minting a new token.
 
 export async function GET() {
-  // Admin or manager — both should see whether reviews are stale.
-  const gate = await requireAdminOrManager();
+  // Anyone in the admin shell can see whether reviews are stale.
+  const gate = await requireAnyAdminAccess();
   if (!gate.ok) return gate.response;
   const rows = await readCacheStatus();
   return apiSuccess({ rows });
@@ -21,8 +21,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   // Manual refresh hits the upstream APIs immediately; it counts
-  // against the daily Google quota, so admin-only.
-  const gate = await requireAdmin(request);
+  // against the daily Google quota, so gated on manage_settings
+  // (system-config-level permission).
+  const gate = await requirePermission("manage_settings", request);
   if (!gate.ok) return gate.response;
   try {
     const results = await syncExternalReviews();

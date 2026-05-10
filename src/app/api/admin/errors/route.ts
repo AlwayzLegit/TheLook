@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/apiAuth";
+import { requirePermission } from "@/lib/apiAuth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
   // Admin-only — round-9 QA flagged that managers could fully read
   // production error data here. Sentry payload may include user
   // emails / IPs in breadcrumbs, so it stays scoped to admins.
-  const gate = await requireAdmin(request);
+  const gate = await requirePermission("view_analytics", request);
   if (!gate.ok) return gate.response;
 
   const token = process.env.SENTRY_AUTH_TOKEN;

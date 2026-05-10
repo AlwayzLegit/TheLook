@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { requireAnyAdminAccess } from "@/lib/apiAuth";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { ensurePhotosBucketPublic } from "@/lib/storage";
@@ -34,6 +35,8 @@ const BUCKET = "photos";
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  const gate = await requireAnyAdminAccess(request);
+  if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiError("Storage not configured.", 503);
 
   const body = await request.json().catch(() => ({}));

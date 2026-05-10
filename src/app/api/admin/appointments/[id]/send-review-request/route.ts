@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { hasSupabaseConfig } from "@/lib/supabase";
-import { getSessionUser, isAdminOrManager } from "@/lib/roles";
+import { getSessionUser, userHasPermission } from "@/lib/roles";
 import { apiError, apiSuccess } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { sendReviewRequest } from "@/lib/reviewRequest";
@@ -23,7 +23,7 @@ const schema = z.object({
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser();
-  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
+  if (!userHasPermission(user, "manage_bookings")) return apiError("You don't have access to this action.", 403);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { id } = await params;
