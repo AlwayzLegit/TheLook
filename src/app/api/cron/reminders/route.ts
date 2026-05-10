@@ -4,15 +4,18 @@ import { sendSMS } from "@/lib/sms";
 import { getSetting } from "@/lib/settings";
 import { sendRawEmail, brandedFromText } from "@/lib/email";
 import { renderTemplate, DEFAULT_TEMPLATES } from "@/lib/templates";
-import { todayISOInLA } from "@/lib/datetime";
+import { addDaysISOInLA } from "@/lib/datetime";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
-// Single daily fan-out. Scheduled at 15:00 UTC = 08:00 PDT (PST drifts
-// to 07:00 — owner accepts the DST shift, see brief).
+// Single daily fan-out. Scheduled at 22:00 UTC = 15:00 PDT (PST drifts
+// to 14:00 — owner accepts the DST shift). Sends *day-before* reminders
+// in the afternoon so clients still have business hours to cancel or
+// reschedule (Round-26 owner request, replaces the prior same-day 8am
+// run).
 //
-// For every appointment on today's PT date whose status is confirmed or
-// completed (and not archived), send:
+// For every appointment on tomorrow's PT date whose status is confirmed
+// or completed (and not archived), send:
 //   • SMS  — only if the client has a phone AND opted in (sms_consent)
 //            AND isn't in sms_opt_outs. Message body from
 //            salon_settings.reminder_sms_template.
@@ -48,7 +51,11 @@ export async function GET(request: NextRequest) {
     return apiError("Unauthorized", 401);
   }
 
-  const todayStr = todayISOInLA();
+  // Reminders go out the *afternoon before* the appointment. Query
+  // tomorrow's PT date so each appointment receives one reminder ~24h
+  // ahead, leaving time for the client to call and cancel during
+  // business hours.
+  const targetDate = addDaysISOInLA(1);
   const baseUrl = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
 
   // Load templates once — fall back to compiled-in defaults if the row
@@ -61,10 +68,10 @@ export async function GET(request: NextRequest) {
     getSetting("reminder_email_body_template").then((v) => v || DEFAULT_TEMPLATES.reminder_email_body_template),
   ]);
 
-  const { data: todays, error } = await supabase
+  const { data: upcoming, error } = await supabase
     .from("appointments")
     .select("*")
-    .eq("date", todayStr)
+    .eq("date", targetDate)
     .in("status", ["confirmed", "completed"])
     .is("archived_at", null)
     .eq("reminder_sent", false);
@@ -74,9 +81,9 @@ export async function GET(request: NextRequest) {
     return apiError("Failed to fetch appointments.", 500);
   }
 
-  const rows = todays || [];
+  const rows = upcoming || [];
   if (rows.length === 0) {
-    return apiSuccess({ date: todayStr, sent: 0, smsSent: 0, emailSent: 0, skipped: 0 });
+    return apiSuccess({ date: targetDate, sent: 0, smsSent: 0, emailSent: 0, skipped: 0 });
   }
 
   // Mappings come first so we know exactly which service/stylist rows we
@@ -160,8 +167,8 @@ export async function GET(request: NextRequest) {
         text,
         html: brandedFromText({
           kicker: "Appointment reminder",
-          headline: `See you today at ${vars.time}`,
-          preheader: `Reminder: ${vars.service} with ${vars.stylist} today at ${vars.time}.`,
+          headline: `See you tomorrow at ${vars.time}`,
+          preheader: `Reminder: ${vars.service} with ${vars.stylist} tomorrow at ${vars.time}.`,
           text,
           ctaLabel: appt.cancel_token ? "Cancel or reschedule" : undefined,
           ctaUrl: appt.cancel_token ? `${baseUrl}/book/cancel?token=${appt.cancel_token}` : undefined,
@@ -187,5 +194,5 @@ export async function GET(request: NextRequest) {
     await supabase.from("appointments").update({ reminder_sent: true }).eq("id", appt.id);
   }
 
-  return apiSuccess({ date: todayStr, appointments: rows.length, smsSent, emailSent, skipped });
+  return apiSuccess({ date: targetDate, appointments: rows.length, smsSent, emailSent, skipped });
 }

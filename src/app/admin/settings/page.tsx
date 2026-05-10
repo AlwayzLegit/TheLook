@@ -322,10 +322,12 @@ export default function SettingsPage() {
             {section === "reminders" && (
               <Card className="space-y-6">
                 <div>
-                  <h2 className="text-[1.0625rem] font-medium text-[var(--color-text)]">Day-of reminder</h2>
+                  <h2 className="text-[1.0625rem] font-medium text-[var(--color-text)]">Day-before reminder</h2>
                   <p className="text-[0.75rem] text-[var(--color-text-muted)] mt-0.5">
-                    Sent daily at 8am PT to every confirmed or completed appointment on that date.
-                    SMS goes only to clients who opted in; email goes to everyone with an address.
+                    Sent every afternoon (~2pm PT) to every confirmed or completed
+                    appointment scheduled for the next day, so clients still have
+                    business hours to cancel or reschedule. SMS goes only to clients
+                    who opted in; email goes to everyone with an address.
                   </p>
                   <p className="text-[0.75rem] text-[var(--color-text-subtle)] mt-1">
                     Placeholders: <code>{"{{client_name}}"}</code> · <code>{"{{service}}"}</code> · <code>{"{{stylist}}"}</code> · <code>{"{{time}}"}</code> · <code>{"{{date}}"}</code> · <code>{"{{cancel_url}}"}</code>

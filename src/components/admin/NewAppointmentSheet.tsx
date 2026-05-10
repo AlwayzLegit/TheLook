@@ -499,13 +499,22 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
               required
               value={startTime || null}
               onChange={setStartTime}
-              options={availability.length > 0 ? availability : undefined}
+              // Override on → bypass the availability list entirely so the
+              // admin can squeeze a client into a slot that already has a
+              // booking (stylist came in early, color is processing, walk-
+              // in during a no-show, etc). Fine-grained 15-min increments
+              // and a 06:00–23:00 range so before-open / after-close also
+              // work, matching the toggle's "outside regular hours" copy.
+              options={!override && availability.length > 0 ? availability : undefined}
+              stepMinutes={15}
+              startHour={override ? 6 : 8}
+              endHour={override ? 23 : 20}
               placeholder={
                 !stylistId || !date
                   ? "Pick stylist + date first"
                   : checkingAvail
                     ? "Checking availability…"
-                    : availability.length === 0 && override
+                    : override
                       ? "Any time (override on)"
                       : "Select a time"
               }
