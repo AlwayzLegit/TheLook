@@ -29,11 +29,11 @@ export const DEFAULT_TEMPLATES = {
   // segments per send. Keep dashes as "-", quotes as ASCII
   // apostrophes, and skip the bullet character.
   reminder_sms_template:
-    "Hi {{client_name}}! Reminder: {{service}} with {{stylist}} today at {{time}} at The Look Hair Salon, 919 S Central Ave, Glendale. Reply STOP to opt out.",
+    "Hi {{client_name}}! Reminder: {{service}} with {{stylist}} tomorrow at {{time}} at The Look Hair Salon, 919 S Central Ave, Glendale. Need to cancel? Reply or call (818) 662-5665. Reply STOP to opt out.",
   reminder_email_subject_template:
-    "Your appointment today at {{time}} — The Look Hair Salon",
+    "Your appointment tomorrow at {{time}} — The Look Hair Salon",
   reminder_email_body_template:
-    "Hi {{client_name}},\n\nThis is a friendly reminder about your appointment today:\n\n• {{service}}\n• With {{stylist}}\n• At {{time}}\n\nWe're at 919 S Central Ave, Suite E, Glendale, CA 91204.\n\nIf you need to cancel or reschedule, please reply to this email or call (818) 662-5665.{{cancel_url}}\n\nSee you soon!\nThe Look Hair Salon",
+    "Hi {{client_name}},\n\nThis is a friendly reminder about your appointment tomorrow:\n\n• {{service}}\n• With {{stylist}}\n• At {{time}}\n\nWe're at 919 S Central Ave, Suite E, Glendale, CA 91204.\n\nIf you need to cancel or reschedule, please reply to this email or call (818) 662-5665 today so we can free up the slot for someone else.{{cancel_url}}\n\nSee you tomorrow!\nThe Look Hair Salon",
   review_request_sms_template:
     "Hi {{client_name}}! Thank you for visiting The Look today. If you have a minute, we'd love your feedback: {{review_url}} - Reply STOP to opt out.",
   review_request_email_subject_template:
