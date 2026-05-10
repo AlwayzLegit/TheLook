@@ -77,8 +77,14 @@ export const blogPostWriteSchema = z.object({
   author_name: z.string().min(1).max(200).optional(),
   author_avatar_url: imageUrl("Author avatar URL").nullable().optional(),
   status: blogStatusSchema.optional(),
-  published_at: z.string().datetime().nullable().optional(),
-  scheduled_for: z.string().datetime().nullable().optional(),
+  // { offset: true } so timezone-suffixed ISO strings ("2026-05-08T12:54:11.279+00:00")
+  // pass — Supabase / PostgREST round-trips published_at + scheduled_for in
+  // that format, and the default .datetime() only accepts the `Z` suffix.
+  // Before this, editing any already-published or scheduled post in
+  // /admin/blog/[id] returned 400 ("Invalid ISO datetime") on every PATCH
+  // because the editor sent back the same offset string it loaded.
+  published_at: z.string().datetime({ offset: true }).nullable().optional(),
+  scheduled_for: z.string().datetime({ offset: true }).nullable().optional(),
   meta_title: z.string().max(200).nullable().optional(),
   meta_description: z.string().max(500).nullable().optional(),
   canonical_url: z.string().url().max(2000).nullable().optional(),
