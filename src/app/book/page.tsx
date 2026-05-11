@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import Navbar from "@/components/Navbar";
@@ -111,6 +111,13 @@ export default function BookPage() {
     if (!Number.isFinite(raw)) return STEP_SERVICE;
     return Math.max(STEP_SERVICE, Math.min(STEP_DONE, raw));
   });
+  // Counts how many forward step transitions we've pushed onto the
+  // browser history stack this session. The in-app Back button uses
+  // it to decide between calling history.back() (which fires popstate
+  // → unwinds the stack naturally) and a plain setStep fallback for
+  // cases where there's nothing to pop (e.g. deep-linked landing at
+  // /book?step=2 with no in-app navigation yet).
+  const pushedStepCountRef = useRef(0);
   const [services, setServices] = useState<Record<string, Service[]>>({});
   const [allStylists, setAllStylists] = useState<Stylist[]>([]);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
@@ -122,10 +129,19 @@ export default function BookPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Mirror step → URL (replaceState so we don't spam the back stack).
-  // Done via direct history API instead of router.replace() to skip
-  // Next's route-rerender on every forward/backward step click —
-  // wizard state lives in React; URL is just a bookmark.
+  // Mirror step → URL so refreshes + shares land at the same step.
+  // Forward transitions PUSH a new history entry so the browser back
+  // button (and the in-app Back button via history.back below) walks
+  // through the wizard. Backward transitions and the initial-mount
+  // URL normalisation REPLACE the existing entry — otherwise every
+  // back press would also add an entry and the stack would never
+  // unwind. Round-26: owner reported that clicking back after picking
+  // a date/time bounced all the way out to /services with every prior
+  // selection wiped. Root cause was the previous version of this
+  // effect using replaceState unconditionally, which meant /book?step=2
+  // overwrote /book?step=1 in history — browser back then left /book
+  // entirely. Direct history API instead of router.replace() to skip
+  // Next's route-rerender on every forward/backward step.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
@@ -133,7 +149,13 @@ export default function BookPage() {
     const target = String(step);
     if (current === target) return;
     url.searchParams.set("step", target);
-    window.history.replaceState(null, "", url.toString());
+    const currentNum = current === null ? null : Number(current);
+    if (currentNum === null || Number(target) <= currentNum) {
+      window.history.replaceState(null, "", url.toString());
+    } else {
+      window.history.pushState(null, "", url.toString());
+      pushedStepCountRef.current += 1;
+    }
   }, [step]);
 
   // Reset scroll to the top of the wizard on every step change.
@@ -171,9 +193,17 @@ export default function BookPage() {
   }, [step]);
 
   // Listen for back/forward so the step state follows the URL.
+  // popstate fires on both browser back AND browser forward — we
+  // decrement the pushed-counter on any pop because the only thing
+  // it gates is "should the in-app Back button use history.back()
+  // or fall back to setStep". A spurious decrement is harmless
+  // (worst case the Back button stops calling history.back() one
+  // press early), an over-count is not (it would call history.back()
+  // when there's nothing to pop, kicking the user out of /book).
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onPop = () => {
+      pushedStepCountRef.current = Math.max(0, pushedStepCountRef.current - 1);
       const raw = parseInt(new URL(window.location.href).searchParams.get("step") || "0", 10);
       if (Number.isFinite(raw)) setStep(Math.max(STEP_SERVICE, Math.min(STEP_DONE, raw)));
     };
@@ -557,6 +587,16 @@ export default function BookPage() {
   }, [step, selectedServices.length, totalPriceMin, totalDuration, requiresDeposit]);
 
   const prevStep = () => {
+    // If we pushed a forward history entry earlier in this session,
+    // pop it via history.back() so both the in-app Back button and
+    // the browser's native back gesture walk the wizard the same
+    // way. popstate updates step + decrements the counter. Falls
+    // back to a plain setStep when there's nothing on the stack
+    // (e.g. the user deep-linked into /book?step=2 from an email).
+    if (typeof window !== "undefined" && pushedStepCountRef.current > 0) {
+      window.history.back();
+      return;
+    }
     // Functional setState so a concurrent re-render (e.g. the
     // navigation guard fires on the same tick) reads the freshest
     // step value rather than a stale closure capture.
@@ -732,7 +772,7 @@ export default function BookPage() {
               selectedDate={selectedDate}
               selectedTime={selectedTime}
               onSelect={(d, t) => { setSelectedDate(d); setSelectedTime(t); }}
-              onChangeStylist={() => setStep(STEP_STYLIST)}
+              onChangeStylist={prevStep}
             />
           )}
 
