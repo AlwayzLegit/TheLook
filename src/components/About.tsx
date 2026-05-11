@@ -74,21 +74,25 @@ export default function About({
             </p>
 
             <p className="text-navy/75 font-body leading-relaxed mb-5">
-              With over 25 years in the beauty industry, our team specializes in
-              men&apos;s, women&apos;s, and children&apos;s hair cutting,
-              coloring, balayage, ombr&eacute;, highlights, extensions, and
-              styling. Walk-ins are always welcome!
+              With over 25 years in the beauty industry, our skilled stylists
+              and colorists specialize in services including men&apos;s,
+              women&apos;s, and children&apos;s hair cutting, coloring,
+              balayage, ombr&eacute;, highlights, extensions, and styling.
+              Walk-ins from Glendale and the greater Los Angeles area are
+              always welcome.
             </p>
 
             <p className="text-navy/75 font-body leading-relaxed mb-10">
               Every appointment starts with a quick consultation so we can
               understand your hair&apos;s history, your day-to-day routine,
               and the look you&apos;re after. Whether it&apos;s a refreshed
-              balayage, a precision cut, a keratin treatment, or a styled
+              balayage, a precision cut, a keratin treatment, beauty
+              treatments like brow tinting and facial threading, or a styled
               blowout for a special occasion, our stylists tailor the
-              experience to you. We use professional, salon-grade products
-              and stay current on the latest color and cutting techniques so
-              you leave feeling confident — and excited to come back.
+              high-quality experience to you. We use professional,
+              salon-grade products and stay current on the latest color
+              and cutting techniques so you leave feeling confident — and
+              excited to come back.
             </p>
 
             {/* Stats — Yelp count + rating shared with the bottom
