@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { brandedEmail, detailsTable, formatDate, formatTime } from "./emailTemplate";
 import { getBranding, telHref } from "./branding";
+import { notifyOpsFailure } from "./opsAlerts";
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -76,8 +77,16 @@ async function sendThroughResend(args: {
 
   if (!process.env.RESEND_API_KEY) {
     // Dev / preview without Resend wired up. Don't throw, but make
-    // sure the operator can see the email never went out.
+    // sure the operator can see the email never went out — and on
+    // deployed envs (preview / production) fire an admin notification
+    // since "missing API key" in a deployed env is a misconfiguration,
+    // not an expected state.
     await logEmail(`${args.event}.skipped`, detail({ reason: "RESEND_API_KEY not set" }));
+    notifyOpsFailure({
+      category: "email",
+      reason: "RESEND_API_KEY not set",
+      context: `Event ${args.event} → ${recipients}`,
+    }).catch(() => {});
     return false;
   }
   try {
@@ -94,6 +103,11 @@ async function sendThroughResend(args: {
       const reason = (res.error && (res.error as { message?: string }).message) || JSON.stringify(res.error);
       await logEmail(`${args.event}.failed`, detail({ reason }));
       console.error(`Email send failed (${args.event}):`, res.error);
+      notifyOpsFailure({
+        category: "email",
+        reason,
+        context: `Event ${args.event} → ${recipients}`,
+      }).catch(() => {});
       return false;
     }
     const id = (res?.data as { id?: string } | null | undefined)?.id ?? null;
@@ -103,6 +117,11 @@ async function sendThroughResend(args: {
     const reason = err instanceof Error ? err.message : String(err);
     await logEmail(`${args.event}.failed`, detail({ reason }));
     console.error(`Email send exception (${args.event}):`, err);
+    notifyOpsFailure({
+      category: "email",
+      reason,
+      context: `Event ${args.event} → ${recipients}`,
+    }).catch(() => {});
     return false;
   }
 }
