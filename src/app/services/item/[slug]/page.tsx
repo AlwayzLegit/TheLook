@@ -162,8 +162,14 @@ export async function generateMetadata(
   }
   const canonical = `/services/item/${slug}`;
   const title = `${result.service.name} | ${brand.name}`;
+  // Prefix with the service name so two services that happen to share
+  // the same DB-stored description still emit distinct meta descriptions
+  // — the 2026-05-11 SEO audit flagged the hair-wash add-ons (one under
+  // Haircuts, one under Styling) as duplicate-meta-description because
+  // the owner used identical body copy across both rows.
   const description = result.service.description
-    || `Book ${result.service.name} at ${brand.name} in Glendale, CA.`;
+    ? `${result.service.name}: ${result.service.description}`
+    : `Book ${result.service.name} at ${brand.name} in Glendale, CA.`;
   return {
     title,
     description,

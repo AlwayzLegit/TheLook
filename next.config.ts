@@ -37,16 +37,71 @@ const nextConfig: NextConfig = {
   // PostHog sends responses with a wildcard host header — lift Next's
   // trailing-slash restriction so the rewrite passes through cleanly.
   skipTrailingSlashRedirect: true,
-  // Legacy / colloquial service slugs that don't match the canonical
-  // DB slug. Permanent (308) so search engines / browsers learn the
-  // canonical URL after one hit. Add new entries here when the owner
-  // renames a service and we want stale inbound links to land
-  // somewhere useful instead of a 404.
+  // Legacy / colloquial paths that don't match a current canonical URL.
+  // Permanent (308) so search engines / browsers learn the canonical
+  // URL after one hit. Add new entries here when the owner renames a
+  // route and we want stale inbound links to land somewhere useful
+  // instead of a 404.
   async redirects() {
     return [
+      // Apex → www. Round-27 SEO audit (2026-05-11) was crawling both
+      // hosts as separate domains, doubling every audit failure count
+      // and splitting SEO authority. www is the canonical host
+      // everywhere else (sitemap, NEXTAUTH_URL, OG tags, branding) so
+      // we collapse onto it here. 308 = permanent + method-preserving,
+      // matching what Vercel's domain-redirect feature would emit.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "thelookhairsalonla.com" }],
+        destination: "https://www.thelookhairsalonla.com/:path*",
+        permanent: true,
+      },
+      // Renamed service slug — kept around because the old URL still
+      // sits in some inbound search results and shared links.
       {
         source: "/services/item/balayage",
         destination: "/services/item/balayage-incl-toner",
+        permanent: true,
+      },
+      // Round-27 audit found three stylist slugs that were renamed
+      // but still indexed by Google as live URLs. Redirect each to
+      // the current canonical slug to preserve the SEO authority
+      // accumulated on the old URLs.
+      {
+        source: "/team/alisa-h",
+        destination: "/team/alisa-liz",
+        permanent: true,
+      },
+      {
+        source: "/team/armen-p",
+        destination: "/team/armen",
+        permanent: true,
+      },
+      {
+        source: "/team/kristina-g",
+        destination: "/team/kristina",
+        permanent: true,
+      },
+      // Legacy CMS-era paths still showing up as 4xx errors in the
+      // 2026-05-11 SEO audit. Each used to be a real page on the old
+      // Wix/Squarespace build before the Next.js migration.
+      {
+        source: "/about-1",
+        destination: "/about",
+        permanent: true,
+      },
+      {
+        source: "/services-1",
+        destination: "/services",
+        permanent: true,
+      },
+      // Note: /terms-and-conditions is a rewrite (above) so it serves
+      // /terms content with the original URL — required by Twilio's
+      // A2P 10DLC review. The variant below (without "and") is a true
+      // legacy URL and gets a 308 redirect to the canonical.
+      {
+        source: "/term-conditions",
+        destination: "/terms",
         permanent: true,
       },
     ];
