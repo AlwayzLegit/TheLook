@@ -56,6 +56,12 @@ export async function PATCH(
     duration: payload.duration,
     description: payload.description ?? null,
     products_used: payload.products_used ?? null,
+    // Per-service framing fields. Migration 20260522 adds the columns;
+    // older DBs get a graceful fallback below mirroring the image_url
+    // pattern.
+    what_to_expect: payload.what_to_expect ?? null,
+    recommended_frequency: payload.recommended_frequency ?? null,
+    pair_with: payload.pair_with ?? null,
     active: payload.active,
     sort_order: payload.sort_order,
     updated_at: new Date().toISOString(),
@@ -73,11 +79,29 @@ export async function PATCH(
     .select()
     .single());
 
-  // Backward compatibility for databases that do not yet have services.image_url.
+  // Backward compatibility for databases missing newer columns.
   if (error && (error.message || "").toLowerCase().includes("image_url")) {
     ({ data, error } = await supabase
       .from("services")
       .update(basePayload)
+      .eq("id", id)
+      .select()
+      .single());
+  }
+  if (
+    error &&
+    /what_to_expect|recommended_frequency|pair_with/.test((error.message || "").toLowerCase())
+  ) {
+    const withoutFraming = { ...basePayload };
+    delete (withoutFraming as Partial<typeof basePayload>).what_to_expect;
+    delete (withoutFraming as Partial<typeof basePayload>).recommended_frequency;
+    delete (withoutFraming as Partial<typeof basePayload>).pair_with;
+    ({ data, error } = await supabase
+      .from("services")
+      .update({
+        ...withoutFraming,
+        image_url: payload.image_url || null,
+      })
       .eq("id", id)
       .select()
       .single());
