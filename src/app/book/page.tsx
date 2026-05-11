@@ -772,7 +772,7 @@ export default function BookPage() {
               selectedDate={selectedDate}
               selectedTime={selectedTime}
               onSelect={(d, t) => { setSelectedDate(d); setSelectedTime(t); }}
-              onChangeStylist={() => setStep(STEP_STYLIST)}
+              onChangeStylist={prevStep}
             />
           )}
 
