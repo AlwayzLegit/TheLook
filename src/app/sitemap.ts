@@ -18,10 +18,24 @@ const baseUrl = "https://www.thelookhairsalonla.com";
 // site-relative — the sitemap-image protocol requires absolute <loc>
 // values, so we resolve them here. Null/empty in → null out so callers
 // can guard with a simple truthy check.
+//
+// Site-relative paths from legacy DB rows can also contain literal
+// spaces and "&" characters (e.g. "/images/services/Color & Highlights/
+// bleaching-roots.jpg"). Those are valid in the filesystem but invalid
+// in XML — an unescaped "&" in <image:loc> triggers an
+// xmlParseEntityRef parse error and breaks the whole sitemap. Next.js's
+// MetadataRoute.Sitemap generator doesn't escape these for us inside
+// the images array. encodeURI() handles spaces (and other unsafe path
+// chars), but it intentionally leaves reserved URI characters like "&"
+// alone, so we follow it with an explicit "&" -> "%26" pass.
+// Absolute http(s) URLs are assumed pre-encoded by their source
+// (Supabase Storage doesn't emit raw &/spaces in object keys).
 function toAbsImage(src: string | null | undefined): string | null {
   if (!src) return null;
   if (/^https?:\/\//i.test(src)) return src;
-  return `${baseUrl}${src.startsWith("/") ? src : `/${src}`}`;
+  const path = src.startsWith("/") ? src : `/${src}`;
+  const encoded = encodeURI(path).replace(/&/g, "%26");
+  return `${baseUrl}${encoded}`;
 }
 
 async function dynamicEntries(): Promise<MetadataRoute.Sitemap> {
