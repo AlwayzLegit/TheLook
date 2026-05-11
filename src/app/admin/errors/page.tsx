@@ -77,6 +77,12 @@ export default function AdminErrorsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const userRole = session?.user?.role;
+  const permissions = session?.user?.permissions;
+  // Errors feed gated on view_analytics. Falls back to the legacy
+  // admin role check for pre-permissions sessions (4h JWT TTL).
+  const canView =
+    (Array.isArray(permissions) && permissions.includes("view_analytics")) ||
+    (!permissions && userRole === "admin");
 
   const [issues, setIssues] = useState<ErrorIssue[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,13 +94,15 @@ export default function AdminErrorsPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
-    // Round-9 RBAC fix — Sentry payloads include user emails + IPs
-    // in breadcrumbs, so the issue feed is admin-only.
-    if (status === "authenticated" && userRole && userRole !== "admin") router.push("/admin");
-  }, [status, router, userRole]);
+    // Sentry payloads include user emails + IPs in breadcrumbs, so
+    // the issue feed is gated on view_analytics. Pre-permissions
+    // sessions still pass via the legacy admin-role fallback baked
+    // into canView.
+    if (status === "authenticated" && !canView) router.push("/admin");
+  }, [status, router, canView]);
 
   useEffect(() => {
-    if (status !== "authenticated" || userRole !== "admin") return;
+    if (status !== "authenticated" || !canView) return;
     let cancelled = false;
     const load = async () => {
       try {
@@ -124,9 +132,9 @@ export default function AdminErrorsPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [status, userRole, period, query]);
+  }, [status, canView, period, query]);
 
-  if (status !== "authenticated" || userRole !== "admin") return null;
+  if (status !== "authenticated" || !canView) return null;
 
   return (
     <div className="p-4 sm:p-8 max-w-5xl mx-auto">

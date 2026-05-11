@@ -111,7 +111,13 @@ export async function GET(request: NextRequest) {
 
   const result = await fetchIssues({ org, project, token, period, query, limit });
   if (!result.ok) {
-    logError("admin/errors GET", { status: result.status, error: result.error });
+    // Stringify the structured failure so production logs actually carry
+    // it — passing the raw object made `String(err)` resolve to
+    // "[object Object]" and the operator couldn't see what Sentry said.
+    logError(
+      "admin/errors GET",
+      new Error(`status=${result.status} error=${result.error}`),
+    );
     if (result.status === 401 || result.status === 403) {
       return apiSuccess({
         issues: [],

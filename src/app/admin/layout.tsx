@@ -387,14 +387,17 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { status, data: session } = useSession();
   const role = session?.user?.role;
+  const permissions = session?.user?.permissions;
+  // Only users who can read /api/admin/settings should fetch it for the
+  // idle-timeout pickup — everyone else falls back to the default TTL
+  // (8h, plenty for an active session) rather than writing an
+  // auth.rbac.denied audit row on every page load.
+  const canReadSettings =
+    (Array.isArray(permissions) && permissions.includes("manage_settings")) ||
+    (!permissions && (role === "admin" || role === "manager"));
 
-  // Fetch idle_timeout_minutes once + write it to the <html> element so
-  // the IdleTimeout component picks up the admin's override.
-  // Admin-only after round-9 RBAC tightening; managers fall back to
-  // the default idle TTL (8h, plenty for an active session) rather
-  // than each page load writing an auth.rbac.denied audit row.
   useEffect(() => {
-    if (status !== "authenticated" || role !== "admin") return;
+    if (status !== "authenticated" || !canReadSettings) return;
     fetch("/api/admin/settings")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -405,7 +408,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {});
-  }, [status, role]);
+  }, [status, canReadSettings]);
 
   if (pathname === "/admin/login") return <>{children}</>;
 

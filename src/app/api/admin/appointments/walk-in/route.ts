@@ -1,5 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { getSessionUser, userHasPermission } from "@/lib/roles";
+import { denyMissingPermission } from "@/lib/apiAuth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { NextRequest } from "next/server";
@@ -58,7 +59,8 @@ function addMinutes(hhmm: string, mins: number): string {
 
 export async function POST(request: NextRequest) {
   const user = await getSessionUser();
-  if (!user || !userHasPermission(user, "manage_bookings")) return apiError("You don't have access to this action.", 403);
+  if (!user) return apiError("Unauthorized", 401);
+  if (!userHasPermission(user, "manage_bookings")) return denyMissingPermission(user, "manage_bookings", request);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const parsed = schema.safeParse(await request.json().catch(() => ({})));

@@ -61,6 +61,13 @@ export default function ActivityPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const userRole = session?.user?.role;
+  const permissions = session?.user?.permissions;
+  // Activity / audit log is gated on view_analytics. Falls back to a
+  // role-based admin check for sessions minted before the permissions
+  // field rolled out (4-hour JWT TTL window).
+  const canView =
+    (Array.isArray(permissions) && permissions.includes("view_analytics")) ||
+    (!permissions && userRole === "admin");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -81,10 +88,10 @@ export default function ActivityPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
-    // Activity / audit log is admin-only — contains every privileged
-    // action plus actor IPs. Manager hits → bounce to /admin.
-    if (status === "authenticated" && userRole && userRole !== "admin") router.push("/admin");
-  }, [status, router, userRole]);
+    // Activity / audit log gated on view_analytics. Pre-permissions
+    // sessions still gate on the legacy admin role.
+    if (status === "authenticated" && !canView) router.push("/admin");
+  }, [status, router, canView]);
 
   useEffect(() => {
     if (status !== "authenticated") return;

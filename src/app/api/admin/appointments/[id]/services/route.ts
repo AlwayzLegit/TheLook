@@ -1,5 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { getSessionUser, userHasPermission } from "@/lib/roles";
+import { denyMissingPermission } from "@/lib/apiAuth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
@@ -15,7 +16,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const user = await getSessionUser();
-  if (!userHasPermission(user, "manage_bookings")) return apiError("You don't have access to this action.", 403);
+    if (!user) return apiError("Unauthorized", 401);
+  if (!userHasPermission(user, "manage_bookings")) return denyMissingPermission(user, "manage_bookings", _request);
   if (!hasSupabaseConfig) return apiSuccess({ services: [] });
 
   const { id } = await params;

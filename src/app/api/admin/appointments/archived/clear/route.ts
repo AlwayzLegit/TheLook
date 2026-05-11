@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { getSessionUser, userHasPermission } from "@/lib/roles";
+import { denyMissingPermission } from "@/lib/apiAuth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 
@@ -27,7 +28,8 @@ function presetDays(preset: string | undefined): number | null {
 
 export async function POST(request: NextRequest) {
   const user = await getSessionUser();
-  if (!userHasPermission(user, "manage_bookings")) return apiError("You don't have access to this action.", 403);
+    if (!user) return apiError("Unauthorized", 401);
+  if (!userHasPermission(user, "manage_bookings")) return denyMissingPermission(user, "manage_bookings", request);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const body = await request.json().catch(() => ({}));

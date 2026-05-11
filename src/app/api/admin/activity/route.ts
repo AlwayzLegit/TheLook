@@ -1,5 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { getSessionUser, userHasPermission } from "@/lib/roles";
+import { denyMissingPermission } from "@/lib/apiAuth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
@@ -31,7 +32,8 @@ export async function GET(request: NextRequest) {
   const user = await getSessionUser();
   // Audit log is admin-only — contains every privileged operation and
   // actor IPs, not something a manager or stylist should browse.
-  if (!userHasPermission(user, "view_analytics")) return apiError("You don't have access to this action.", 403);
+  if (!user) return apiError("Unauthorized", 401);
+  if (!userHasPermission(user, "view_analytics")) return denyMissingPermission(user, "view_analytics", request);
   if (!hasSupabaseConfig) return apiSuccess({ total: 0, page: 1, pageSize: 50, entries: [] });
 
   const sp = request.nextUrl.searchParams;
@@ -98,7 +100,8 @@ export async function GET(request: NextRequest) {
 //   - today / 7d / 30d counts for the summary strip
 export async function OPTIONS() {
   const user = await getSessionUser();
-  if (!userHasPermission(user, "view_analytics")) return apiError("You don't have access to this action.", 403);
+  if (!user) return apiError("Unauthorized", 401);
+  if (!userHasPermission(user, "view_analytics")) return denyMissingPermission(user, "view_analytics");
   if (!hasSupabaseConfig) return apiSuccess({ actors: [], counts: { today: 0, week: 0, month: 0 } });
 
   const now = new Date();
