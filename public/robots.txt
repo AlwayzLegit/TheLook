@@ -15,4 +15,8 @@ Disallow: /book/cancel
 Disallow: /book/reschedule
 Disallow: /book/waitlist
 
+# Client portal — magic-link login + signed-in account view. No
+# marketing value and reached only via email-issued links.
+Disallow: /my
+
 Sitemap: https://www.thelookhairsalonla.com/sitemap.xml

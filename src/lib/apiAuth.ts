@@ -99,15 +99,3 @@ export async function denyMissingPermission(
   return apiError("You don't have access to this action.", 403);
 }
 
-// ─── Legacy aliases ────────────────────────────────────────────────
-// Kept so the few call sites that still need an explicit "admin only"
-// or "admin / manager" gate (during the transition) don't have to be
-// rewritten in this PR. requireAdmin → manage_users, since user
-// management is the only capability the old admin role uniquely
-// granted.
-export function requireAdmin(request?: NextRequest): Promise<GateResult> {
-  return requirePermission("manage_users", request);
-}
-export function requireAdminOrManager(request?: NextRequest): Promise<GateResult> {
-  return requireAnyAdminAccess(request);
-}

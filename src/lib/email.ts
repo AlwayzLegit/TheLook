@@ -277,34 +277,32 @@ export async function sendCancellationEmail(details: Omit<AppointmentDetails, "c
   const { clientName, clientEmail, serviceName, date, startTime } = details;
   const brand = await getBranding();
 
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: clientEmail,
-      subject: `Appointment cancelled — ${formatDate(date)}`,
-      html: brandedEmail({
-        brand,
-        preheader: `Your ${serviceName} appointment on ${formatDate(date)} has been cancelled.`,
-        kicker: "Appointment cancelled",
-        headline: "Your appointment was cancelled.",
-        bodyHtml: `
-          <p style="margin: 0 0 14px;">Hi ${clientName},</p>
-          <p style="margin: 0 0 14px;">
-            Your appointment for <strong>${serviceName}</strong> on <strong>${formatDate(date)}</strong>
-            at <strong>${formatTime(startTime)}</strong> has been cancelled.
-          </p>
-          <p style="margin: 0 0 6px;">
-            We&#39;d love to see you back in the chair. Book again anytime:
-          </p>
-        `,
-        ctaLabel: "Book a new appointment",
-        ctaUrl: `${SITE}/book`,
-        signoff: `— ${brand.name}`,
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to send cancellation email:", error);
-  }
+  await sendThroughResend({
+    from: FROM,
+    to: clientEmail,
+    subject: `Appointment cancelled — ${formatDate(date)}`,
+    html: brandedEmail({
+      brand,
+      preheader: `Your ${serviceName} appointment on ${formatDate(date)} has been cancelled.`,
+      kicker: "Appointment cancelled",
+      headline: "Your appointment was cancelled.",
+      bodyHtml: `
+        <p style="margin: 0 0 14px;">Hi ${clientName},</p>
+        <p style="margin: 0 0 14px;">
+          Your appointment for <strong>${serviceName}</strong> on <strong>${formatDate(date)}</strong>
+          at <strong>${formatTime(startTime)}</strong> has been cancelled.
+        </p>
+        <p style="margin: 0 0 6px;">
+          We&#39;d love to see you back in the chair. Book again anytime:
+        </p>
+      `,
+      ctaLabel: "Book a new appointment",
+      ctaUrl: `${SITE}/book`,
+      signoff: `— ${brand.name}`,
+    }),
+    text: "",
+    event: "email.cancellation.client",
+  });
 }
 
 export async function sendReminderEmail(details: AppointmentDetails) {
@@ -312,43 +310,41 @@ export async function sendReminderEmail(details: AppointmentDetails) {
   const brand = await getBranding();
   const rescheduleUrl = cancelUrl ? cancelUrl.replace("/book/cancel", "/book/reschedule") : undefined;
 
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: clientEmail,
-      subject: `Reminder: your appointment tomorrow at ${formatTime(startTime)}`,
-      html: brandedEmail({
-        brand,
-        preheader: `See you tomorrow at ${formatTime(startTime)} for ${serviceName}.`,
-        kicker: "Appointment reminder",
-        headline: `See you tomorrow, ${clientName.split(" ")[0]}.`,
-        bodyHtml: `
-          <p style="margin: 0 0 14px;">
-            Quick reminder — here&#39;s what we have on the books:
-          </p>
-          ${detailsTable([
-            ["Service", serviceName],
-            ["Stylist", stylistName],
-            ["Date", formatDate(date)],
-            ["Time", formatTime(startTime)],
-          ])}
-          <p style="margin: 18px 0 6px;">
-            Parking is free in our lot on South Central Ave. Please arrive a few minutes early so
-            we can start on time.
-          </p>
-          <p style="margin: 0 0 0;">
-            Need to move things around? Use the link below — keep in mind cancellations within
-            24 hours incur the 25% fee and forfeit your deposit.
-          </p>
-        `,
-        ctaLabel: cancelUrl ? "Reschedule or cancel" : undefined,
-        ctaUrl: rescheduleUrl || cancelUrl,
-        signoff: `See you soon — ${brand.name}`,
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to send reminder email:", error);
-  }
+  await sendThroughResend({
+    from: FROM,
+    to: clientEmail,
+    subject: `Reminder: your appointment tomorrow at ${formatTime(startTime)}`,
+    html: brandedEmail({
+      brand,
+      preheader: `See you tomorrow at ${formatTime(startTime)} for ${serviceName}.`,
+      kicker: "Appointment reminder",
+      headline: `See you tomorrow, ${clientName.split(" ")[0]}.`,
+      bodyHtml: `
+        <p style="margin: 0 0 14px;">
+          Quick reminder — here&#39;s what we have on the books:
+        </p>
+        ${detailsTable([
+          ["Service", serviceName],
+          ["Stylist", stylistName],
+          ["Date", formatDate(date)],
+          ["Time", formatTime(startTime)],
+        ])}
+        <p style="margin: 18px 0 6px;">
+          Parking is free in our lot on South Central Ave. Please arrive a few minutes early so
+          we can start on time.
+        </p>
+        <p style="margin: 0 0 0;">
+          Need to move things around? Use the link below — keep in mind cancellations within
+          24 hours incur the 25% fee and forfeit your deposit.
+        </p>
+      `,
+      ctaLabel: cancelUrl ? "Reschedule or cancel" : undefined,
+      ctaUrl: rescheduleUrl || cancelUrl,
+      signoff: `See you soon — ${brand.name}`,
+    }),
+    text: "",
+    event: "email.reminder.client",
+  });
 }
 
 interface StatusChangeDetails {
@@ -503,32 +499,27 @@ export async function sendStatusChangeEmail(details: StatusChangeDetails) {
   const staffEmails = await getStaffNotificationEmails().catch(() => []);
   const ccList = staffEmails.length > 0 ? staffEmails : undefined;
 
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: clientEmail,
-      cc: ccList,
-      subject: t.subject,
-      html: brandedEmail({
-        brand,
-        preheader: t.headline,
-        kicker: t.kicker,
-        headline: t.headline,
-        bodyHtml: t.body,
-        ctaLabel: t.ctaLabel,
-        ctaUrl: t.ctaUrl,
-        secondaryLabel: t.secondaryLabel,
-        secondaryUrl: t.secondaryUrl,
-        signoff: `— ${brand.name}`,
-        // Policy footer only shows on no-show / cancellation where it's
-        // the most relevant. Confirmed + completed skip it to keep the
-        // cadence warm.
-        includePolicyFooter: newStatus === "cancelled" || newStatus === "no_show",
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to send status change email:", error);
-  }
+  await sendThroughResend({
+    from: FROM,
+    to: clientEmail,
+    cc: ccList,
+    subject: t.subject,
+    html: brandedEmail({
+      brand,
+      preheader: t.headline,
+      kicker: t.kicker,
+      headline: t.headline,
+      bodyHtml: t.body,
+      ctaLabel: t.ctaLabel,
+      ctaUrl: t.ctaUrl,
+      secondaryLabel: t.secondaryLabel,
+      secondaryUrl: t.secondaryUrl,
+      signoff: `— ${brand.name}`,
+      includePolicyFooter: newStatus === "cancelled" || newStatus === "no_show",
+    }),
+    text: "",
+    event: `email.status_change.${newStatus}`,
+  });
 }
 
 // ----------------------------------------------------------------------
@@ -580,37 +571,35 @@ export async function sendStaffNewBookingEmail(details: StaffNewBookingDetails) 
         : `<span style="color:#c2274b; font-weight:bold;">REQUIRED</span>`}`
     : "Not required";
 
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: recipients,
-      subject: `[ACTION REQUIRED] New booking: ${clientName} — ${serviceName}`,
-      html: brandedEmail({
-        brand,
-        preheader: `${clientName} booked ${serviceName} for ${formatDate(date)}.`,
-        kicker: "New booking — needs approval",
-        headline: `${clientName} just booked online`,
-        bodyHtml: `
-          ${detailsTable([
-            ["Client", `${clientName}<br/><span style="color:#999; font-size:12px;">${clientEmail}${clientPhone ? " · " + clientPhone : ""}</span>`],
-            ["Service", `${serviceName}${totalPriceText ? ` <span style="color:#c9a96e;">(${totalPriceText})</span>` : ""}`],
-            ["Stylist", stylistCell],
-            ["Date", formatDate(date)],
-            ["Time", `${formatTime(startTime)} – ${formatTime(endTime)}`],
-            ["Deposit", depositBadge],
-            ...(notes ? [["Notes", notes.replace(/</g, "&lt;")] as [string, string]] : []),
-          ])}
-        `,
-        ctaLabel: "Review & approve",
-        ctaUrl: approveUrl,
-        signoff: `Auto-sent by ${brand.name} booking system`,
-        includeSupportFooter: false,
-        includePolicyFooter: false,
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to send staff new-booking email:", error);
-  }
+  await sendThroughResend({
+    from: FROM,
+    to: recipients,
+    subject: `[ACTION REQUIRED] New booking: ${clientName} — ${serviceName}`,
+    html: brandedEmail({
+      brand,
+      preheader: `${clientName} booked ${serviceName} for ${formatDate(date)}.`,
+      kicker: "New booking — needs approval",
+      headline: `${clientName} just booked online`,
+      bodyHtml: `
+        ${detailsTable([
+          ["Client", `${clientName}<br/><span style="color:#999; font-size:12px;">${clientEmail}${clientPhone ? " · " + clientPhone : ""}</span>`],
+          ["Service", `${serviceName}${totalPriceText ? ` <span style="color:#c9a96e;">(${totalPriceText})</span>` : ""}`],
+          ["Stylist", stylistCell],
+          ["Date", formatDate(date)],
+          ["Time", `${formatTime(startTime)} – ${formatTime(endTime)}`],
+          ["Deposit", depositBadge],
+          ...(notes ? [["Notes", notes.replace(/</g, "&lt;")] as [string, string]] : []),
+        ])}
+      `,
+      ctaLabel: "Review & approve",
+      ctaUrl: approveUrl,
+      signoff: `Auto-sent by ${brand.name} booking system`,
+      includeSupportFooter: false,
+      includePolicyFooter: false,
+    }),
+    text: "",
+    event: "email.staff.new_booking",
+  });
 }
 
 interface StaffNewMessageDetails {
@@ -629,33 +618,31 @@ export async function sendStaffNewMessageEmail(details: StaffNewMessageDetails) 
   const { recipients, name, email, phone, service, message, adminUrl } = details;
   if (recipients.length === 0) return;
   const brand = await getBranding();
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: recipients,
-      subject: `[Inbox] New contact message from ${name}`,
-      html: brandedEmail({
-        brand,
-        preheader: `${name} sent a message${service ? ` about ${service}` : ""}.`,
-        kicker: "New contact form submission",
-        headline: `${name} reached out`,
-        bodyHtml: `
-          ${detailsTable([
-            ["From", `${name}<br/><span style="color:#999; font-size:12px;">${email}${phone ? " · " + phone : ""}</span>`],
-            ...(service ? [["Service interest", service] as [string, string]] : []),
-            ["Message", message.replace(/</g, "&lt;").replace(/\n/g, "<br/>")],
-          ])}
-        `,
-        ctaLabel: "Open in admin",
-        ctaUrl: adminUrl,
-        signoff: `Auto-sent by ${brand.name}`,
-        includeSupportFooter: false,
-        includePolicyFooter: false,
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to send staff new-message email:", error);
-  }
+  await sendThroughResend({
+    from: FROM,
+    to: recipients,
+    subject: `[Inbox] New contact message from ${name}`,
+    html: brandedEmail({
+      brand,
+      preheader: `${name} sent a message${service ? ` about ${service}` : ""}.`,
+      kicker: "New contact form submission",
+      headline: `${name} reached out`,
+      bodyHtml: `
+        ${detailsTable([
+          ["From", `${name}<br/><span style="color:#999; font-size:12px;">${email}${phone ? " · " + phone : ""}</span>`],
+          ...(service ? [["Service interest", service] as [string, string]] : []),
+          ["Message", message.replace(/</g, "&lt;").replace(/\n/g, "<br/>")],
+        ])}
+      `,
+      ctaLabel: "Open in admin",
+      ctaUrl: adminUrl,
+      signoff: `Auto-sent by ${brand.name}`,
+      includeSupportFooter: false,
+      includePolicyFooter: false,
+    }),
+    text: "",
+    event: "email.staff.new_message",
+  });
 }
 
 // ----------------------------------------------------------------------
@@ -677,47 +664,45 @@ export async function sendReviewRequestEmail(details: ReviewRequestDetails) {
   const { clientName, clientEmail, stylistName, serviceName, date, reviewUrl, googleUrl, yelpUrl } = details;
   const brand = await getBranding();
 
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: clientEmail,
-      subject: "How was your visit?",
-      html: brandedEmail({
-        brand,
-        preheader: `We hope you loved your ${serviceName}.`,
-        kicker: "How was it?",
-        headline: "How was your visit?",
-        bodyHtml: `
-          <p style="margin: 0 0 14px;">Hi ${clientName},</p>
-          <p style="margin: 0 0 14px;">
-            We hope you&#39;re loving your <strong>${serviceName}</strong> with{" "}
-            <strong>${stylistName}</strong> from ${formatDate(date)}. If you enjoyed your visit,
-            a quick review on Google or Yelp would mean a lot — it&#39;s how other Glendale
-            neighbors find us.
-          </p>
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin: 12px 0;">
-            <tr>
-              <td align="center">
-                <a href="${googleUrl}" style="display:inline-block; background:#282936; color:#fff; text-decoration:none; font-size:12px; letter-spacing:2px; text-transform:uppercase; padding:12px 22px; margin:4px;">Review on Google</a>
-                <a href="${yelpUrl}" style="display:inline-block; background:#c2274b; color:#fff; text-decoration:none; font-size:12px; letter-spacing:2px; text-transform:uppercase; padding:12px 22px; margin:4px;">Review on Yelp</a>
-              </td>
-            </tr>
-          </table>
-          <p style="margin: 0 0 8px; color: #767182; font-size: 13px;">
-            Or use <a href="${reviewUrl}" style="color:#c2274b;">this page</a> to pick either one.
-          </p>
-          <p style="margin: 12px 0 0; font-size: 13px; color: #767182;">
-            Had an issue? Reply to this email or call ${brand.phone} — we&#39;d rather hear about
-            it first so we can make it right.
-          </p>
-        `,
-        signoff: `— ${brand.name}`,
-        includePolicyFooter: false,
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to send review request email:", error);
-  }
+  await sendThroughResend({
+    from: FROM,
+    to: clientEmail,
+    subject: "How was your visit?",
+    html: brandedEmail({
+      brand,
+      preheader: `We hope you loved your ${serviceName}.`,
+      kicker: "How was it?",
+      headline: "How was your visit?",
+      bodyHtml: `
+        <p style="margin: 0 0 14px;">Hi ${clientName},</p>
+        <p style="margin: 0 0 14px;">
+          We hope you&#39;re loving your <strong>${serviceName}</strong> with{" "}
+          <strong>${stylistName}</strong> from ${formatDate(date)}. If you enjoyed your visit,
+          a quick review on Google or Yelp would mean a lot — it&#39;s how other Glendale
+          neighbors find us.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 12px 0;">
+          <tr>
+            <td align="center">
+              <a href="${googleUrl}" style="display:inline-block; background:#282936; color:#fff; text-decoration:none; font-size:12px; letter-spacing:2px; text-transform:uppercase; padding:12px 22px; margin:4px;">Review on Google</a>
+              <a href="${yelpUrl}" style="display:inline-block; background:#c2274b; color:#fff; text-decoration:none; font-size:12px; letter-spacing:2px; text-transform:uppercase; padding:12px 22px; margin:4px;">Review on Yelp</a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin: 0 0 8px; color: #767182; font-size: 13px;">
+          Or use <a href="${reviewUrl}" style="color:#c2274b;">this page</a> to pick either one.
+        </p>
+        <p style="margin: 12px 0 0; font-size: 13px; color: #767182;">
+          Had an issue? Reply to this email or call ${brand.phone} — we&#39;d rather hear about
+          it first so we can make it right.
+        </p>
+      `,
+      signoff: `— ${brand.name}`,
+      includePolicyFooter: false,
+    }),
+    text: "",
+    event: "email.review_request.client",
+  });
 }
 
 interface ReviewDigestItem {
@@ -743,30 +728,28 @@ export async function sendReviewDigestEmail(items: ReviewDigestItem[], ratingSna
       </td>
     </tr>`;
 
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: SALON_EMAIL,
-      subject: `${items.length} new review${items.length === 1 ? "" : "s"} this week`,
-      html: brandedEmail({
-        brand,
-        preheader: `${items.length} new review${items.length === 1 ? "" : "s"} this week.`,
-        kicker: "Weekly review digest",
-        headline: `${items.length} new review${items.length === 1 ? "" : "s"}`,
-        bodyHtml: `
-          <p style="margin: 0 0 12px; color: #767182;">
-            Current ratings: ${ratingSnapshot.google ? `Google ${ratingSnapshot.google}★` : ""}${ratingSnapshot.google && ratingSnapshot.yelp ? " · " : ""}${ratingSnapshot.yelp ? `Yelp ${ratingSnapshot.yelp}★` : ""}
-          </p>
-          <table width="100%" cellpadding="0" cellspacing="0">${items.map(row).join("")}</table>
-        `,
-        signoff: `Auto-sent by ${brand.name} review digest`,
-        includeSupportFooter: false,
-        includePolicyFooter: false,
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to send review digest email:", error);
-  }
+  await sendThroughResend({
+    from: FROM,
+    to: SALON_EMAIL,
+    subject: `${items.length} new review${items.length === 1 ? "" : "s"} this week`,
+    html: brandedEmail({
+      brand,
+      preheader: `${items.length} new review${items.length === 1 ? "" : "s"} this week.`,
+      kicker: "Weekly review digest",
+      headline: `${items.length} new review${items.length === 1 ? "" : "s"}`,
+      bodyHtml: `
+        <p style="margin: 0 0 12px; color: #767182;">
+          Current ratings: ${ratingSnapshot.google ? `Google ${ratingSnapshot.google}★` : ""}${ratingSnapshot.google && ratingSnapshot.yelp ? " · " : ""}${ratingSnapshot.yelp ? `Yelp ${ratingSnapshot.yelp}★` : ""}
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0">${items.map(row).join("")}</table>
+      `,
+      signoff: `Auto-sent by ${brand.name} review digest`,
+      includeSupportFooter: false,
+      includePolicyFooter: false,
+    }),
+    text: "",
+    event: "email.review_digest.staff",
+  });
 }
 
 // ----------------------------------------------------------------------
@@ -791,40 +774,38 @@ export async function sendCancellationFeeReceipt(r: CancellationFeeReceipt) {
   const cardLine = r.cardBrand && r.cardLast4
     ? `${r.cardBrand.toUpperCase()} ending in ${r.cardLast4}`
     : "card on file";
-  try {
-    await getResend().emails.send({
-      from: FROM,
-      to: r.clientEmail,
-      subject: `Cancellation fee charged — ${amount}`,
-      html: brandedEmail({
-        brand,
-        preheader: `${amount} was charged to your ${cardLine}.`,
-        kicker: "Cancellation fee receipt",
-        headline: `${amount} charged to your ${cardLine}.`,
-        bodyHtml: `
-          <p style="margin: 0 0 14px;">Hi ${r.clientName},</p>
-          <p style="margin: 0 0 14px;">
-            Per the cancellation policy you agreed to at booking, we charged a cancellation fee
-            for the following missed appointment:
-          </p>
-          ${detailsTable([
-            ["Service", r.serviceName],
-            ["Date", formatDate(r.date)],
-            ["Time", formatTime(r.startTime)],
-            ["Reason", r.reason],
-            ["Amount", `<strong style="color:#282936;">${amount}</strong>`],
-            ["Card", cardLine],
-          ])}
-          <p style="margin: 18px 0 0; font-size: 13px; color: #767182;">
-            Questions about this charge? Reply to this email or call ${brand.phone} and
-            we&#39;ll review it with you. We&#39;d rather have you back in the chair than charge
-            a fee — hope to see you again soon.
-          </p>
-        `,
-        signoff: `— ${brand.name}`,
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to send cancellation fee receipt:", error);
-  }
+  await sendThroughResend({
+    from: FROM,
+    to: r.clientEmail,
+    subject: `Cancellation fee charged — ${amount}`,
+    html: brandedEmail({
+      brand,
+      preheader: `${amount} was charged to your ${cardLine}.`,
+      kicker: "Cancellation fee receipt",
+      headline: `${amount} charged to your ${cardLine}.`,
+      bodyHtml: `
+        <p style="margin: 0 0 14px;">Hi ${r.clientName},</p>
+        <p style="margin: 0 0 14px;">
+          Per the cancellation policy you agreed to at booking, we charged a cancellation fee
+          for the following missed appointment:
+        </p>
+        ${detailsTable([
+          ["Service", r.serviceName],
+          ["Date", formatDate(r.date)],
+          ["Time", formatTime(r.startTime)],
+          ["Reason", r.reason],
+          ["Amount", `<strong style="color:#282936;">${amount}</strong>`],
+          ["Card", cardLine],
+        ])}
+        <p style="margin: 18px 0 0; font-size: 13px; color: #767182;">
+          Questions about this charge? Reply to this email or call ${brand.phone} and
+          we&#39;ll review it with you. We&#39;d rather have you back in the chair than charge
+          a fee — hope to see you again soon.
+        </p>
+      `,
+      signoff: `— ${brand.name}`,
+    }),
+    text: "",
+    event: "email.cancellation_fee.client",
+  });
 }
