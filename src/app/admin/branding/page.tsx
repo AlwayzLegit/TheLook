@@ -22,6 +22,13 @@ interface Slot {
   // Suggested aspect for the upload preview. The public site
   // honours its own crop, so this is just a UX hint here.
   preview: "wide" | "square" | "portrait";
+  // Optional per-slot upload guidance. Supabase-hosted images bypass
+  // next/image optimisation (see src/lib/imageHosts.ts — Vercel
+  // optimiser quota policy), so the source file's pixel size and
+  // weight are what the visitor actually downloads. Round-27 mobile
+  // Lighthouse caught the original about photo at 2.28 MB / 5000×4000
+  // — make the recommendation explicit at the upload point.
+  recommend?: string;
 }
 
 const SLOTS: Slot[] = [
@@ -31,6 +38,7 @@ const SLOTS: Slot[] = [
     description: "Top-of-page background photo on the public home page.",
     fallback: "/images/hero/salon-main.jpg",
     preview: "wide",
+    recommend: "JPEG, 1920×1080, under 200 KB. This loads before anything else on mobile — keep it small.",
   },
   {
     key: "about_image_url",
@@ -38,6 +46,7 @@ const SLOTS: Slot[] = [
     description: "Photo on the home page's About section, beside the salon story.",
     fallback: "/images/our-story.png",
     preview: "portrait",
+    recommend: "JPEG, 1200×1500 (4:5), under 200 KB. Avoid PNG for photographs — PNG files balloon to 2-3 MB and slow the home page on phones.",
   },
   {
     key: "footer_bg_url",
@@ -45,6 +54,7 @@ const SLOTS: Slot[] = [
     description: "Subtle photo behind the dark footer on every page.",
     fallback: "/images/footer-hair-bg.png",
     preview: "wide",
+    recommend: "JPEG, 1600×900, under 150 KB.",
   },
   {
     key: "cat_haircuts_hero_url",
@@ -52,6 +62,7 @@ const SLOTS: Slot[] = [
     description: "Banner photo at the top of /services/haircuts.",
     fallback: "/images/Haircuts.jpg",
     preview: "wide",
+    recommend: "JPEG, 1920×900, under 200 KB.",
   },
   {
     key: "cat_color_hero_url",
@@ -59,6 +70,7 @@ const SLOTS: Slot[] = [
     description: "Banner photo at the top of /services/color.",
     fallback: "/images/Highlights.jpg",
     preview: "wide",
+    recommend: "JPEG, 1920×900, under 200 KB.",
   },
   {
     key: "cat_styling_hero_url",
@@ -66,6 +78,7 @@ const SLOTS: Slot[] = [
     description: "Banner photo at the top of /services/styling.",
     fallback: "/images/Styling.jpg",
     preview: "wide",
+    recommend: "JPEG, 1920×900, under 200 KB.",
   },
   {
     key: "cat_treatments_hero_url",
@@ -73,6 +86,7 @@ const SLOTS: Slot[] = [
     description: "Banner photo at the top of /services/treatments.",
     fallback: "/images/Treatments.jpg",
     preview: "wide",
+    recommend: "JPEG, 1920×900, under 200 KB.",
   },
 ];
 
@@ -272,6 +286,12 @@ export default function BrandingPage() {
                       name={`branding-${slot.key}`}
                       folder="staff"
                     />
+                    {slot.recommend && (
+                      <p className="text-[0.7rem] font-body text-[var(--color-text-muted)] mt-2 leading-relaxed">
+                        <strong className="text-[var(--color-text)]">Recommended:</strong>{" "}
+                        {slot.recommend}
+                      </p>
+                    )}
                     {dirty && (
                       <p className="text-[0.7rem] font-body text-[var(--color-text-muted)] mt-2">
                         Click <strong>Save</strong> above to publish. Or use Reset to clear back to
