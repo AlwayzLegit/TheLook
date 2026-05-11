@@ -44,6 +44,11 @@ interface ServiceRow {
   image_url: string | null;
   description: string | null;
   products_used: string | null;
+  // Per-service framing copy (migration 20260522). When null/blank,
+  // ServiceFraming falls back to the per-category map below.
+  what_to_expect: string | null;
+  recommended_frequency: string | null;
+  pair_with: string | null;
   active: boolean;
 }
 
@@ -251,30 +256,63 @@ const CATEGORY_FRAMING: Record<string, { whatToExpect: string; frequency: string
   },
 };
 
-function ServiceFraming({ category, brandName }: { category: string; brandName: string }) {
-  const f = CATEGORY_FRAMING[category];
-  if (!f) return null;
+// Owner-curated per-service copy beats the category default. Trim
+// whitespace so a row whose admin saved an empty textarea (" \n")
+// doesn't render a blank column with the header still present.
+function pickFraming(perService: string | null, fallback: string): string {
+  const trimmed = (perService ?? "").trim();
+  return trimmed.length > 0 ? trimmed : fallback;
+}
+
+function ServiceFraming({
+  service,
+  brandName,
+}: {
+  service: ServiceRow;
+  brandName: string;
+}) {
+  const fallback = CATEGORY_FRAMING[service.category];
+  // No category fallback AND no per-service copy → render nothing
+  // (preserves the original "future categories don't break the page"
+  // contract).
+  const hasAnyPerService = Boolean(
+    (service.what_to_expect && service.what_to_expect.trim()) ||
+      (service.recommended_frequency && service.recommended_frequency.trim()) ||
+      (service.pair_with && service.pair_with.trim()),
+  );
+  if (!fallback && !hasAnyPerService) return null;
+
+  const whatToExpect = pickFraming(service.what_to_expect, fallback?.whatToExpect ?? "");
+  const frequency = pickFraming(service.recommended_frequency, fallback?.frequency ?? "");
+  const pairWith = pickFraming(service.pair_with, fallback?.pairWith ?? "");
+
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 md:pb-16">
       <div className="border-t border-navy/10 pt-10 md:pt-12 grid md:grid-cols-3 gap-8 md:gap-10">
-        <div>
-          <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">
-            What to expect
-          </p>
-          <p className="text-navy/80 font-body text-sm leading-relaxed">{f.whatToExpect}</p>
-        </div>
-        <div>
-          <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">
-            Recommended frequency
-          </p>
-          <p className="text-navy/80 font-body text-sm leading-relaxed">{f.frequency}</p>
-        </div>
-        <div>
-          <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">
-            Pair with
-          </p>
-          <p className="text-navy/80 font-body text-sm leading-relaxed">{f.pairWith}</p>
-        </div>
+        {whatToExpect && (
+          <div>
+            <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">
+              What to expect
+            </p>
+            <p className="text-navy/80 font-body text-sm leading-relaxed">{whatToExpect}</p>
+          </div>
+        )}
+        {frequency && (
+          <div>
+            <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">
+              Recommended frequency
+            </p>
+            <p className="text-navy/80 font-body text-sm leading-relaxed">{frequency}</p>
+          </div>
+        )}
+        {pairWith && (
+          <div>
+            <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">
+              Pair with
+            </p>
+            <p className="text-navy/80 font-body text-sm leading-relaxed">{pairWith}</p>
+          </div>
+        )}
       </div>
       <p className="text-navy/50 font-body text-xs mt-8 text-center">
         Have a question before booking? Call {brandName} or send us a message via the contact page.
@@ -462,7 +500,7 @@ export default async function ServiceDetailPage(
             heuristics. The What-to-expect / Frequency / Pair-with shape
             also matches the questions clients ask at booking, so this
             doubles as useful content. */}
-        <ServiceFraming category={service.category} brandName={brand.name} />
+        <ServiceFraming service={service} brandName={brand.name} />
 
         {/* Stylists who offer this service. Cross-links the service
             detail to every relevant stylist profile so internal PageRank

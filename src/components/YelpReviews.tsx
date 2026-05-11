@@ -88,7 +88,7 @@ const curatedReviews: Review[] = [
 
 function StarRating({ rating }: { rating: number }) {
   return (
-    <div className="flex gap-1" aria-label={`${rating} out of 5 stars`}>
+    <div role="img" className="flex gap-1" aria-label={`${rating} out of 5 stars`}>
       {Array.from({ length: 5 }).map((_, i) => (
         <svg
           key={i}
@@ -352,16 +352,26 @@ export default function YelpReviews() {
 
             <div className="flex gap-2">
               {reviews.map((_, i) => (
+                // Visual is intentionally a tiny pill (design), but the
+                // hit area must be ≥24×24 to satisfy WCAG 2.5.5 — the
+                // outer button provides the touch target, the inner
+                // <span> draws the dot. Round-27 Lighthouse caught the
+                // bare 3×3 buttons.
                 <button
                   key={i}
                   onClick={() => setCurrent(i)}
                   aria-label={`Review set ${i + 1}`}
-                  className={`transition-all duration-500 ${
-                    i === current
-                      ? "w-7 h-[3px] bg-gradient-to-r from-gold-light to-gold rounded-full"
-                      : "w-[3px] h-[3px] bg-white/15 hover:bg-gold/40 rounded-full"
-                  }`}
-                />
+                  className="w-6 h-6 flex items-center justify-center"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`block transition-all duration-500 ${
+                      i === current
+                        ? "w-7 h-[3px] bg-gradient-to-r from-gold-light to-gold rounded-full"
+                        : "w-[3px] h-[3px] bg-white/15 hover:bg-gold/40 rounded-full"
+                    }`}
+                  />
+                </button>
               ))}
             </div>
 

@@ -24,6 +24,9 @@ interface Service {
   image_url?: string | null;
   description?: string | null;
   products_used?: string | null;
+  what_to_expect?: string | null;
+  recommended_frequency?: string | null;
+  pair_with?: string | null;
   active: boolean;
   sort_order: number;
 }
@@ -57,6 +60,9 @@ export default function ServicesPage() {
     image_url: "",
     description: "",
     products_used: "",
+    what_to_expect: "",
+    recommended_frequency: "",
+    pair_with: "",
     active: true,
     sort_order: 0,
   });
@@ -138,6 +144,9 @@ export default function ServicesPage() {
           image_url: "",
           description: "",
           products_used: "",
+          what_to_expect: "",
+          recommended_frequency: "",
+          pair_with: "",
           active: true,
           sort_order: 0,
         });
@@ -182,6 +191,9 @@ export default function ServicesPage() {
       image_url: service.image_url || "",
       description: service.description || "",
       products_used: service.products_used || "",
+      what_to_expect: service.what_to_expect || "",
+      recommended_frequency: service.recommended_frequency || "",
+      pair_with: service.pair_with || "",
       active: service.active ?? true,
       sort_order: Number.isFinite(service.sort_order) ? service.sort_order : 0,
     });
@@ -263,6 +275,9 @@ export default function ServicesPage() {
       image_url: "",
       description: "",
       products_used: "",
+      what_to_expect: "",
+      recommended_frequency: "",
+      pair_with: "",
       active: true,
       sort_order: 0,
     });
@@ -462,6 +477,52 @@ export default function ServicesPage() {
                   onChange={(e) => setFormData({ ...formData, products_used: e.target.value })}
                   className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
                   placeholder="e.g. Olaplex No. 3, Redken Chromatics, Kérastase Nutritive"
+                />
+              </div>
+
+              {/* Per-service framing — three short blurbs rendered in
+                  the three-column band on /services/item/<slug>. Leave
+                  blank to fall back to the per-category default copy. */}
+              <div className="border-t border-navy/10 pt-4">
+                <p className="text-xs uppercase tracking-[0.15em] text-navy/45 font-body mb-1">
+                  Service detail page — extra copy
+                </p>
+                <p className="text-xs text-navy/40 mb-3">
+                  Shown on the public detail page in three columns. Leave any field blank to use
+                  the default category copy.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-body text-navy/60 mb-1">What to expect</label>
+                <textarea
+                  rows={3}
+                  value={formData.what_to_expect}
+                  onChange={(e) => setFormData({ ...formData, what_to_expect: e.target.value })}
+                  className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
+                  placeholder="Walk the client through how this specific service runs — consultation, chair time, finish."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-body text-navy/60 mb-1">Recommended frequency</label>
+                <textarea
+                  rows={2}
+                  value={formData.recommended_frequency}
+                  onChange={(e) => setFormData({ ...formData, recommended_frequency: e.target.value })}
+                  className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
+                  placeholder="e.g. Every 4–6 weeks for line-up cuts; every 8–10 weeks for grown-out styles."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-body text-navy/60 mb-1">Pair with</label>
+                <textarea
+                  rows={2}
+                  value={formData.pair_with}
+                  onChange={(e) => setFormData({ ...formData, pair_with: e.target.value })}
+                  className="w-full border border-navy/20 px-3 py-2 text-sm font-body"
+                  placeholder="Suggest add-ons or follow-up services that complement this one."
                 />
               </div>
 

@@ -77,6 +77,11 @@ export const adminServiceSchema = z.object({
   image_url: z.string().trim().max(2000).nullable().optional(),
   description: z.string().max(10000).nullable().optional(),
   products_used: z.string().max(4000).nullable().optional(),
+  // Per-service framing copy. Owner-curated text shown on the public
+  // detail page; falls back to the per-category default when blank.
+  what_to_expect: z.string().max(4000).nullable().optional(),
+  recommended_frequency: z.string().max(2000).nullable().optional(),
+  pair_with: z.string().max(2000).nullable().optional(),
   active: z.boolean().optional(),
   sort_order: z.number().int().min(0).max(1_000_000).optional(),
 });

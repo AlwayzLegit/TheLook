@@ -146,7 +146,11 @@ export default function ServiceGallery({
                 );
                 const className = "aspect-[4/3] relative overflow-hidden rounded-sm shadow-[0_20px_60px_rgba(40,41,54,0.12)] cursor-pointer group bg-gradient-to-br from-navy/5 to-gold/10 block";
                 return images[0]?.href ? (
-                  <Link href={images[0].href} className={className} aria-label={`View ${images[0].alt}`}>
+                  // Accessible name comes from the inner <Image alt>
+                  // (matches visible caption). An explicit
+                  // aria-label="View {alt}" used to override that, which
+                  // tripped axe's label-content-name-mismatch rule.
+                  <Link href={images[0].href} className={className}>
                     {inner}
                   </Link>
                 ) : (
@@ -205,7 +209,7 @@ export default function ServiceGallery({
               );
               const className = "relative aspect-square overflow-hidden rounded-sm cursor-pointer group bg-gradient-to-br from-navy/5 to-gold/10 block";
               return image.href ? (
-                <Link key={index} href={image.href} className={className} aria-label={`View ${image.alt}`}>
+                <Link key={index} href={image.href} className={className}>
                   {inner}
                 </Link>
               ) : (

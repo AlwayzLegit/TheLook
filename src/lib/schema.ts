@@ -13,6 +13,12 @@ export const services = pgTable("services", {
   description: text("description"),
   // Short freeform list of products / tools used, rendered on the detail page.
   productsUsed: text("products_used"),
+  // Per-service framing copy shown in the three-column band below the
+  // detail panel. Nullable — when blank the page falls back to the
+  // per-category default in src/app/services/item/[slug]/page.tsx.
+  whatToExpect: text("what_to_expect"),
+  recommendedFrequency: text("recommended_frequency"),
+  pairWith: text("pair_with"),
   active: boolean("active").default(true),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
