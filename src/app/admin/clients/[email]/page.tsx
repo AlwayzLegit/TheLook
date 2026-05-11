@@ -74,6 +74,13 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
   const [profile, setProfile] = useState<Profile | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [cardSummary, setCardSummary] = useState<{
+    cardOnFile: boolean;
+    cardBrand: string | null;
+    cardLast4: string | null;
+    cardLastSeen: string | null;
+    stripeCustomerId: string | null;
+  } | null>(null);
   const [stylists, setStylists] = useState<Stylist[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +129,7 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
     ]).then(([clientData, stys, svcs]) => {
       setAppointments(clientData.appointments || []);
       setPhotos(clientData.photos || []);
+      setCardSummary(clientData.cardSummary || null);
       setStylists(Array.isArray(stys) ? stys : []);
       setServices(Array.isArray(svcs) ? svcs : []);
 
@@ -318,6 +326,74 @@ export default function ClientProfilePage({ params }: { params: Promise<{ email:
           )}
         </div>
       </div>
+
+      {/* Payment method on file. Operator's signal for whether a
+          cancellation / no-show fee can actually be collected. Green
+          when present, neutral when absent — neither case is a bug,
+          just informational. Stripe customer id (if linked) becomes a
+          clickable deep-link to the Stripe dashboard. */}
+      {cardSummary && (
+        <div
+          className={`mb-6 p-4 border flex items-start gap-3 ${
+            cardSummary.cardOnFile
+              ? "bg-emerald-50/50 border-emerald-200"
+              : "bg-navy/5 border-navy/10"
+          }`}
+        >
+          <div
+            className={`shrink-0 h-10 w-12 rounded flex items-center justify-center ${
+              cardSummary.cardOnFile
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-navy/10 text-navy/40"
+            }`}
+            aria-hidden="true"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+              <rect x="2" y="6" width="20" height="13" rx="2" />
+              <path d="M2 11h20" />
+              <path d="M6 16h4" strokeLinecap="round" />
+            </svg>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className={`text-[11px] font-body uppercase tracking-[0.2em] ${cardSummary.cardOnFile ? "text-emerald-700" : "text-navy/40"}`}>
+              Payment method
+            </p>
+            <p className="font-body text-sm text-navy mt-0.5">
+              {cardSummary.cardOnFile ? (
+                cardSummary.cardBrand && cardSummary.cardLast4 ? (
+                  <>
+                    <strong className="font-semibold">
+                      {cardSummary.cardBrand.toUpperCase()} ending in {cardSummary.cardLast4}
+                    </strong>
+                    {cardSummary.cardLastSeen && (
+                      <span className="text-navy/50">
+                        {" "}· captured {cardSummary.cardLastSeen}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <strong className="font-semibold">Card on file</strong>
+                )
+              ) : (
+                <span className="text-navy/60">
+                  No card on file — cancellation / no-show fees would need to be
+                  collected manually.
+                </span>
+              )}
+            </p>
+            {cardSummary.stripeCustomerId && (
+              <a
+                href={`https://dashboard.stripe.com/customers/${cardSummary.stripeCustomerId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block mt-1 text-[11px] font-body text-emerald-700 hover:underline"
+              >
+                Open in Stripe →
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="mb-6">
         <button

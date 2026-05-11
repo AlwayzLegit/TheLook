@@ -52,17 +52,34 @@ export async function GET(request: NextRequest) {
   const emails = (profiles || []).map((p: { email: string }) => p.email.toLowerCase());
   // Pull appointment stats for the current page's emails only — keeps the
   // aggregate query cheap regardless of how many profiles exist.
+  // card_brand, card_last4, stripe_payment_method_id come along so we
+  // can flag clients with a card on file (the operator uses this to
+  // decide whether they can charge a no-show fee).
   const { data: appts } = emails.length > 0
     ? await supabase
         .from("appointments")
-        .select("client_email, client_name, client_phone, status, date, service_id, stylist_id")
+        .select("client_email, client_name, client_phone, status, date, service_id, stylist_id, card_brand, card_last4, stripe_payment_method_id")
         .in("client_email", emails)
     : { data: [] };
 
   const { data: allServices } = await supabase.from("services").select("id, price_min");
   const priceById = Object.fromEntries((allServices || []).map((s: { id: string; price_min: number }) => [s.id, s.price_min]));
 
-  const stats: Record<string, { visits: number; noShows: number; totalSpent: number; lastVisit: string; phone: string | null; name: string | null }> = {};
+  const stats: Record<string, {
+    visits: number;
+    noShows: number;
+    totalSpent: number;
+    lastVisit: string;
+    phone: string | null;
+    name: string | null;
+    // Card-on-file: the most recently captured payment method across
+    // this client's appointments. We pick "most recent appointment
+    // with a card_last4" so the displayed card is the one we'd
+    // actually try to charge if a no-show happens today.
+    cardBrand: string | null;
+    cardLast4: string | null;
+    cardLastSeenDate: string;
+  }> = {};
   type ApptStatRow = {
     client_email: string | null;
     client_name: string | null;
@@ -71,10 +88,17 @@ export async function GET(request: NextRequest) {
     date: string | null;
     service_id: string;
     stylist_id: string;
+    card_brand: string | null;
+    card_last4: string | null;
+    stripe_payment_method_id: string | null;
   };
   for (const a of (appts || []) as ApptStatRow[]) {
     const key = (a.client_email || "").toLowerCase();
-    if (!stats[key]) stats[key] = { visits: 0, noShows: 0, totalSpent: 0, lastVisit: "", phone: null, name: null };
+    if (!stats[key]) stats[key] = {
+      visits: 0, noShows: 0, totalSpent: 0, lastVisit: "",
+      phone: null, name: null,
+      cardBrand: null, cardLast4: null, cardLastSeenDate: "",
+    };
     const s = stats[key];
     if (a.status === "confirmed" || a.status === "completed") {
       s.visits++;
@@ -86,6 +110,15 @@ export async function GET(request: NextRequest) {
       if (a.client_phone) s.phone = a.client_phone;
       if (a.client_name) s.name = a.client_name;
     }
+    // Track the most recent card we captured for this client. Some
+    // appointments capture a payment method without storing brand/last4
+    // (older deposit flow); fall back to a synthetic indicator so we
+    // still mark the client as having a card on file.
+    if ((a.card_last4 || a.stripe_payment_method_id) && a.date && a.date > s.cardLastSeenDate) {
+      s.cardLastSeenDate = a.date;
+      s.cardBrand = a.card_brand;
+      s.cardLast4 = a.card_last4;
+    }
   }
 
   type ProfileRow = {
@@ -96,9 +129,20 @@ export async function GET(request: NextRequest) {
     banned: boolean | null;
     banned_reason: string | null;
     imported_at: string | null;
+    stripe_customer_id: string | null;
   };
   let clients = ((profiles || []) as ProfileRow[]).map((p) => {
-    const s = stats[p.email.toLowerCase()] || { visits: 0, noShows: 0, totalSpent: 0, lastVisit: "", phone: null, name: null };
+    const s = stats[p.email.toLowerCase()] || {
+      visits: 0, noShows: 0, totalSpent: 0, lastVisit: "",
+      phone: null, name: null,
+      cardBrand: null, cardLast4: null, cardLastSeenDate: "",
+    };
+    // A client has a card on file if either:
+    //   - we saved a Stripe customer id on their profile (long-lived
+    //     setup, e.g. SetupIntent), OR
+    //   - any past appointment captured a payment method (card_last4
+    //     or stripe_payment_method_id non-null).
+    const cardOnFile = Boolean(p.stripe_customer_id) || Boolean(s.cardLast4 || s.cardBrand);
     return {
       email: p.email,
       name: s.name || p.name,
@@ -111,10 +155,19 @@ export async function GET(request: NextRequest) {
       noShows: s.noShows,
       totalSpent: s.totalSpent,
       lastVisit: s.lastVisit || null,
+      cardOnFile,
+      cardBrand: s.cardBrand,
+      cardLast4: s.cardLast4,
     };
   });
 
   if (hasVisits) clients = clients.filter((c: { visits: number }) => c.visits > 0);
+  // New "Has card on file" filter for the list page. Matches the
+  // operator workflow of finding clients we can actually charge a
+  // cancellation fee to.
+  if (sp.get("hasCard") === "true") {
+    clients = clients.filter((c) => c.cardOnFile);
+  }
 
   if (sort === "visits") clients.sort((a, b) => b.visits - a.visits);
   else if (sort === "spent") clients.sort((a, b) => b.totalSpent - a.totalSpent);

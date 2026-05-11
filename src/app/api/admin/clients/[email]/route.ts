@@ -46,11 +46,38 @@ export async function GET(
     .eq("client_email", decodedEmail)
     .order("created_at", { ascending: false });
 
+  // Derive a payment-method summary for the detail view. The
+  // appointment list above already carries the per-row card data; we
+  // just surface the most recent capture as "card on file" so the UI
+  // can show a Visa •••• 1234-style chip without re-walking the array
+  // every render. Also returns the Stripe customer id (if any) so the
+  // operator can deep-link into the Stripe dashboard from the panel.
+  type ApptCardFields = {
+    date: string | null;
+    card_brand: string | null;
+    card_last4: string | null;
+    stripe_payment_method_id: string | null;
+  };
+  const apptList = (appointments || []) as ApptCardFields[];
+  const mostRecentCardAppt = apptList
+    .filter((a) => a.card_last4 || a.stripe_payment_method_id)
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))[0];
+  const profileWithStripe = profile as { stripe_customer_id?: string | null } | null;
+  const cardOnFile = Boolean(profileWithStripe?.stripe_customer_id) || Boolean(mostRecentCardAppt);
+  const cardSummary = {
+    cardOnFile,
+    cardBrand: mostRecentCardAppt?.card_brand ?? null,
+    cardLast4: mostRecentCardAppt?.card_last4 ?? null,
+    cardLastSeen: mostRecentCardAppt?.date ?? null,
+    stripeCustomerId: profileWithStripe?.stripe_customer_id ?? null,
+  };
+
   return apiSuccess({
     profile,
     appointments: appointments || [],
     discountUsage: discountUsage || [],
     photos: photos || [],
+    cardSummary,
   });
 }
 
