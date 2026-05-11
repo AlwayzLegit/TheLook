@@ -133,23 +133,31 @@ export default function SettingsPage() {
   const [testPhone, setTestPhone] = useState("");
   const [testing, setTesting] = useState(false);
   const role = session?.user?.role || "admin";
+  const permissions = session?.user?.permissions;
+  // manage_settings is the gate for every section on this page. Falls
+  // back to the legacy role check for sessions minted before the
+  // permissions field rolled out, so an in-flight admin doesn't get
+  // bounced just because their JWT predates this code.
+  const canManageSettings =
+    (Array.isArray(permissions) && permissions.includes("manage_settings")) ||
+    (!permissions && (role === "admin" || role === "manager"));
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
-    // Round-10 follow-up: managers used to redirect to /admin here,
-    // which clobbered the in-page "This page is for salon admins."
+    // Round-10 follow-up: missing-permission users used to redirect to
+    // /admin here, which clobbered the in-page "you don't have access"
     // message. We now let the render branch below show the message —
     // bookmark / direct-link visitors see why they're blocked instead
     // of bouncing back to the dashboard with no explanation.
   }, [status, router]);
 
   useEffect(() => {
-    if (status !== "authenticated" || role !== "admin") return;
+    if (status !== "authenticated" || !canManageSettings) return;
     fetch("/api/admin/settings")
       .then((r) => r.json())
       .then((data) => { setS(data || {}); setInitial(data || {}); })
       .finally(() => setLoading(false));
-  }, [status, role]);
+  }, [status, canManageSettings]);
 
   const dirty = JSON.stringify(s) !== JSON.stringify(initial);
 
@@ -196,11 +204,17 @@ export default function SettingsPage() {
   };
 
   if (status !== "authenticated") return null;
-  // Round-9 RBAC tightening: settings is admin-only. Managers used
-  // to be allowed but the QA caught it as a P0 — they could change
-  // global config (branding, SMS, security TTL, notifications).
-  if (role !== "admin") {
-    return <p className="p-8 font-body text-navy/60">This page is for salon admins.</p>;
+  // Settings gates on the manage_settings permission. Admin grants
+  // this to managers by default; the admin can also create a custom
+  // role with this permission via /admin/users.
+  if (!canManageSettings) {
+    return (
+      <p className="p-8 font-body text-navy/60">
+        You don&apos;t have permission to manage salon settings. Ask an
+        admin to grant the &ldquo;Manage settings&rdquo; permission to
+        your account in <code>/admin/users</code>.
+      </p>
+    );
   }
 
   return (

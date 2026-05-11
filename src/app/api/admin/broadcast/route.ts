@@ -1,5 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { getSessionUser, isAdminOrManager } from "@/lib/roles";
+import { getSessionUser, userHasPermission } from "@/lib/roles";
+import { denyMissingPermission } from "@/lib/apiAuth";
 import { apiError, apiSuccess } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { sendSMS } from "@/lib/sms";
@@ -168,7 +169,8 @@ async function buildPreflight(input: z.infer<typeof schema>) {
 
 export async function GET(request: NextRequest) {
   const user = await getSessionUser();
-  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
+    if (!user) return apiError("Unauthorized", 401);
+  if (!userHasPermission(user, "manage_clients")) return denyMissingPermission(user, "manage_clients", request);
   if (!hasSupabaseConfig) return apiSuccess({ audienceSize: 0, eligibleCount: 0, cost: null });
 
   const sp = request.nextUrl.searchParams;
@@ -186,7 +188,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const user = await getSessionUser();
-  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
+    if (!user) return apiError("Unauthorized", 401);
+  if (!userHasPermission(user, "manage_clients")) return denyMissingPermission(user, "manage_clients", request);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const body = await request.json().catch(() => ({}));

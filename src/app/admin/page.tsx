@@ -103,6 +103,13 @@ export default function AdminDashboard() {
   }, [status, router]);
 
   const role = session?.user?.role;
+  const permissions = session?.user?.permissions;
+  // Banner-loader gate: only fetch /api/admin/settings when the user
+  // can actually read it. Falls back to legacy role for sessions that
+  // predate the permission rollout.
+  const canManageSettings =
+    (Array.isArray(permissions) && permissions.includes("manage_settings")) ||
+    (!permissions && (role === "admin" || role === "manager"));
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -145,10 +152,10 @@ export default function AdminDashboard() {
     loadAudience();
     const t2 = setInterval(loadAudience, 120_000);
 
-    // Banner for missing staff emails. Admin-only — settings is
-    // admin-scoped after round-9, and managers can't fix the value
-    // themselves, so showing them the warning would be misleading.
-    if (role === "admin") {
+    // Banner for missing staff emails. Only fires when the user can
+    // actually read /api/admin/settings — otherwise the request 403s
+    // and writes a noisy auth.rbac.denied row every dashboard load.
+    if (canManageSettings) {
       fetch("/api/admin/settings")
         .then((r) => r.json())
         .then((data) => {
@@ -158,7 +165,7 @@ export default function AdminDashboard() {
         .catch(() => setStaffEmailsConfigured(null));
     }
     return () => { active = false; clearInterval(t); clearInterval(t2); };
-  }, [status, role]);
+  }, [status, role, canManageSettings]);
 
   if (status !== "authenticated") return null;
 

@@ -5,12 +5,22 @@ import { checkRateLimit } from "./rateLimit";
 import { logAuthEvent } from "./auditLog";
 import { extractClientIp } from "./ip";
 import type { UserRole } from "./roles";
+import { ADMIN_PRESET, MANAGER_PRESET, sanitizePermissions, type Permission } from "./permissions";
 
 const failedAttempts = new Map<string, { count: number; lockedUntil: number }>();
 const MAX_FAILED = 5;
 const LOCKOUT_MS = 15 * 60 * 1000;
 
-async function findUserInDb(email: string): Promise<{ id: string; name: string; email: string; role: UserRole; stylistId: string | null; passwordHash: string } | null> {
+async function findUserInDb(email: string): Promise<{
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  stylistId: string | null;
+  permissions: Permission[];
+  title: string | null;
+  passwordHash: string;
+} | null> {
   try {
     const { supabase, hasSupabaseConfig } = await import("./supabase");
     if (!hasSupabaseConfig) return null;
@@ -25,12 +35,27 @@ async function findUserInDb(email: string): Promise<{ id: string; name: string; 
     if (!data) return null;
     const role: UserRole =
       data.role === "manager" || data.role === "stylist" ? data.role : "admin";
+    // Hydrate permissions from the DB array; if a legacy row pre-dates
+    // migration 20260521 and has an empty array, fall back to the
+    // role-derived preset so existing managers/admins keep working
+    // before they're ever re-saved.
+    const rawPerms = sanitizePermissions(data.permissions);
+    const permissions: Permission[] =
+      rawPerms.length > 0
+        ? rawPerms
+        : role === "admin"
+          ? [...ADMIN_PRESET]
+          : role === "manager"
+            ? [...MANAGER_PRESET]
+            : [];
     return {
       id: data.id,
       name: data.name,
       email: data.email,
       role,
       stylistId: data.stylist_id,
+      permissions,
+      title: typeof data.title === "string" && data.title.trim() ? data.title : null,
       passwordHash: data.password_hash,
     };
   } catch {
@@ -162,6 +187,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               email: dbUser.email,
               role: dbUser.role,
               stylistId: dbUser.stylistId,
+              permissions: dbUser.permissions,
+              title: dbUser.title,
             };
           }
         }
@@ -185,7 +212,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (inputEmail && adminPassword && password === adminPassword && allowedEmails.has(inputEmail)) {
             failedAttempts.delete(inputEmail);
             logAuthEvent("auth.login.success", inputEmail, { userId: "env-admin", reason: "env_fallback" });
-            return { id: "env-admin", name: "Admin", email: inputEmail, role: "admin", stylistId: null };
+            // env-admin gets the full permission set — same intent as the
+            // pre-permissions admin role. This path is auto-disabled once
+            // the first DB user exists (see dbUsersExist).
+            return {
+              id: "env-admin",
+              name: "Admin",
+              email: inputEmail,
+              role: "admin",
+              stylistId: null,
+              permissions: [...ADMIN_PRESET],
+              title: null,
+            };
           }
         }
 
@@ -211,6 +249,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.role = (user.role as UserRole) || "admin";
         token.stylistId = user.stylistId ?? null;
+        token.permissions = Array.isArray(user.permissions) ? user.permissions : [];
+        token.title = user.title ?? null;
       }
       return token;
     },
@@ -218,6 +258,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.role = (token.role as UserRole) || "admin";
         session.user.stylistId = (token.stylistId as string | null) ?? null;
+        // Permissions can disappear from a session if the JWT was minted
+        // before this code shipped — default to empty so gates fail
+        // closed rather than crashing on .includes() of undefined.
+        const perms = (token.permissions as unknown);
+        session.user.permissions = Array.isArray(perms) ? perms : [];
+        session.user.title = (token.title as string | null) ?? null;
       }
       return session;
     },

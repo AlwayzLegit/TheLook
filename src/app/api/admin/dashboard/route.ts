@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { requireAnyAdminAccess } from "@/lib/apiAuth";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { todayISOInLA } from "@/lib/datetime";
@@ -38,6 +39,8 @@ function addDays(d: Date, n: number): Date {
 export async function GET() {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  const gate = await requireAnyAdminAccess();
+  if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiSuccess(emptyPayload());
 
   const today = todayISOInLA();

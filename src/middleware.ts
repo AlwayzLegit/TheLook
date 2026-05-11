@@ -49,15 +49,23 @@ function needsAuth(pathname: string): boolean {
   return false;
 }
 
-// Mirrors lib/roles.ts isAdminOrManager(). Stylist accounts can hold a
-// session for portal lookups but must not reach the admin UI/API.
-const ADMIN_ROLES = new Set(["admin", "manager"]);
+// Admin-shell gate. As of Round-26 the source of truth is the
+// permissions array on the session (lib/permissions.ts catalogue); a
+// user gets in if they have at least one permission. The legacy role
+// check stays as a fallback for sessions minted before the
+// permissions field landed — once the JWT TTL (4h) rolls over for
+// every active operator this can be deleted.
+const LEGACY_ADMIN_ROLES = new Set(["admin", "manager"]);
 
 const authCheck = auth((req) => {
   const { pathname } = req.nextUrl;
   const isApi = pathname.startsWith("/api/admin");
   const role = req.auth?.user?.role;
-  const allowed = !!req.auth && (!role || ADMIN_ROLES.has(role));
+  const perms = req.auth?.user?.permissions;
+  const hasAnyPerm = Array.isArray(perms) && perms.length > 0;
+  const allowed =
+    !!req.auth &&
+    (hasAnyPerm || (!role && !perms) || (!!role && LEGACY_ADMIN_ROLES.has(role)));
 
   if (!req.auth) {
     if (isApi) {

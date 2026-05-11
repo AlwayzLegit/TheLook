@@ -1,6 +1,6 @@
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
-import { getSessionUser, isAdminOrManager } from "@/lib/roles";
+import { getSessionUser, userCanAccessAdmin } from "@/lib/roles";
 import { NextRequest } from "next/server";
 
 // GET /api/admin/notifications?unreadOnly=true
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (isAdminOrManager(user)) {
+  if (userCanAccessAdmin(user)) {
     query = query.or("recipient_role.eq.admin,recipient_stylist_id.not.is.null");
   } else if (user.stylistId) {
     query = query.eq("recipient_stylist_id", user.stylistId);
@@ -81,7 +81,7 @@ export async function PATCH(request: NextRequest) {
     .update({ read_at: new Date().toISOString() });
 
   if (markAll) {
-    if (isAdminOrManager(user)) {
+    if (userCanAccessAdmin(user)) {
       query = query.or("recipient_role.eq.admin,recipient_stylist_id.not.is.null");
     } else if (user.stylistId) {
       query = query.eq("recipient_stylist_id", user.stylistId);
@@ -92,7 +92,7 @@ export async function PATCH(request: NextRequest) {
   } else if (Array.isArray(ids) && ids.length > 0) {
     query = query.in("id", ids);
     // Stylists can only mark their own notifications as read.
-    if (!isAdminOrManager(user) && user.stylistId) {
+    if (!userCanAccessAdmin(user) && user.stylistId) {
       query = query.eq("recipient_stylist_id", user.stylistId);
     }
   } else {

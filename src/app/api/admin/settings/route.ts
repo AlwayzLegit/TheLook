@@ -1,6 +1,6 @@
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
-import { requireAdmin } from "@/lib/apiAuth";
+import { requirePermission } from "@/lib/apiAuth";
 import { logAdminAction } from "@/lib/auditLog";
 import { BRANDING_CACHE_TAG } from "@/lib/branding";
 import { estimateSmsCost, MAX_ALLOWED_SEGMENTS } from "@/lib/smsLength";
@@ -49,12 +49,12 @@ const ALLOWED_KEYS = new Set([
 ]);
 
 export async function GET() {
-  // Round-9 QA tightened settings to admin-only — branding, SMS
-  // toggles, security TTL, and notification recipients are all
-  // levers managers shouldn't pull. Manager-side surfaces that
-  // need a couple of values (idle timeout, brand name) read them
-  // through their own dedicated endpoints or page props instead.
-  const gate = await requireAdmin();
+  // Round-26 owner request: opened up to anyone with manage_settings
+  // (admins by default; managers via the new permission system; any
+  // custom role the admin grants this perm to). Booking deposit rules,
+  // reminder templates, brand text — all the levers that used to be
+  // admin-only.
+  const gate = await requirePermission("manage_settings");
   if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiSuccess({});
 
@@ -70,7 +70,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  const gate = await requireAdmin(request);
+  const gate = await requirePermission("manage_settings", request);
   if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/apiAuth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { sendAdminTestSMS } from "@/lib/sms";
 import { logAdminAction } from "@/lib/auditLog";
@@ -11,6 +12,8 @@ import { NextRequest } from "next/server";
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  const gate = await requirePermission("manage_settings", request);
+  if (!gate.ok) return gate.response;
 
   const body = await request.json().catch(() => ({}));
   const phone = (body.phone || "").toString().trim();

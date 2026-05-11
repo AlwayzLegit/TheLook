@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/apiAuth";
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError, logError } from "@/lib/apiResponse";
 
@@ -14,6 +15,8 @@ function csvEscape(v: string | null | undefined): string {
 export async function GET() {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  const gate = await requirePermission("manage_clients");
+  if (!gate.ok) return gate.response;
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const { data, error } = await supabase

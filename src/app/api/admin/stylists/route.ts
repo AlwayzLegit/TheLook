@@ -1,6 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
-import { requireAdminOrManager } from "@/lib/apiAuth";
+import { requirePermission } from "@/lib/apiAuth";
 import { adminStylistSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
@@ -13,6 +13,8 @@ import { NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  const gate = await requirePermission("manage_team", request);
+  if (!gate.ok) return gate.response;
 
   if (!hasSupabaseConfig) {
     return apiSuccess([]);
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
   // workflow; admin-only here just blocked routine ops. Real
   // boundary stays on /api/admin/users (creating admin/manager
   // logins) which remains admin-only.
-  const gate = await requireAdminOrManager(request);
+  const gate = await requirePermission("manage_team", request);
   if (!gate.ok) return gate.response;
 
   const body = await request.json();

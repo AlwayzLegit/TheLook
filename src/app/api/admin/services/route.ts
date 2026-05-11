@@ -1,6 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 import { auth } from "@/lib/auth";
-import { requireAdminOrManager } from "@/lib/apiAuth";
+import { requirePermission } from "@/lib/apiAuth";
 import { adminServiceSchema } from "@/lib/validation";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
@@ -21,6 +21,8 @@ function revalidatePublic() {
 export async function GET() {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  const gate = await requirePermission("manage_catalog");
+  if (!gate.ok) return gate.response;
 
   if (!hasSupabaseConfig) {
     return apiSuccess([]);
@@ -45,7 +47,7 @@ export async function POST(request: NextRequest) {
   // adding new menu items is a routine ops task the salon manager
   // does without needing the owner online. Editing + deleting via
   // the per-id route stays at the existing isAdminOrManager gate.
-  const gate = await requireAdminOrManager(request);
+  const gate = await requirePermission("manage_catalog", request);
   if (!gate.ok) return gate.response;
 
   const body = await request.json();

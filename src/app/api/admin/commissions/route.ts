@@ -1,5 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { getSessionUser, isAdminOrManager } from "@/lib/roles";
+import { getSessionUser, userHasPermission } from "@/lib/roles";
+import { denyMissingPermission } from "@/lib/apiAuth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { logAdminAction } from "@/lib/auditLog";
 import { NextRequest } from "next/server";
@@ -7,7 +8,7 @@ import { NextRequest } from "next/server";
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return apiError("Unauthorized", 401);
-  if (!isAdminOrManager(user)) return apiError("Admin access required.", 403);
+  if (!userHasPermission(user, "manage_team")) return denyMissingPermission(user, "manage_team");
   if (!hasSupabaseConfig) return apiSuccess([]);
 
   const { data, error } = await supabase
@@ -25,7 +26,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const user = await getSessionUser();
   if (!user) return apiError("Unauthorized", 401);
-  if (!isAdminOrManager(user)) return apiError("Admin access required.", 403);
+  if (!userHasPermission(user, "manage_team")) return denyMissingPermission(user, "manage_team", request);
   if (!hasSupabaseConfig) return apiError("Database not configured.", 503);
 
   const body = await request.json();

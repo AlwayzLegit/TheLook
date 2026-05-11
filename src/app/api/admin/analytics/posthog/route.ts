@@ -1,4 +1,5 @@
-import { getSessionUser } from "@/lib/roles";
+import { getSessionUser, userHasPermission } from "@/lib/roles";
+import { denyMissingPermission } from "@/lib/apiAuth";
 import { apiError, apiSuccess } from "@/lib/apiResponse";
 import { hasPostHogConfig, queryPostHog } from "@/lib/posthog";
 
@@ -43,6 +44,7 @@ const EMPTY: Summary = {
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return apiError("Unauthorized", 401);
+  if (!userHasPermission(user, "view_analytics")) return denyMissingPermission(user, "view_analytics");
 
   // Dashboard calls this unconditionally; return an empty payload with
   // the configured:false flag so the UI can render a nudge panel instead

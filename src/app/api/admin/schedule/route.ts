@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/apiAuth";
 import { adminScheduleSchema } from "@/lib/validation";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
@@ -8,6 +9,8 @@ import { NextRequest } from "next/server";
 export async function GET() {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  const gate = await requirePermission("manage_bookings");
+  if (!gate.ok) return gate.response;
 
   if (!hasSupabaseConfig) {
     return apiSuccess([]);
@@ -41,6 +44,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  const gate = await requirePermission("manage_bookings", request);
+  if (!gate.ok) return gate.response;
 
   const body = await request.json();
   const parsed = adminScheduleSchema.safeParse(body);
@@ -118,6 +123,8 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const session = await auth();
   if (!session) return apiError("Unauthorized", 401);
+  const gate = await requirePermission("manage_bookings", request);
+  if (!gate.ok) return gate.response;
 
   const { searchParams } = request.nextUrl;
   const id = searchParams.get("id");

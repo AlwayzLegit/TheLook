@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireAdminOrManager } from "@/lib/apiAuth";
+import { requirePermission } from "@/lib/apiAuth";
 import { apiError, apiSuccess } from "@/lib/apiResponse";
 import { renderMarkdown } from "@/lib/blog/markdown";
 
@@ -8,7 +8,7 @@ import { renderMarkdown } from "@/lib/blog/markdown";
 // exactly what the visitor will see. Admin-gated so the renderer can't
 // be poked anonymously.
 export async function POST(request: NextRequest) {
-  const gate = await requireAdminOrManager(request);
+  const gate = await requirePermission("manage_content", request);
   if (!gate.ok) return gate.response;
   let body: unknown;
   try { body = await request.json(); } catch { return apiError("Invalid JSON.", 400); }

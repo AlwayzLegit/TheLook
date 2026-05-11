@@ -1,5 +1,6 @@
 import { supabase, hasSupabaseConfig } from "@/lib/supabase";
-import { getSessionUser, isAdminOrManager } from "@/lib/roles";
+import { getSessionUser, userHasPermission } from "@/lib/roles";
+import { denyMissingPermission } from "@/lib/apiAuth";
 import { apiError, apiSuccess, logError } from "@/lib/apiResponse";
 import { NextRequest } from "next/server";
 
@@ -7,7 +8,8 @@ import { NextRequest } from "next/server";
 // GET /api/admin/messages?unreadOnly=true    — only unread (sidebar badge)
 export async function GET(request: NextRequest) {
   const user = await getSessionUser();
-  if (!user || !isAdminOrManager(user)) return apiError("Admins only.", 403);
+    if (!user) return apiError("Unauthorized", 401);
+  if (!userHasPermission(user, "manage_clients")) return denyMissingPermission(user, "manage_clients", request);
   if (!hasSupabaseConfig) return apiSuccess([]);
 
   const unreadOnly = request.nextUrl.searchParams.get("unreadOnly") === "true";
