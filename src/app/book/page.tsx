@@ -3,8 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import BookingProgress from "@/components/booking/BookingProgress";
 import ServicePicker from "@/components/booking/ServicePicker";
 import StylistPicker from "@/components/booking/StylistPicker";
@@ -722,26 +720,14 @@ export default function BookPage() {
 
   const stylistDisplayName = isAny ? "Any available stylist" : stylistObject?.name || "";
 
+  // Navbar / Footer / page heading live in /book/layout.tsx so they
+  // render unconditionally in the SSR HTML for every /book?... query
+  // variant (Round-27 SEO fix — Semrush flagged 181 variants as
+  // "Missing h1" because the inline header here was inside the
+  // "use client" tree).
   return (
     <>
-      <Navbar />
-      <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
-        {/* Visible page heading. Round-26 SEO audit flagged the booking
-            route's prior `sr-only` h1 as "missing h1" because Semrush
-            (and a chunk of other crawlers) skip headings that resolve
-            to position:absolute / 1px sizing. Showing a short, branded
-            heading also reinforces the keyword target ("hair salon
-            Glendale") on the highest-intent route. */}
-        <header className="max-w-4xl mx-auto px-6 text-center mb-8 md:mb-10">
-          <h1 className="font-heading text-3xl md:text-4xl text-navy mb-2">
-            Book an Appointment
-          </h1>
-          <p className="text-navy/70 font-body text-sm">
-            Pick your service, stylist, and time slot — at The Look Hair
-            Salon in Glendale, CA.
-          </p>
-        </header>
-        <div className="max-w-4xl mx-auto px-6">
+      <div className="max-w-4xl mx-auto px-6">
           {step < STEP_DONE && <BookingProgress current={step} />}
 
           {step === STEP_SERVICE && (
@@ -962,8 +948,6 @@ export default function BookPage() {
             </div>
           )}
         </div>
-      </main>
-      <Footer />
     </>
   );
 }

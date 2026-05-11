@@ -19,24 +19,30 @@ interface TeamMember {
   specialties: string[];
 }
 
-// Fallback used while API loads or if DB not configured
+// Fallback used while API loads or if DB not configured. Slugs MUST
+// match the live DB rows — the SSR HTML emits /team/<slug> anchors
+// from this list (before the client-side fetch hydrates with real
+// data), and stale slugs ship as broken internal links to crawlers.
+// Round-27 SEO audit flagged 6 broken internal links on /about traced
+// back to this fallback when the slugs were still armen-p /
+// kristina-g / alisa-h.
 const FALLBACK: TeamMember[] = [
   {
-    id: "armen-p", slug: "armen-p", name: "Armen P.",
+    id: "armen", slug: "armen", name: "Armen",
     bio: "Trained in Moscow. World-class expertise in coloring, cutting & styling. Specialist in barber fades for men & women.",
     image_url: null,
     categories: [],
     specialties: ["Coloring", "Barber Fades", "Cutting"],
   },
   {
-    id: "kristina-g", slug: "kristina-g", name: "Kristina G.",
+    id: "kristina", slug: "kristina", name: "Kristina",
     bio: "Trained in Armenia. 15 years of expertise in cutting & coloring for both men's & women's hair.",
     image_url: null,
     categories: [],
     specialties: ["Cutting", "Coloring", "Men & Women"],
   },
   {
-    id: "alisa-h", slug: "alisa-h", name: "Alisa (Liz) H.",
+    id: "alisa-liz", slug: "alisa-liz", name: "Alisa (Liz)",
     bio: "Over 30 years in the industry. Specializes in cutting & coloring. A true veteran of the craft.",
     image_url: null,
     categories: [],

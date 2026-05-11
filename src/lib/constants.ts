@@ -60,22 +60,22 @@ export const SALON_SERVICES = [
 
 export const SALON_STYLISTS = [
   {
-    name: "Armen P.",
-    slug: "armen-p",
+    name: "Armen",
+    slug: "armen",
     bio: "Trained in Moscow, Armen brings world-class expertise in coloring, cutting & styling. Great at barber fades. 17+ years experience.",
     imageUrl: "/images/gallery/gallery-02.jpg",
     specialties: JSON.stringify(["Coloring", "Barber Fades", "Cutting"]),
   },
   {
-    name: "Kristina G.",
-    slug: "kristina-g",
+    name: "Kristina",
+    slug: "kristina",
     bio: "Trained in Armenia, Kristina has 15 years of expertise in cutting & coloring for both men's & women's hair.",
     imageUrl: "/images/gallery/gallery-03.jpg",
     specialties: JSON.stringify(["Cutting", "Coloring", "Men & Women"]),
   },
   {
-    name: "Alisa (Liz) H.",
-    slug: "alisa-h",
+    name: "Alisa (Liz)",
+    slug: "alisa-liz",
     bio: "With over 30 years in the industry, Alisa specializes in cutting & coloring. A true veteran of the craft.",
     imageUrl: "/images/gallery/gallery-04.jpg",
     specialties: JSON.stringify(["Cutting", "Coloring", "30+ Years"]),
