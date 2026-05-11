@@ -30,9 +30,15 @@ export default async function AccessibilityPage() {
 
           <div className="bg-white border border-navy/10 p-8 md:p-10 space-y-6 font-body text-navy/75 leading-relaxed text-[15px]">
             <section>
-              <p>
+              <p className="mb-3">
                 {brand.name} is committed to making our website and salon welcoming to everyone,
                 including people with disabilities.
+              </p>
+              <p>
+                We treat accessibility as part of every redesign and content update — not a
+                one-time audit. Our stylists also train annually on serving clients with mobility,
+                sensory, and communication differences so the in-salon experience matches the
+                accessibility of the digital one.
               </p>
             </section>
 
@@ -49,24 +55,41 @@ export default async function AccessibilityPage() {
                 <li>Keyboard controls on the before/after slider (left/right arrows adjust by 5%).</li>
                 <li>Adjustable contrast via your browser or OS settings.</li>
                 <li>Text readability at reasonable zoom levels (up to 200%).</li>
+                <li>Image alt text on every gallery photo so screen readers convey the look.</li>
+                <li>Color contrast ratios audited against WCAG AA for body text and interactive elements.</li>
               </ul>
             </section>
 
             <section>
               <h2 className="font-heading text-2xl text-navy mb-3">Salon</h2>
               <ul className="list-disc pl-6 space-y-2">
-                <li>Our Glendale location is on the ground floor with a street-level entrance.</li>
+                <li>Our Glendale location is on the ground floor with a street-level entrance — no steps to navigate from the parking lot.</li>
                 <li>We&#39;re happy to accommodate mobility devices, service animals, and specific sensory needs.</li>
+                <li>Lower-volume music, scent-free service options, and quieter blow-dryer alternatives are available on request — please mention these at booking and we&#39;ll have everything ready when you arrive.</li>
                 <li>If you need any accommodation or have a preference we should know about, please call ahead at {brand.phone} and we&#39;ll do our best.</li>
               </ul>
             </section>
 
             <section>
+              <h2 className="font-heading text-2xl text-navy mb-3">Booking by phone or email</h2>
+              <p>
+                If our online booking form is difficult to use with the assistive technology you
+                rely on, we&#39;re happy to take your appointment over the phone or by email
+                instead. Call {brand.phone} during business hours or message us at{" "}
+                <a href={mailtoHref(brand.email)} className="text-rose hover:underline">{brand.email}</a>{" "}
+                and we&#39;ll book you the same way we would in person.
+              </p>
+            </section>
+
+            <section>
               <h2 className="font-heading text-2xl text-navy mb-3">Report an Issue</h2>
               <p>
-                If you encounter an accessibility barrier on our website, please let us know so we can fix it.
-                Email <a href={mailtoHref(brand.email)} className="text-rose hover:underline">{brand.email}</a> or
-                call {brand.phone} and we&#39;ll respond as soon as possible.
+                If you encounter an accessibility barrier on our website, please let us know so we
+                can fix it — we aim to acknowledge reports within two business days. Email{" "}
+                <a href={mailtoHref(brand.email)} className="text-rose hover:underline">{brand.email}</a> or
+                call {brand.phone} and describe the barrier (page URL, what you were trying to do,
+                and which assistive technology you were using if relevant). We treat accessibility
+                bugs as priority fixes alongside critical site issues.
               </p>
             </section>
           </div>

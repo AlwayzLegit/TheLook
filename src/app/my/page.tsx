@@ -93,8 +93,19 @@ function PortalInner() {
       <>
         <Navbar />
         <main className="pt-24 pb-20 min-h-[100dvh] bg-cream">
-          <div className="text-center py-20">
-            <p className="text-navy/70 font-body">Loading...</p>
+          <div className="max-w-4xl mx-auto px-6 text-center py-20">
+            {/* h1 lives in the SSR HTML for every render path — the
+                authenticated branch below has its own "My Account" h1.
+                Round-30 made /my indexable, Round-31 SEO audit then
+                flagged this branch as missing-h1 because crawlers see
+                the loading shell before the client-side fetch resolves. */}
+            <h1 className="font-heading text-4xl md:text-5xl text-navy mb-3">
+              Client Portal
+            </h1>
+            <p className="text-navy/70 font-body">
+              Sign in with the magic link from your booking email to view and manage your
+              upcoming appointments.
+            </p>
           </div>
         </main>
         <Footer />
