@@ -249,6 +249,8 @@ export default async function TeamMemberPage({ params }: RouteParams) {
               </div>
             </div>
           </div>
+
+          <TeamMemberFraming firstName={staff.name.split(" ")[0]} brandName={brand.name} />
         </main>
         <Footer />
       </>
@@ -381,9 +383,84 @@ export default async function TeamMemberPage({ params }: RouteParams) {
               </div>
             </div>
           )}
+
+          <TeamMemberFraming
+            firstName={stylist.name.split(" ")[0]}
+            specialties={stylist.specialties}
+            brandName={brand.name}
+          />
         </div>
       </main>
       <Footer />
     </>
+  );
+}
+
+// Bottom-of-page framing copy for /team/<slug>. Same role as
+// <ServiceFraming> on /services/item/<slug>: adds ~150 words of
+// useful body content per stylist page so crawlers don't flag the
+// route as "Low text-to-HTML ratio" / "Low word count", and the
+// reader gets practical answers to questions they'd otherwise ask
+// at the booking call.
+function TeamMemberFraming({
+  firstName,
+  specialties,
+  brandName,
+}: {
+  firstName: string;
+  specialties?: ReadonlyArray<string>;
+  brandName: string;
+}) {
+  const specialtiesLine =
+    specialties && specialties.length > 0
+      ? `${firstName} specializes in ${specialties.slice(0, -1).join(", ")}${
+          specialties.length > 1 ? " and " : ""
+        }${specialties[specialties.length - 1]}.`
+      : `${firstName} works across cutting, coloring, and styling — ask at booking which look they recommend for your hair type.`;
+
+  return (
+    <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 md:pb-16">
+      <div className="border-t border-navy/10 pt-10 md:pt-12 grid md:grid-cols-3 gap-8 md:gap-10">
+        <div>
+          <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">
+            What to expect
+          </p>
+          <p className="text-navy/80 font-body text-sm leading-relaxed">
+            Every appointment with {firstName} opens with a short consultation.
+            Bring photos if you have a specific look in mind — they help us
+            confirm the tone, length, and finish before any scissors or color
+            touch the hair. {specialtiesLine}
+          </p>
+        </div>
+        <div>
+          <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">
+            How to prepare
+          </p>
+          <p className="text-navy/80 font-body text-sm leading-relaxed">
+            For color services, 1–2 days of unwashed hair is ideal — the
+            natural oils protect the scalp during processing. For cuts, come
+            with hair clean and product-free so {firstName} can read the
+            natural texture and growth pattern. Arrive 5 minutes early so the
+            consultation isn&apos;t rushed.
+          </p>
+        </div>
+        <div>
+          <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">
+            Cancellation policy
+          </p>
+          <p className="text-navy/80 font-body text-sm leading-relaxed">
+            We hold {firstName}&apos;s chair for you the moment you book.
+            Cancellations more than 24 hours before the appointment are free.
+            Within 24 hours, the $50 deposit is forfeited and a 25%
+            cancellation fee may apply to the card on file. Same policy for
+            no-shows.
+          </p>
+        </div>
+      </div>
+      <p className="text-navy/50 font-body text-xs mt-8 text-center">
+        Questions before booking with {firstName}? Call {brandName} or send a
+        message via the contact page.
+      </p>
+    </section>
   );
 }
