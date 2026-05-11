@@ -1,3 +1,12 @@
+# =============================================================================
+# robots.txt — The Look Hair Salon
+# Two policy groups:
+#   1. Default (User-agent: *) — every crawler not specifically named.
+#   2. AI crawlers — explicit welcome for OpenAI, Google, Anthropic,
+#      Perplexity, etc. Same rules as *, but declared explicitly so
+#      auditors (Semrush, etc.) can see the affirmative opt-in.
+# =============================================================================
+
 User-agent: *
 Allow: /
 
@@ -17,6 +26,44 @@ Disallow: /book/waitlist
 
 # Client portal — magic-link login + signed-in account view. No
 # marketing value and reached only via email-issued links.
+Disallow: /my
+
+# -----------------------------------------------------------------------------
+# AI crawlers — explicit welcome.
+# Per RFC 9309, a crawler that matches a specific User-agent block ignores
+# the "*" group entirely. So each AI crawler gets the same rule set as the
+# default, declared explicitly. The grouped form (multiple User-agent lines
+# above one rule block) keeps it readable and avoids duplication.
+#
+# Why explicit: the salon wants to surface in ChatGPT, Gemini, Perplexity,
+# and Claude when prospective clients ask "best hair salon Glendale" / "where
+# can I get balayage in LA" type queries. Naming each crawler with Allow: /
+# is the affirmative opt-in those products check for.
+# -----------------------------------------------------------------------------
+
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: OAI-SearchBot
+User-agent: Google-Extended
+User-agent: ClaudeBot
+User-agent: anthropic-ai
+User-agent: Claude-Web
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: CCBot
+User-agent: Applebot-Extended
+User-agent: Amazonbot
+User-agent: Bytespider
+User-agent: Meta-ExternalAgent
+User-agent: Meta-ExternalFetcher
+User-agent: DuckAssistBot
+User-agent: cohere-ai
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /book/cancel
+Disallow: /book/reschedule
+Disallow: /book/waitlist
 Disallow: /my
 
 Sitemap: https://www.thelookhairsalonla.com/sitemap.xml
