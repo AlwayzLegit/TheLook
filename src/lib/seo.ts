@@ -80,6 +80,13 @@ export async function rootMetadata(): Promise<Metadata> {
 // schema.org LocalBusiness / HairSalon JSON-LD. Dropped into the <head>
 // of the root layout so Google's Knowledge Panel, Apple Maps, and other
 // crawlers read the DB-backed values.
+//
+// @type is a 2-item array — schema.org allows it, Google's validator
+// accepts it, and Semrush's On-Page checker only matched the parent
+// "HealthAndBeautyBusiness" string when scoring "add aggregate rating"
+// suggestions. Listing both keeps the more specific HairSalon as
+// primary while making the parent class explicit for parsers that
+// don't walk the schema.org inheritance graph.
 export async function jsonLd(): Promise<Record<string, unknown>> {
   const brand = await getBranding();
   const [streetAddress] = brand.address.split(",");
@@ -88,7 +95,7 @@ export async function jsonLd(): Promise<Record<string, unknown>> {
   const tel = telHref(brand.phone).replace(/^tel:/, "");
   return {
     "@context": "https://schema.org",
-    "@type": "HairSalon",
+    "@type": ["HairSalon", "HealthAndBeautyBusiness"],
     name: brand.name,
     description: brand.tagline,
     url: LOCATION.siteUrl,
@@ -235,6 +242,13 @@ export async function personJsonLd(person: {
   knowsAbout?: ReadonlyArray<string>;
 }): Promise<Record<string, unknown>> {
   const brand = await getBranding();
+  // The worksFor block is a Local Business sub-type (HairSalon). Google's
+  // structured-data validator requires `address` on every Local Business
+  // node; without it, every /team/<slug> page logged a "missing address"
+  // error in the 2026-05-11 Semrush structured-data report (one per
+  // active staff member, 6 errors total). Embed the full PostalAddress
+  // so the salon is fully described wherever it's referenced.
+  const [streetAddress] = brand.address.split(",");
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Person",
@@ -243,6 +257,15 @@ export async function personJsonLd(person: {
       "@type": "HairSalon",
       name: brand.name,
       url: siteUrl,
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: streetAddress.trim(),
+        addressLocality: LOCATION.city,
+        addressRegion: LOCATION.region,
+        postalCode: LOCATION.postalCode,
+        addressCountry: LOCATION.country,
+      },
+      telephone: telHref(brand.phone).replace(/^tel:/, ""),
     },
   };
   if (person.jobTitle) data.jobTitle = person.jobTitle;
