@@ -20,6 +20,48 @@ interface ClientRow {
   noShows: number;
   totalSpent: number;
   lastVisit: string | null;
+  cardOnFile: boolean;
+  cardBrand: string | null;
+  cardLast4: string | null;
+}
+
+// Stable color hash for the avatar tile. Same email = same color so
+// the operator builds visual muscle memory for repeat clients without
+// us having to ship per-client avatars.
+const AVATAR_PALETTE = [
+  "bg-rose/15 text-rose",
+  "bg-emerald-100 text-emerald-700",
+  "bg-amber-100 text-amber-700",
+  "bg-sky-100 text-sky-700",
+  "bg-violet-100 text-violet-700",
+  "bg-fuchsia-100 text-fuchsia-700",
+  "bg-teal-100 text-teal-700",
+  "bg-orange-100 text-orange-700",
+];
+function avatarTone(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return AVATAR_PALETTE[h % AVATAR_PALETTE.length];
+}
+function initials(name: string, fallback: string): string {
+  const src = (name || fallback || "?").trim();
+  return src
+    .split(/[\s()@.]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("") || "?";
+}
+function relativeDate(iso: string | null): string {
+  if (!iso) return "never";
+  const then = new Date(iso + "T00:00:00").getTime();
+  const days = Math.floor((Date.now() - then) / 86_400_000);
+  if (Number.isNaN(days) || days < 0) return iso;
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 30) return `${days}d ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
 }
 
 interface SearchHit {
@@ -60,6 +102,7 @@ export default function ClientsPage() {
   const [sort, setSort] = useState<"recent" | "visits" | "spent" | "name">("recent");
   const [bannedOnly, setBannedOnly] = useState(false);
   const [hasVisitsOnly, setHasVisitsOnly] = useState(false);
+  const [hasCardOnly, setHasCardOnly] = useState(false);
 
   const [importOpen, setImportOpen] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -98,6 +141,7 @@ export default function ClientsPage() {
     if (committedQuery) params.set("q", committedQuery);
     if (bannedOnly) params.set("banned", "true");
     if (hasVisitsOnly) params.set("hasVisits", "true");
+    if (hasCardOnly) params.set("hasCard", "true");
     params.set("sort", sort);
     params.set("page", String(page));
     params.set("pageSize", String(pageSize));
@@ -108,7 +152,7 @@ export default function ClientsPage() {
         setTotal(typeof data?.total === "number" ? data.total : 0);
       })
       .finally(() => setLoading(false));
-  }, [committedQuery, bannedOnly, hasVisitsOnly, sort, page, status]);
+  }, [committedQuery, bannedOnly, hasVisitsOnly, hasCardOnly, sort, page, status]);
 
   // Close typeahead on outside click.
   useEffect(() => {
@@ -240,6 +284,11 @@ export default function ClientsPage() {
         </label>
 
         <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-body text-navy/60 border border-navy/15 px-3 py-2">
+          <input type="checkbox" checked={hasCardOnly} onChange={(e) => { setHasCardOnly(e.target.checked); setPage(1); }} className="w-4 h-4" />
+          Card on file
+        </label>
+
+        <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-body text-navy/60 border border-navy/15 px-3 py-2">
           <input type="checkbox" checked={bannedOnly} onChange={(e) => { setBannedOnly(e.target.checked); setPage(1); }} className="w-4 h-4" />
           Banned only
         </label>
@@ -257,53 +306,121 @@ export default function ClientsPage() {
       {loading ? (
         <p className="text-navy/40 font-body text-sm">Loading clients...</p>
       ) : clients.length === 0 ? (
-        <p className="text-navy/40 font-body text-sm">No clients match.</p>
+        <div className="bg-white border border-navy/10 px-6 py-12 text-center">
+          <p className="font-heading text-lg text-navy/60 mb-1">No clients match</p>
+          <p className="text-sm font-body text-navy/40">
+            Try a different search term or clear the filters above.
+          </p>
+        </div>
       ) : (
         <div className="bg-white border border-navy/10 divide-y divide-navy/5">
-          {clients.map((c) => (
-            <div key={c.email} className={`px-4 sm:px-6 py-4 flex items-start justify-between gap-3 ${c.banned ? "bg-red-50/40" : ""}`}>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Link href={`/admin/clients/${encodeURIComponent(c.email)}`} className="font-body font-bold text-sm text-navy hover:text-rose truncate">
-                    {c.name}
-                  </Link>
-                  {c.banned && <Badge tone="danger" size="sm">Banned</Badge>}
-                  {c.visits > 1 && !c.banned && <Badge tone="info" size="sm">{c.visits}x</Badge>}
-                  {c.noShows > 0 && (
-                    <Badge tone="warning" size="sm">{c.noShows} no-show{c.noShows > 1 ? "s" : ""}</Badge>
+          {clients.map((c) => {
+            const emailShown = displayEmail(c.email);
+            const tone = avatarTone(c.email);
+            const initial = initials(c.name, c.email);
+            return (
+              <Link
+                key={c.email}
+                href={`/admin/clients/${encodeURIComponent(c.email)}`}
+                className={`group flex items-center gap-4 px-4 sm:px-6 py-4 transition-colors ${c.banned ? "bg-red-50/40 hover:bg-red-50/70" : "hover:bg-navy/[0.02]"}`}
+              >
+                {/* Avatar tile — colored by email hash for visual continuity */}
+                <div className={`shrink-0 h-11 w-11 rounded-full flex items-center justify-center font-heading text-sm ${tone}`} aria-hidden="true">
+                  {initial}
+                </div>
+
+                {/* Main column — name + identifying badges + contact */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-body font-semibold text-sm text-navy group-hover:text-rose truncate transition-colors">
+                      {c.name}
+                    </span>
+                    {c.banned && <Badge tone="danger" size="sm">Banned</Badge>}
+                    {c.cardOnFile && (
+                      <span
+                        className="inline-flex items-center gap-1 text-[10px] font-body uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5"
+                        title={
+                          c.cardBrand && c.cardLast4
+                            ? `${c.cardBrand.toUpperCase()} ending in ${c.cardLast4}`
+                            : "Stripe customer on file"
+                        }
+                      >
+                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                          <rect x="2" y="6" width="20" height="13" rx="2" />
+                          <path d="M2 10h20" />
+                        </svg>
+                        Card
+                        {c.cardLast4 ? <span className="font-mono">···{c.cardLast4}</span> : null}
+                      </span>
+                    )}
+                    {c.noShows > 0 && (
+                      <Badge tone="warning" size="sm">
+                        {c.noShows} no-show{c.noShows > 1 ? "s" : ""}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-navy/55 text-xs font-body break-all mt-0.5">
+                    {emailShown ? (
+                      <>{emailShown}{c.phone ? ` · ${c.phone}` : ""}</>
+                    ) : (
+                      <span className="text-navy/40">{c.phone || "no contact on file"}</span>
+                    )}
+                  </p>
+                  <p className="text-navy/40 text-[11px] font-body mt-1 flex items-center gap-2">
+                    <span>
+                      Last visit: <span className="text-navy/60">{relativeDate(c.lastVisit)}</span>
+                    </span>
+                    {c.birthday && (
+                      <span className="text-navy/30">· 🎂 {c.birthday}</span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Stats column — spend + visit count */}
+                <div className="text-right shrink-0 hidden sm:block">
+                  <p className="font-heading text-base text-green-700 leading-none">
+                    {formatCents(c.totalSpent)}
+                  </p>
+                  <p className="text-[11px] font-body text-navy/45 mt-1">
+                    {c.visits} visit{c.visits !== 1 ? "s" : ""}
+                  </p>
+                </div>
+
+                {/* Quick-contact buttons — keep cards self-contained */}
+                <div
+                  className="hidden md:flex gap-1.5 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {emailShown && (
+                    <a
+                      href={`mailto:${c.email}`}
+                      className="h-7 w-7 inline-flex items-center justify-center text-blue-600 border border-blue-200 hover:bg-blue-50"
+                      title="Email"
+                      aria-label={`Email ${c.name}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </a>
+                  )}
+                  {c.phone && (
+                    <a
+                      href={`tel:${c.phone}`}
+                      className="h-7 w-7 inline-flex items-center justify-center text-green-600 border border-green-200 hover:bg-green-50"
+                      title="Call"
+                      aria-label={`Call ${c.name}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h2.5a1 1 0 01.95.68l1.2 3.6a1 1 0 01-.27 1.05l-1.9 1.9a16 16 0 006.3 6.3l1.9-1.9a1 1 0 011.05-.27l3.6 1.2a1 1 0 01.68.95V19a2 2 0 01-2 2h-1C9.82 21 3 14.18 3 6V5z" />
+                      </svg>
+                    </a>
                   )}
                 </div>
-                {(() => {
-                  const emailShown = displayEmail(c.email);
-                  return (
-                    <p className="text-navy/50 text-xs font-body break-all flex items-center gap-1.5">
-                      {emailShown ? (
-                        <>{emailShown}{c.phone ? ` · ${c.phone}` : ""}</>
-                      ) : (
-                        <>
-                          <svg className="h-3 w-3 text-navy/30" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.6} aria-label="No email on file"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                          <span className="text-navy/40">{c.phone || "no contact on file"}</span>
-                        </>
-                      )}
-                    </p>
-                  );
-                })()}
-                <p className="text-navy/40 text-xs font-body mt-1">
-                  {c.birthday ? `🎂 ${c.birthday} · ` : ""}Last visit: {c.lastVisit || "—"}
-                </p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="font-heading text-sm text-green-600">{formatCents(c.totalSpent)}</p>
-                <p className="text-xs font-body text-navy/40">{c.visits} visit{c.visits !== 1 ? "s" : ""}</p>
-                <div className="flex gap-2 mt-2 justify-end">
-                  {displayEmail(c.email) && (
-                    <a href={`mailto:${c.email}`} className="text-[10px] font-body text-blue-600 border border-blue-200 px-2 py-0.5 hover:bg-blue-50">Email</a>
-                  )}
-                  {c.phone && <a href={`tel:${c.phone}`} className="text-[10px] font-body text-green-600 border border-green-200 px-2 py-0.5 hover:bg-green-50">Call</a>}
-                </div>
-              </div>
-            </div>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
 
