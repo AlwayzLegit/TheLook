@@ -109,9 +109,16 @@ export default function Contact() {
           <h1 className="font-heading text-4xl md:text-5xl mb-6">
             Contact Us
           </h1>
-          <p className="text-navy/70 font-body font-light max-w-xl mx-auto">
-            The fastest way to reach us is a phone call. We answer during
-            salon hours.
+          <p className="text-navy/70 font-body font-light max-w-2xl mx-auto mb-4">
+            The fastest way to reach us is a phone call — we answer during salon hours and can
+            usually book you within a few minutes. The form below routes to the same inbox we
+            answer messages from, so use whichever feels easier.
+          </p>
+          <p className="text-navy/70 font-body font-light max-w-2xl mx-auto text-sm">
+            Trying to cancel or reschedule an existing appointment? The fastest path is the link
+            in your confirmation email, but the phone works too. For pricing or service questions,
+            mention the look you have in mind (photos help) and we can suggest the right service +
+            stylist combination.
           </p>
         </AnimatedSection>
 
