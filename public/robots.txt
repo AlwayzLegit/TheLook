@@ -24,9 +24,12 @@ Disallow: /book/cancel
 Disallow: /book/reschedule
 Disallow: /book/waitlist
 
-# Client portal — magic-link login + signed-in account view. No
-# marketing value and reached only via email-issued links.
-Disallow: /my
+# Note: /my (client portal) was previously disallowed here, but Semrush
+# counted that as "Blocked from AI Search" because the navbar and
+# footer still link to /my/login. The pages are harmless to index — a
+# regular sign-in form and a dashboard that redirects unauthenticated
+# visitors. Letting them through removes the lone blocker and hits
+# AI Search Health 100%.
 
 # -----------------------------------------------------------------------------
 # AI crawlers — explicit welcome.
@@ -64,6 +67,5 @@ Disallow: /api/
 Disallow: /book/cancel
 Disallow: /book/reschedule
 Disallow: /book/waitlist
-Disallow: /my
 
 Sitemap: https://www.thelookhairsalonla.com/sitemap.xml
