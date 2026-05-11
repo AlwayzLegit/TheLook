@@ -35,6 +35,21 @@ interface ErrorIssue {
   filename: string | null;
 }
 
+// /api/admin/mail-health response shape — 24h rollup of email send
+// activity from admin_log. Rendered as a small panel at the top of
+// this page so the operator can see at a glance whether outbound
+// mail is healthy alongside the Sentry feed.
+interface MailHealth {
+  sent: number;
+  failed: number;
+  skipped: number;
+  total: number;
+  topFailureReason: string | null;
+  distinctFailureReasons: number;
+  windowStart: string;
+  windowEnd: string;
+}
+
 // Sentry's project-issues endpoint is strict about statsPeriod values.
 // History: round-7 dropped "1h"/"30d", round-9 dropped "7d" — Sentry
 // narrowed the accepted set to '', '24h', '14d' and started returning
@@ -91,6 +106,7 @@ export default function AdminErrorsPage() {
   const [configMessage, setConfigMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
+  const [mailHealth, setMailHealth] = useState<MailHealth | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/admin/login");
@@ -106,19 +122,30 @@ export default function AdminErrorsPage() {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch(
-          `/api/admin/errors?period=${encodeURIComponent(period)}&query=${encodeURIComponent(query)}`,
-        );
-        const data = await res.json().catch(() => ({}));
+        // Fetch Sentry issues + mail health in parallel — both render
+        // on this page so a single poll cycle hydrates everything.
+        const [sentryRes, mailRes] = await Promise.all([
+          fetch(`/api/admin/errors?period=${encodeURIComponent(period)}&query=${encodeURIComponent(query)}`),
+          fetch("/api/admin/mail-health"),
+        ]);
+        const sentryData = await sentryRes.json().catch(() => ({}));
         if (cancelled) return;
-        if (!res.ok) {
-          setError(data.error || "Failed to load Sentry issues.");
-          return;
+        if (!sentryRes.ok) {
+          setError(sentryData.error || "Failed to load Sentry issues.");
+        } else {
+          setError(null);
+          setConfigMessage(sentryData.configured === false ? sentryData.message : sentryData.message || null);
+          setIssues(Array.isArray(sentryData.issues) ? sentryData.issues : []);
+          setLastFetched(new Date());
         }
-        setError(null);
-        setConfigMessage(data.configured === false ? data.message : data.message || null);
-        setIssues(Array.isArray(data.issues) ? data.issues : []);
-        setLastFetched(new Date());
+
+        // Mail health is best-effort — if the endpoint fails, the
+        // Sentry section keeps rendering. Operator can still pull the
+        // raw email.* rows from /admin/activity.
+        if (mailRes.ok) {
+          const mailData = await mailRes.json().catch(() => null);
+          if (!cancelled && mailData) setMailHealth(mailData as MailHealth);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -185,6 +212,10 @@ export default function AdminErrorsPage() {
           </select>
         </div>
       </div>
+
+      {mailHealth && (
+        <MailHealthPanel data={mailHealth} />
+      )}
 
       {configMessage && (
         <div className="bg-amber-50 border border-amber-200 p-3 rounded text-sm font-body text-amber-900 mb-4">
@@ -299,5 +330,58 @@ export default function AdminErrorsPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// Last-24h email send rollup. Reads from /api/admin/mail-health which
+// aggregates admin_log email.*.{sent,failed,skipped} rows. Goal is a
+// glanceable answer to "are emails going out right now?" — the
+// detailed per-attempt log lives at /admin/activity?action=email.*.
+function MailHealthPanel({ data }: { data: MailHealth }) {
+  const problems = data.failed + data.skipped;
+  const allClear = data.total === 0 || problems === 0;
+
+  const headlineTone = allClear
+    ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+    : "bg-amber-50 border-amber-200 text-amber-900";
+
+  return (
+    <section className={`border ${headlineTone} p-4 rounded mb-5`}>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <Badge tone={allClear ? "success" : "warning"} size="sm">
+              Mail · 24h
+            </Badge>
+            <span className="font-body font-semibold text-sm">
+              {allClear
+                ? data.total === 0
+                  ? "No emails attempted in the last 24h"
+                  : `All ${data.total} email${data.total === 1 ? "" : "s"} delivered`
+                : `${problems} of ${data.total} email${data.total === 1 ? "" : "s"} did not go out`}
+            </span>
+          </div>
+          {data.topFailureReason && (
+            <p className="text-xs font-mono text-navy/70 mt-1 break-all">
+              Top reason: {data.topFailureReason}
+              {data.distinctFailureReasons > 1 && (
+                <span className="ml-2 text-navy/50">
+                  (+{data.distinctFailureReasons - 1} other{data.distinctFailureReasons === 2 ? "" : "s"})
+                </span>
+              )}
+            </p>
+          )}
+          <p className="text-[0.7rem] font-mono text-navy/50 mt-1">
+            sent {data.sent} · failed {data.failed} · skipped {data.skipped}
+          </p>
+        </div>
+        <a
+          href="/admin/activity?action=email"
+          className="text-xs font-body text-[var(--color-crimson-600)] underline whitespace-nowrap shrink-0 self-center"
+        >
+          View send history →
+        </a>
+      </div>
+    </section>
   );
 }
