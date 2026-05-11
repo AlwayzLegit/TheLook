@@ -202,6 +202,87 @@ function categorySlug(cat: string) {
   return cat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
+// Per-category framing copy. Renders below the service detail panel
+// to give every service-item page additional body content (the
+// DB-stored description averages ~30-40 words; this adds another
+// ~100). Categories are deterministic strings stored in the
+// services.category column. Anything not in the map gets a generic
+// fallback so future categories don't break the page.
+const CATEGORY_FRAMING: Record<string, { whatToExpect: string; frequency: string; pairWith: string }> = {
+  Color: {
+    whatToExpect:
+      "Every color appointment starts with a quick consultation — your stylist confirms the tone direction, evaluates current condition, and walks through how the formula will be applied. Expect anywhere from 90 minutes to four hours of chair time depending on the technique.",
+    frequency:
+      "Full-coverage color typically refreshes every 4–6 weeks. Highlights and balayage hold for 8–12 weeks thanks to the natural grow-out. A gloss or toner refresh between full appointments keeps the result vibrant without committing to another full service.",
+    pairWith:
+      "Add a B3 Intensive Repair & Rebonding to any lightening service to protect the hair structure during the process. Finish with a blow-out or thermal styling for a polished walk-out look.",
+  },
+  "Facial Services": {
+    whatToExpect:
+      "Quick, precise grooming services delivered by stylists trained in both threading and waxing. Each appointment opens with a brief shape consultation so the finish matches the look you want.",
+    frequency:
+      "Most clients return every 3–4 weeks to maintain shape. Brow tints typically last 4–6 weeks before fading.",
+    pairWith:
+      "Schedule alongside a haircut or color appointment to streamline your visit and only park once.",
+  },
+  Haircuts: {
+    whatToExpect:
+      "Every haircut begins with a consultation about your hair type, growth pattern, and style goals — bring photos if you have a specific look in mind. The service includes a wash, the cut itself, and a basic finish so you can see the shape before you leave.",
+    frequency:
+      "Plan on 4–6 weeks between visits for short and structured cuts, 6–12 weeks for longer styles or grown-out shapes. Bangs alone benefit from a quick refresh every 3–4 weeks.",
+    pairWith:
+      "Add a Custom Hair Treatment Cocktail or Deep Conditioning treatment for extra hydration on dry ends, or finish with thermal styling for a polished look.",
+  },
+  Styling: {
+    whatToExpect:
+      "Whether it is a special-event updo, a smooth blow-out, or thermal styling for everyday wear, each appointment opens with a brief consultation about the look you want. A fresh wash beforehand sets the cleanest base for the finish to last.",
+    frequency:
+      "Booked as needed for events and occasions. Many regulars schedule a standing weekly or bi-weekly blow-out to keep the look polished without daily styling time at home.",
+    pairWith:
+      "Add a Professional Hair Wash or Styling Prep Hair Wash for the cleanest base, or pair with a haircut to refresh your shape on the same visit.",
+  },
+  Treatments: {
+    whatToExpect:
+      "Treatment services target a specific hair concern — strength, hydration, frizz, scalp health, or smoothness. Most are added to a haircut or color appointment, though several can be booked as standalone visits.",
+    frequency:
+      "Cadence depends on the treatment. B3 lasts up to 12 washes. Keratin smoothing typically holds for 3–5 months. Deep conditioning is ideal monthly. Scalp oil treatments work best quarterly or as part of a seasonal reset.",
+    pairWith:
+      "Combine with a fresh haircut or color service for the cleanest application, and follow up at home with the products your stylist recommends.",
+  },
+};
+
+function ServiceFraming({ category, brandName }: { category: string; brandName: string }) {
+  const f = CATEGORY_FRAMING[category];
+  if (!f) return null;
+  return (
+    <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 md:pb-16">
+      <div className="border-t border-navy/10 pt-10 md:pt-12 grid md:grid-cols-3 gap-8 md:gap-10">
+        <div>
+          <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">
+            What to expect
+          </p>
+          <p className="text-navy/80 font-body text-sm leading-relaxed">{f.whatToExpect}</p>
+        </div>
+        <div>
+          <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">
+            Recommended frequency
+          </p>
+          <p className="text-navy/80 font-body text-sm leading-relaxed">{f.frequency}</p>
+        </div>
+        <div>
+          <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">
+            Pair with
+          </p>
+          <p className="text-navy/80 font-body text-sm leading-relaxed">{f.pairWith}</p>
+        </div>
+      </div>
+      <p className="text-navy/50 font-body text-xs mt-8 text-center">
+        Have a question before booking? Call {brandName} or send us a message via the contact page.
+      </p>
+    </section>
+  );
+}
+
 export default async function ServiceDetailPage(
   { params }: { params: Promise<{ slug: string }> },
 ) {
@@ -372,6 +453,16 @@ export default async function ServiceDetailPage(
             </p>
           </div>
         </section>
+
+        {/* Per-category framing block — adds ~100 words of relevant body
+            content per service page. Round-27/28 SEO audits flagged the
+            35 service-item pages as "Low word count" because the
+            DB-stored description (~30-40 words) plus the price + variants
+            list left the rendered page too thin for crawlers' content
+            heuristics. The What-to-expect / Frequency / Pair-with shape
+            also matches the questions clients ask at booking, so this
+            doubles as useful content. */}
+        <ServiceFraming category={service.category} brandName={brand.name} />
 
         {/* Stylists who offer this service. Cross-links the service
             detail to every relevant stylist profile so internal PageRank
