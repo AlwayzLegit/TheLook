@@ -322,6 +322,7 @@ export default function Contact() {
                   <div className="flex flex-wrap gap-3">
                     <a
                       href={telHref(brand.phone)}
+                      onClick={() => track("phone_click", { source: "contact_page" })}
                       className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-5 py-3 font-body transition-all duration-300 hover:shadow-[var(--shadow-rose-cta)] hover:-translate-y-0.5"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -361,6 +362,25 @@ export default function Contact() {
                   referrerPolicy="no-referrer-when-downgrade"
                   title={`${brand.name} location`}
                 />
+              </div>
+              {/* External "Open in Google Maps" link. The iframe above
+                  shows the location but can't launch driving directions
+                  on mobile — this link does, and gives us a tracked
+                  directions_click event so the admin dashboard can see
+                  how many visitors actually navigated to the salon. */}
+              <div className="mt-3">
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(brand.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => track("directions_click", { source: "contact_page" })}
+                  className="inline-flex items-center gap-2 text-[11px] tracking-[0.2em] uppercase font-body text-rose hover:underline"
+                >
+                  Get directions
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </a>
               </div>
             </div>
           </AnimatedSection>

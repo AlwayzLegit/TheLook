@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { TrackedLink } from "@/components/TrackedLink";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { getBranding } from "@/lib/branding";
 import { breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
@@ -228,13 +229,15 @@ export default async function NeighborhoodPage(
             </span>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link
+            <TrackedLink
+              event="book_click"
+              properties={{ source: "neighborhood_hero", neighborhood_slug: slug }}
               href="/book"
               className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-xs tracking-[0.2em] uppercase font-body px-7 py-3 transition-colors"
-              aria-label={`Book at ${brand.name}`}
+              ariaLabel={`Book at ${brand.name}`}
             >
               Book an appointment
-            </Link>
+            </TrackedLink>
             <Link
               href="/services"
               className="inline-flex items-center gap-2 border border-navy/20 text-navy hover:border-navy/50 text-xs tracking-[0.2em] uppercase font-body px-7 py-3 transition-colors"
@@ -343,12 +346,14 @@ export default async function NeighborhoodPage(
             <p className="text-navy/70 font-body text-sm mb-6">
               {brand.name} · {brand.address} · {brand.phone}
             </p>
-            <Link
+            <TrackedLink
+              event="book_click"
+              properties={{ source: "neighborhood_footer_cta", neighborhood_slug: slug }}
               href="/book"
               className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-xs tracking-[0.2em] uppercase font-body px-7 py-3 transition-colors"
             >
               Book online
-            </Link>
+            </TrackedLink>
           </div>
         </section>
       </main>

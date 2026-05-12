@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
 import StylistImage from "@/components/StylistImage";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { TrackedLink } from "@/components/TrackedLink";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { getBranding } from "@/lib/branding";
 import { isOptimizableImageHost } from "@/lib/imageHosts";
@@ -506,13 +507,15 @@ export default async function ServiceDetailPage(
             )}
 
             <div className="flex flex-wrap gap-3">
-              <Link
+              <TrackedLink
+                event="book_click"
+                properties={{ source: "service_item_hero", service_slug: slug }}
                 href={`/book?service=${service.id}`}
                 className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-xs tracking-[0.2em] uppercase font-body px-7 py-3 transition-colors"
-                aria-label={`Book ${service.name} at ${brand.name}`}
+                ariaLabel={`Book ${service.name} at ${brand.name}`}
               >
                 {`Book ${service.name}`}
-              </Link>
+              </TrackedLink>
               <Link
                 href={`/services/${categorySlug(service.category)}`}
                 className="inline-flex items-center gap-2 border border-navy/20 text-navy hover:border-navy/50 text-xs tracking-[0.2em] uppercase font-body px-7 py-3 transition-colors"

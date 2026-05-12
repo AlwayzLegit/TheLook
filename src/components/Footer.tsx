@@ -6,6 +6,7 @@ import SalonHours from "./SalonHours";
 import { telHref, mailtoHref } from "@/lib/branding";
 import { useBranding } from "./BrandingProvider";
 import { isOptimizableImageHost } from "@/lib/imageHosts";
+import { TrackedLink, TrackedAnchor } from "./TrackedLink";
 
 // Client component: reads branding from <BrandingProvider> in the root
 // layout. Keeping it client-side (vs async server) so it can be rendered
@@ -52,18 +53,22 @@ export default function Footer() {
         <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">Ready when you are</p>
         <h3 className="font-heading text-2xl md:text-3xl text-white mb-6">Book your next appointment</h3>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
+          <TrackedLink
+            event="book_click"
+            properties={{ source: "footer_cta" }}
             href="/book"
             className="bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-rose-cta)]"
           >
             Book Now
-          </Link>
-          <a
+          </TrackedLink>
+          <TrackedAnchor
+            event="phone_click"
+            properties={{ source: "footer_cta" }}
             href={phoneTel}
             className="border border-white/20 hover:border-gold/60 bg-white/5 hover:bg-white/10 text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:-translate-y-0.5 backdrop-blur-sm"
           >
             Call {brand.phone}
-          </a>
+          </TrackedAnchor>
         </div>
       </div>
 
@@ -194,9 +199,14 @@ export default function Footer() {
               <p>{addrLine1}</p>
               {addrLine2 && <p>{addrLine2}</p>}
               <p className="pt-3">
-                <a href={phoneTel} className="hover:text-gold transition-colors duration-300 text-white/85">
+                <TrackedAnchor
+                  event="phone_click"
+                  properties={{ source: "footer_contact_block" }}
+                  href={phoneTel}
+                  className="hover:text-gold transition-colors duration-300 text-white/85"
+                >
                   {brand.phone}
-                </a>
+                </TrackedAnchor>
               </p>
               <p>
                 <a href={emailHref} className="hover:text-gold transition-colors duration-300">
