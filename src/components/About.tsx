@@ -45,8 +45,8 @@ export default function About({
 
               {/* Floating badge */}
               <div className="absolute -bottom-6 -right-6 lg:-right-8 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.08)] px-6 py-4 rounded-sm animate-float">
-                <p className="font-heading text-2xl text-rose">14+</p>
-                <p className="text-navy/70 text-[10px] tracking-wider uppercase font-body">Years of Excellence</p>
+                <p className="font-heading text-2xl text-rose">15+</p>
+                <p className="text-navy/70 text-[10px] tracking-wider uppercase font-body">Years of Passion and Expertise</p>
               </div>
             </div>
           </AnimatedSection>
