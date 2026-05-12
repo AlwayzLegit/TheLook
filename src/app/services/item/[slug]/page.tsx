@@ -11,7 +11,7 @@ import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { getBranding } from "@/lib/branding";
 import { isOptimizableImageHost } from "@/lib/imageHosts";
 import { BOOKING } from "@/lib/constants";
-import { breadcrumbJsonLd, serviceJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, faqJsonLd, serviceJsonLd } from "@/lib/seo";
 
 export const revalidate = 60;
 
@@ -117,6 +117,33 @@ async function fetchStylistsForService(serviceId: string): Promise<StylistTile[]
       .order("sort_order", { ascending: true });
     return ((data || []) as Array<StylistTile & { sort_order: number | null }>).map(
       ({ id, name, slug, image_url }) => ({ id, name, slug, image_url }),
+    );
+  } catch {
+    return [];
+  }
+}
+
+interface ServiceFaq {
+  question: string;
+  answer: string;
+}
+
+// Per-service FAQs — sourced from the service_faqs table seeded in
+// migration 20260523. Returns empty when the service has no curated
+// FAQs yet, in which case the FAQ block + FAQPage JSON-LD are both
+// omitted entirely (Google flags FAQ schema with no visible Q&A on
+// the page as a structured-data violation).
+async function fetchServiceFaqs(slug: string): Promise<ServiceFaq[]> {
+  if (!hasSupabaseConfig) return [];
+  try {
+    const { data } = await supabase
+      .from("service_faqs")
+      .select("question, answer, sort_order")
+      .eq("service_slug", slug)
+      .eq("active", true)
+      .order("sort_order", { ascending: true });
+    return ((data || []) as Array<ServiceFaq & { sort_order: number | null }>).map(
+      ({ question, answer }) => ({ question, answer }),
     );
   } catch {
     return [];
@@ -331,9 +358,10 @@ export default async function ServiceDetailPage(
   // Cross-link queries fire after the main service is resolved (we
   // need its id + category) but in parallel with each other so the
   // page doesn't pay a serial round-trip cost.
-  const [stylists, related] = await Promise.all([
+  const [stylists, related, faqs] = await Promise.all([
     fetchStylistsForService(service.id),
     fetchRelatedServices(service.category, service.id),
+    fetchServiceFaqs(slug),
   ]);
 
   const breadcrumbsLd = breadcrumbJsonLd([
@@ -351,6 +379,10 @@ export default async function ServiceDetailPage(
     priceMin: service.price_min,
     priceText: service.price_text,
   });
+  // FAQPage JSON-LD is only emitted when there are real Q&A pairs
+  // rendered on the page. Empty FAQ schema is flagged by the Google
+  // Rich Results validator and risks a manual action.
+  const faqLd = faqs.length > 0 ? faqJsonLd(faqs) : null;
 
   return (
     <>
@@ -366,6 +398,14 @@ export default async function ServiceDetailPage(
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceLd) }}
       />
+      {faqLd && (
+        <Script
+          id="ldjson-faq-service-item"
+          type="application/ld+json"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+        />
+      )}
       <Navbar />
       <main className="pt-20 pb-20 min-h-[100dvh] bg-cream">
         {/* Breadcrumbs */}
@@ -501,6 +541,49 @@ export default async function ServiceDetailPage(
             also matches the questions clients ask at booking, so this
             doubles as useful content. */}
         <ServiceFraming service={service} brandName={brand.name} />
+
+        {/* Per-service FAQ block — seeded for the priority service
+            slugs in migration 20260523, hidden when no FAQs are
+            authored for this slug yet. Rendered visibly BEFORE the
+            FAQPage JSON-LD is emitted up top: Google requires every
+            schema Q/A to appear verbatim on the page or the rich
+            result is suppressed. Using semantic <details>/<summary>
+            keeps the markup keyboard-accessible and renders without
+            JS. */}
+        {faqs.length > 0 && (
+          <section className="max-w-4xl mx-auto px-4 sm:px-6 pb-12 md:pb-16">
+            <div className="border-t border-navy/10 pt-10 md:pt-12">
+              <h2 className="font-heading text-2xl md:text-3xl text-navy mb-2">
+                {service.name} — frequently asked questions
+              </h2>
+              <p className="text-navy/70 font-body text-sm mb-8">
+                Quick answers to what clients usually ask before booking.
+              </p>
+              <div className="divide-y divide-navy/10">
+                {faqs.map((f, i) => (
+                  <details
+                    key={`${slug}-faq-${i}`}
+                    className="group py-4"
+                    {...(i === 0 ? { open: true } : {})}
+                  >
+                    <summary className="font-heading text-base md:text-lg text-navy cursor-pointer list-none flex items-start justify-between gap-4">
+                      <span>{f.question}</span>
+                      <span
+                        aria-hidden
+                        className="text-gold text-xl leading-none mt-0.5 transition-transform group-open:rotate-45"
+                      >
+                        +
+                      </span>
+                    </summary>
+                    <p className="text-navy/75 font-body text-sm leading-relaxed mt-3 pr-8">
+                      {f.answer}
+                    </p>
+                  </details>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Stylists who offer this service. Cross-links the service
             detail to every relevant stylist profile so internal PageRank
