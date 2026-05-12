@@ -68,7 +68,11 @@ export default function Footer() {
       </div>
 
       <div className="max-w-7xl mx-auto px-8 lg:px-12 py-18 relative">
-        <div className="grid md:grid-cols-5 gap-10">
+        {/* 6-column at lg+ (Brand, Navigate, Services, Areas We Serve,
+            Salon Hours, Contact). 2-column at sm so the link lists
+            don't stack to a single tall column on tablets. The Areas
+            We Serve column was added in WP-E. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-10">
           {/* Brand */}
           <div className="md:col-span-1">
             <h3 className="font-heading text-2xl text-white tracking-wider mb-4">
@@ -132,6 +136,34 @@ export default function Footer() {
                 { href: "/services/color", label: "Color & Highlights" },
                 { href: "/services/styling", label: "Styling" },
                 { href: "/services/treatments", label: "Treatments" },
+                { href: "/services/facial-services", label: "Facial Services" },
+              ].map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="block text-white/72 hover:text-gold text-sm font-body font-light transition-all duration-300 hover:translate-x-1"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Areas Served — the geo-targeted neighborhood pages from
+              WP-D. Footer presence on every page is the cheapest way
+              to give these new URLs internal-link weight without
+              redesigning the primary nav. */}
+          <div>
+            <h4 className="text-gold text-[11px] tracking-[0.2em] uppercase font-body mb-6">
+              Areas We Serve
+            </h4>
+            <div className="space-y-3">
+              {[
+                { href: "/neighborhoods", label: "All Neighborhoods" },
+                { href: "/neighborhoods/pasadena-hair-salon", label: "Pasadena" },
+                { href: "/neighborhoods/burbank-hair-salon", label: "Burbank" },
+                { href: "/neighborhoods/highland-park-hair-salon", label: "Highland Park" },
+                { href: "/neighborhoods/studio-city-hair-salon", label: "Studio City" },
               ].map((link) => (
                 <Link
                   key={link.href}

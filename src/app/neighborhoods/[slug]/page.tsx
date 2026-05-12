@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { getBranding } from "@/lib/branding";
 import { breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
@@ -189,14 +190,14 @@ export default async function NeighborhoodPage(
       )}
       <Navbar />
       <main className="pt-20 pb-20 min-h-[100dvh] bg-cream">
-        {/* Breadcrumbs */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 text-xs font-body text-navy/70">
-          <Link href="/" className="hover:text-navy">Home</Link>
-          <span className="mx-2">/</span>
-          <Link href="/neighborhoods" className="hover:text-navy">Neighborhoods</Link>
-          <span className="mx-2">/</span>
-          <span className="text-navy/70">{n.short_name}</span>
-        </div>
+        <Breadcrumbs
+          className="max-w-4xl mx-auto px-4 sm:px-6 pt-6"
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Neighborhoods", href: "/neighborhoods" },
+            { label: n.short_name },
+          ]}
+        />
 
         {/* Hero */}
         <section className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-14">

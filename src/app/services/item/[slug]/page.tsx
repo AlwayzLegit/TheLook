@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileBookButton from "@/components/MobileBookButton";
 import StylistImage from "@/components/StylistImage";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { getBranding } from "@/lib/branding";
 import { isOptimizableImageHost } from "@/lib/imageHosts";
@@ -408,21 +409,15 @@ export default async function ServiceDetailPage(
       )}
       <Navbar />
       <main className="pt-20 pb-20 min-h-[100dvh] bg-cream">
-        {/* Breadcrumbs */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 text-xs font-body text-navy/70">
-          <Link href="/" className="hover:text-navy">Home</Link>
-          <span className="mx-2">/</span>
-          <Link href="/services" className="hover:text-navy">Services</Link>
-          <span className="mx-2">/</span>
-          <Link
-            href={`/services/${categorySlug(service.category)}`}
-            className="hover:text-navy"
-          >
-            {service.category}
-          </Link>
-          <span className="mx-2">/</span>
-          <span className="text-navy/70">{service.name}</span>
-        </div>
+        <Breadcrumbs
+          className="max-w-6xl mx-auto px-4 sm:px-6 pt-6"
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Services", href: "/services" },
+            { label: service.category, href: `/services/${categorySlug(service.category)}` },
+            { label: service.name },
+          ]}
+        />
 
         <section className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-16 grid md:grid-cols-2 gap-8 md:gap-12 items-start">
           {/* Hero image */}

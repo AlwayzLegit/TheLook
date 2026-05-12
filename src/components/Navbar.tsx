@@ -16,11 +16,16 @@ const navLinks = [
   { href: "/contact", label: "Contact" },
 ];
 
+// Service categories in the same order as src/lib/service-categories.ts.
+// Facial Services was missing from the dropdown until WP-E — the
+// /services/facial-services page existed and was in the sitemap but
+// had no nav entry, costing it internal-link weight.
 const serviceSubLinks = [
   { href: "/services/haircuts", label: "Haircuts" },
   { href: "/services/color", label: "Color & Highlights" },
   { href: "/services/styling", label: "Styling" },
   { href: "/services/treatments", label: "Treatments" },
+  { href: "/services/facial-services", label: "Facial Services" },
 ];
 
 export default function Navbar() {
