@@ -166,6 +166,35 @@ async function dynamicEntries(): Promise<MetadataRoute.Sitemap> {
     }
   } catch {}
 
+  // Neighborhood landing pages (WP-D). Each row corresponds to one
+  // /neighborhoods/<slug> page seeded in migration 20260524 — geo-
+  // targeted content for cities adjacent to Glendale (Pasadena,
+  // Burbank, Highland Park, Studio City to start). Priority 0.7
+  // matches service-item pages — these are the primary off-Glendale
+  // ranking surface so they belong above blog content but below the
+  // home + /services hubs.
+  try {
+    const { data: neighborhoods } = await supabase
+      .from("neighborhoods")
+      .select("slug, updated_at, hero_image_url")
+      .eq("active", true);
+    for (const row of (neighborhoods || []) as Array<{
+      slug: string | null;
+      updated_at: string | null;
+      hero_image_url: string | null;
+    }>) {
+      if (!row.slug) continue;
+      const img = toAbsImage(row.hero_image_url);
+      out.push({
+        url: `${baseUrl}/neighborhoods/${row.slug}`,
+        lastModified: row.updated_at ? new Date(row.updated_at) : new Date(),
+        changeFrequency: "monthly",
+        priority: 0.7,
+        ...(img ? { images: [img] } : {}),
+      });
+    }
+  } catch {}
+
   return out;
 }
 
@@ -234,6 +263,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...(galleryImgs.length ? { images: galleryImgs } : {}),
     },
     { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
+    // Neighborhoods hub (WP-D). The per-neighborhood pages are added
+    // by dynamicEntries() below.
+    { url: `${baseUrl}/neighborhoods`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
     { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${baseUrl}/book`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },

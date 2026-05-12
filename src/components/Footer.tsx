@@ -6,6 +6,7 @@ import SalonHours from "./SalonHours";
 import { telHref, mailtoHref } from "@/lib/branding";
 import { useBranding } from "./BrandingProvider";
 import { isOptimizableImageHost } from "@/lib/imageHosts";
+import { TrackedLink, TrackedAnchor } from "./TrackedLink";
 
 // Client component: reads branding from <BrandingProvider> in the root
 // layout. Keeping it client-side (vs async server) so it can be rendered
@@ -52,23 +53,31 @@ export default function Footer() {
         <p className="text-gold text-[11px] tracking-[0.3em] uppercase font-body mb-3">Ready when you are</p>
         <h3 className="font-heading text-2xl md:text-3xl text-white mb-6">Book your next appointment</h3>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
+          <TrackedLink
+            event="book_click"
+            properties={{ source: "footer_cta" }}
             href="/book"
             className="bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-rose-cta)]"
           >
             Book Now
-          </Link>
-          <a
+          </TrackedLink>
+          <TrackedAnchor
+            event="phone_click"
+            properties={{ source: "footer_cta" }}
             href={phoneTel}
             className="border border-white/20 hover:border-gold/60 bg-white/5 hover:bg-white/10 text-white text-[11px] tracking-[0.2em] uppercase px-10 py-4 transition-all duration-300 hover:-translate-y-0.5 backdrop-blur-sm"
           >
             Call {brand.phone}
-          </a>
+          </TrackedAnchor>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-8 lg:px-12 py-18 relative">
-        <div className="grid md:grid-cols-5 gap-10">
+        {/* 6-column at lg+ (Brand, Navigate, Services, Areas We Serve,
+            Salon Hours, Contact). 2-column at sm so the link lists
+            don't stack to a single tall column on tablets. The Areas
+            We Serve column was added in WP-E. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-10">
           {/* Brand */}
           <div className="md:col-span-1">
             <h3 className="font-heading text-2xl text-white tracking-wider mb-4">
@@ -132,6 +141,34 @@ export default function Footer() {
                 { href: "/services/color", label: "Color & Highlights" },
                 { href: "/services/styling", label: "Styling" },
                 { href: "/services/treatments", label: "Treatments" },
+                { href: "/services/facial-services", label: "Facial Services" },
+              ].map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="block text-white/72 hover:text-gold text-sm font-body font-light transition-all duration-300 hover:translate-x-1"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Areas Served — the geo-targeted neighborhood pages from
+              WP-D. Footer presence on every page is the cheapest way
+              to give these new URLs internal-link weight without
+              redesigning the primary nav. */}
+          <div>
+            <h4 className="text-gold text-[11px] tracking-[0.2em] uppercase font-body mb-6">
+              Areas We Serve
+            </h4>
+            <div className="space-y-3">
+              {[
+                { href: "/neighborhoods", label: "All Neighborhoods" },
+                { href: "/neighborhoods/pasadena-hair-salon", label: "Pasadena" },
+                { href: "/neighborhoods/burbank-hair-salon", label: "Burbank" },
+                { href: "/neighborhoods/highland-park-hair-salon", label: "Highland Park" },
+                { href: "/neighborhoods/studio-city-hair-salon", label: "Studio City" },
               ].map((link) => (
                 <Link
                   key={link.href}
@@ -162,9 +199,14 @@ export default function Footer() {
               <p>{addrLine1}</p>
               {addrLine2 && <p>{addrLine2}</p>}
               <p className="pt-3">
-                <a href={phoneTel} className="hover:text-gold transition-colors duration-300 text-white/85">
+                <TrackedAnchor
+                  event="phone_click"
+                  properties={{ source: "footer_contact_block" }}
+                  href={phoneTel}
+                  className="hover:text-gold transition-colors duration-300 text-white/85"
+                >
                   {brand.phone}
-                </a>
+                </TrackedAnchor>
               </p>
               <p>
                 <a href={emailHref} className="hover:text-gold transition-colors duration-300">

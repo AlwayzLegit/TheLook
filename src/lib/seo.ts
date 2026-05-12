@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getBranding, telHref, type Branding } from "@/lib/branding";
+import { supabase, hasSupabaseConfig } from "@/lib/supabase";
 
 const siteUrl = (() => {
   const raw = process.env.NEXTAUTH_URL || "https://www.thelookhairsalonla.com";
@@ -77,6 +78,42 @@ export async function rootMetadata(): Promise<Metadata> {
   };
 }
 
+// AggregateRating fallback for the HairSalon JSON-LD.
+//
+// We prefer live numbers from external_reviews_cache (populated daily by
+// /api/cron/sync-reviews from Google Places). Google's structured-data
+// validator strips an AggregateRating that has no reviewCount, and the
+// hard-coded literal we used to ship drifted away from reality each
+// month. When Google Places + Yelp creds are missing on a preview env
+// the cache row is empty, so we keep a conservative fallback that
+// matches our last known good values.
+const AGGREGATE_RATING_FALLBACK = { rating: 4.2, count: 830 } as const;
+
+async function aggregateRating(): Promise<{ rating: number; count: number }> {
+  if (!hasSupabaseConfig) return { ...AGGREGATE_RATING_FALLBACK };
+  try {
+    // Google is the canonical source for AggregateRating in Knowledge
+    // Panel / rich results. Yelp's terms forbid syndicating their
+    // ratings outside Yelp surfaces, so we deliberately don't combine
+    // the two — Google rating + Google count goes into schema, Yelp
+    // stays in the visible badge component only.
+    const { data } = await supabase
+      .from("external_reviews_cache")
+      .select("rating, total_count, last_success_at")
+      .eq("source", "google")
+      .maybeSingle();
+    const rating = typeof data?.rating === "number" ? data.rating : null;
+    const count = typeof data?.total_count === "number" ? data.total_count : null;
+    if (rating && count && data?.last_success_at) {
+      return { rating, count };
+    }
+  } catch {
+    // Schema validator hates an empty AggregateRating block; fall
+    // through to the literal.
+  }
+  return { ...AGGREGATE_RATING_FALLBACK };
+}
+
 // schema.org LocalBusiness / HairSalon JSON-LD. Dropped into the <head>
 // of the root layout so Google's Knowledge Panel, Apple Maps, and other
 // crawlers read the DB-backed values.
@@ -93,6 +130,7 @@ export async function jsonLd(): Promise<Record<string, unknown>> {
   // Convert "+1 818 662 5665" / "(818) 662-5665" → "+18186625665" for
   // the schema.org `telephone` field (E.164).
   const tel = telHref(brand.phone).replace(/^tel:/, "");
+  const rating = await aggregateRating();
   return {
     "@context": "https://schema.org",
     "@type": ["HairSalon", "HealthAndBeautyBusiness"],
@@ -130,8 +168,8 @@ export async function jsonLd(): Promise<Record<string, unknown>> {
     foundingDate: "2011-11-11",
     aggregateRating: {
       "@type": "AggregateRating",
-      ratingValue: "4.2",
-      reviewCount: "830",
+      ratingValue: rating.rating.toFixed(1),
+      reviewCount: String(rating.count),
       bestRating: "5",
     },
   };

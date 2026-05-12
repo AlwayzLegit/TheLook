@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import Logo from "./Logo";
 import { useBranding } from "./BrandingProvider";
 import { telHref } from "@/lib/branding";
+import { TrackedLink } from "./TrackedLink";
+import { track } from "@/lib/analytics";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -16,11 +18,16 @@ const navLinks = [
   { href: "/contact", label: "Contact" },
 ];
 
+// Service categories in the same order as src/lib/service-categories.ts.
+// Facial Services was missing from the dropdown until WP-E — the
+// /services/facial-services page existed and was in the sitemap but
+// had no nav entry, costing it internal-link weight.
 const serviceSubLinks = [
   { href: "/services/haircuts", label: "Haircuts" },
   { href: "/services/color", label: "Color & Highlights" },
   { href: "/services/styling", label: "Styling" },
   { href: "/services/treatments", label: "Treatments" },
+  { href: "/services/facial-services", label: "Facial Services" },
 ];
 
 export default function Navbar() {
@@ -200,12 +207,14 @@ export default function Navbar() {
                 >
                   My Account
                 </Link>
-                <Link
+                <TrackedLink
+                  event="book_click"
+                  properties={{ source: "navbar_desktop" }}
                   href="/book"
                   className="inline-flex items-center gap-2 bg-rose hover:bg-rose-light text-white text-[11px] tracking-[0.2em] uppercase px-7 py-3 transition-all duration-300 hover:shadow-[var(--shadow-rose-cta)] hover:-translate-y-0.5"
                 >
                   Book Now
-                </Link>
+                </TrackedLink>
               </div>
             </div>
 
@@ -323,7 +332,9 @@ export default function Navbar() {
               My Account
             </Link>
 
-            <Link
+            <TrackedLink
+              event="book_click"
+              properties={{ source: "navbar_mobile" }}
               href="/book"
               onClick={handleLinkClick}
               className="mt-2 inline-block bg-rose text-white text-[12px] tracking-[0.2em] uppercase px-10 py-4 hover:bg-rose-light transition-colors"
@@ -333,11 +344,14 @@ export default function Navbar() {
               }}
             >
               Book Now
-            </Link>
+            </TrackedLink>
 
             <a
               href={telHref(brand.phone)}
-              onClick={handleLinkClick}
+              onClick={() => {
+                handleLinkClick();
+                track("phone_click", { source: "navbar_mobile" });
+              }}
               aria-label={`Call ${brand.phone}`}
               className="text-white/60 hover:text-gold text-sm font-body tracking-wider min-h-[44px] flex items-center gap-2 transition-colors"
               style={{ position: "absolute", bottom: 40 }}
