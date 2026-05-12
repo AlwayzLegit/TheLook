@@ -1,0 +1,172 @@
+# =============================================================================
+# Google Search Console disavow file — thelookhairsalonla.com
+# Generated: WP-F, May 2026
+# Source: Semrush backlinks_refdomains (US database), root-domain query,
+#         sorted by Authority Score ascending. Cross-referenced with IP
+#         hosting data: three spam clusters carry every AS<=5 domain:
+#
+#           Singapore IPs (118.139.x.x, 184.168.x.x)     - directory spam
+#           Moldova    IPs (195.20.19.x, 85.120.81.x)    - URL shortener spam
+#           France     IPs (147.135.215.x)               - blinks.* network
+#
+# This file is uploaded once via Search Console >> Disavow Links Tool
+# against the canonical https://www.thelookhairsalonla.com property.
+# Re-upload only when the list materially changes (re-run the Semrush
+# audit every 60-90 days and append new spam patterns).
+#
+# Ground rules:
+#  * Lines starting with # are comments.
+#  * `domain:X` disavows every URL under that domain (subdomains incl.).
+#  * Legitimate-but-low-AS domains (small local businesses, jazz blogs,
+#    legitimate-looking salon directories) are DELIBERATELY OMITTED.
+#    When in doubt, leave it off the list - Google ignores a disavow
+#    entry rather than crediting the link, but a wrong disavow of a
+#    real link costs us authority we already earned.
+#  * NEVER disavow a referring domain just because it has a low AS.
+#    The discriminator here is the IP-cluster pattern, not the score.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Singapore IP cluster 118.139.176.46 / 118.139.177.45 / 118.139.178.200 /
+# 118.139.181.85 / 118.139.181.255 -- directory-spam network. Every site
+# below resolves to the same /24 and shares boilerplate "free directory
+# listing" content. None of these can plausibly send a real client to a
+# Glendale hair salon.
+# -----------------------------------------------------------------------------
+domain:2x9.co
+domain:alljobs.info
+domain:australianwebdirectory.pro
+domain:blacksonwhites.com
+domain:blueinblue.com
+domain:carplz.com
+domain:cheapsmmprovider.info
+domain:corrector.in
+domain:ecommercebenchmarking.com
+domain:findinfo.in
+domain:getonline.co.in
+domain:getwebsiteworth.com
+domain:globalecommerce.org
+domain:indexaward.com
+domain:indians.cc
+domain:linksnatcher.art
+domain:linksnatcher.com
+domain:marathilaws.com
+domain:mp3fresh.net
+domain:pagesearch.net
+domain:prashikshan.in
+domain:preparation.co.in
+domain:procycling.org
+domain:pudhe.com
+domain:queries.co.in
+domain:read.org.in
+domain:runningwebsites.net
+domain:simplewebdirectory.com
+domain:sportsbikeparts.pk
+domain:taxies.biz
+domain:theface.in
+domain:thirty.co.in
+domain:topleveldomains.space
+domain:tunca.org
+domain:tyre.pro
+domain:tyres.pro
+domain:uaewebdirectory.info
+domain:wallpapers.pro
+domain:way2check.art
+domain:way2check.cv
+domain:webservices.co.in
+domain:websiterace.com
+domain:websitescrawl.art
+domain:websitesea.com
+domain:webworthchecker.cv
+domain:wonvision.com
+domain:ycm.info
+domain:yesdomains.space
+
+# -----------------------------------------------------------------------------
+# Singapore IP cluster 184.168.111.168 / 184.168.113.185 / 184.168.115.60 /
+# 184.168.116.137 -- same operator, second IP block. The
+# *.shop / *.space / *.cfd TLDs make these especially obvious spam.
+# -----------------------------------------------------------------------------
+domain:allwebsitesdirectory.com
+domain:australianwebdirectory.shop
+domain:bestwebstats.com
+domain:directorylinkservice.com
+domain:domain.com.lc
+domain:domainanalysis.org
+domain:domainsc.com
+domain:domainwork.space
+domain:egyptiandirectory.com
+domain:musweb.org
+
+# -----------------------------------------------------------------------------
+# Moldova IP cluster 195.20.19.178 / 85.120.81.149 / 194.238.28.126 --
+# URL-shortener / link-aggregator spam (atomizelink, buzzshrink,
+# byteshort, optimizeflow, seoprobox, shortenurls, urls-shortener).
+# Authority Score 5 here is purely from outbound link velocity, not
+# real authority.
+# -----------------------------------------------------------------------------
+domain:all-aged-domains.com
+domain:atomizelink.icu
+domain:backlinks-checker.com
+domain:buzzshrink.website
+domain:byteshort.xyz
+domain:jake.eu
+domain:optimizeflow.top
+domain:seoprobox.click
+domain:shortenurls.eu
+domain:urls-shortener.eu
+
+# -----------------------------------------------------------------------------
+# France IP cluster 147.135.215.43 -- blinks.* / knows.* / takes.* /
+# wants.* / seodomains.website network. Same operator, same SBS / homes /
+# cfd / monster TLD signature. Pure backlink-farm.
+# -----------------------------------------------------------------------------
+domain:blinks.monster
+domain:blinks.sbs
+domain:knows.monster
+domain:knows.sbs
+domain:seodomains.website
+domain:takes.homes
+domain:takes.sbs
+domain:wants.cfd
+
+# -----------------------------------------------------------------------------
+# Miscellaneous low-quality referrers identified by audit + content
+# review. None of these are local businesses, none cover hair / beauty /
+# Glendale, and the inbound anchor text was off-topic in every case
+# checked.
+# -----------------------------------------------------------------------------
+domain:bluecantera.com
+domain:harian24.com
+domain:revan-me.com
+domain:seomuda.id
+domain:thetarotalk.com
+domain:truebookies.com
+domain:xedulichdaklak.com
+
+# -----------------------------------------------------------------------------
+# NOT INCLUDED in this disavow (legitimate-or-ambiguous, leave for the
+# owner to assess):
+#
+#   1stcallglasscare.com         -- might be a real local SoCal business
+#   ateliereleaurorei.ro         -- Romanian lifestyle site, weak but
+#                                   not obvious spam
+#   booksreadr.org               -- ambiguous
+#   businessvocal.com            -- US-hosted, mixed content
+#   capetownthing.co.za          -- South African travel/lifestyle
+#   dcoutesnjacob.com            -- US-hosted personal site
+#   eliotzigmundjazz.com         -- legitimate jazz musician page
+#   excellentsalons.com          -- salon directory, possibly legitimate
+#   explorela.org                -- LA-area lifestyle blog
+#   fastestmagazine.com          -- generic but not obvious spam
+#   glowupfinder.com             -- beauty directory, possibly legit
+#   mony.live                    -- ambiguous
+#   ready.pro                    -- ambiguous
+#   salondiscover.com            -- salon directory
+#   sergechel.info               -- personal blog
+#   thecloudherald.com           -- publishes articles, ambiguous
+#   usbeautysalons.com           -- US beauty directory
+#
+# Re-evaluate these on the next audit. If any are still pointing in
+# without sending real traffic after 90 days, consider adding them.
+# =============================================================================
