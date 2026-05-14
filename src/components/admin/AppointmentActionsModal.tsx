@@ -60,6 +60,9 @@ interface ServiceCatalogOption {
   price_min?: number | null;
   duration?: number | null;
   active?: boolean | null;
+  // Used by the picker to group services under <optgroup> labels so
+  // operators don't scroll past 30+ flat alphabetical entries.
+  category?: string | null;
 }
 
 // One editable service line in the modal. Mirrors the inline list-view
@@ -533,6 +536,27 @@ export default function AppointmentActionsModal({
                     (s) => s.active !== false && !serviceLines.some((l) => l.service_id === s.id),
                   );
                   if (available.length === 0) return null;
+                  // Group by DB category in the canonical display order
+                  // — same buckets the public /services hub uses
+                  // (Haircuts → Color → Styling → Treatments → Facial
+                  // Services). Anything with an unrecognised or empty
+                  // category falls into "Other" at the bottom so legacy
+                  // rows don't disappear from the picker.
+                  const CATEGORY_ORDER: Array<{ key: string; label: string }> = [
+                    { key: "Haircuts", label: "Haircuts" },
+                    { key: "Color", label: "Color & Highlights" },
+                    { key: "Styling", label: "Styling" },
+                    { key: "Treatments", label: "Treatments" },
+                    { key: "Facial Services", label: "Facial Services" },
+                  ];
+                  const buckets = new Map<string, ServiceCatalogOption[]>();
+                  for (const { key } of CATEGORY_ORDER) buckets.set(key, []);
+                  const other: ServiceCatalogOption[] = [];
+                  for (const s of available) {
+                    const cat = (s.category ?? "").trim();
+                    if (cat && buckets.has(cat)) buckets.get(cat)!.push(s);
+                    else other.push(s);
+                  }
                   return (
                     <div className="flex flex-wrap items-end gap-2">
                       <select
@@ -541,11 +565,28 @@ export default function AppointmentActionsModal({
                         className="border border-navy/20 px-2 py-1.5 text-sm font-body bg-white"
                       >
                         <option value="">+ Add service…</option>
-                        {available.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
+                        {CATEGORY_ORDER.map(({ key, label }) => {
+                          const items = buckets.get(key) ?? [];
+                          if (items.length === 0) return null;
+                          return (
+                            <optgroup key={key} label={label}>
+                              {items.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          );
+                        })}
+                        {other.length > 0 && (
+                          <optgroup label="Other">
+                            {other.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
                       </select>
                       <button
                         type="button"

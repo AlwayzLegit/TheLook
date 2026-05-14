@@ -32,6 +32,10 @@ interface Service {
   duration?: number | null;
   price_min?: number | null;
   active?: boolean | null;
+  // DB-stored category (Haircuts / Color / Styling / Treatments /
+  // Facial Services). Used by the appointment edit modal to group the
+  // "+ Add service…" picker by category instead of one long flat list.
+  category?: string | null;
 }
 
 interface Stylist {
@@ -1610,6 +1614,7 @@ export default function AppointmentsPage() {
           price_min: s.price_min ?? null,
           duration: s.duration ?? null,
           active: s.active ?? null,
+          category: s.category ?? null,
         }))}
       />
 
