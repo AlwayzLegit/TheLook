@@ -209,6 +209,13 @@ export default function AppointmentsPage() {
   // component. Landing from a Needs-Attention link still defaults to
   // the list view via the arrivedFromLink check there.)
   const [showNewAppt, setShowNewAppt] = useState(false);
+  // When the operator clicks Rebook on an existing appointment we open
+  // NewAppointmentSheet pre-filled with the same client info — saves
+  // re-searching by name at checkout. Cleared back to null when the
+  // sheet closes so a subsequent "+ New appointment" click starts blank.
+  const [rebookPrefill, setRebookPrefill] = useState<
+    { name?: string; email?: string; phone?: string } | undefined
+  >(undefined);
   const [showWalkIn, setShowWalkIn] = useState(false);
   // Row-selection set for bulk actions. Cleared on filter change via
   // the effect below — stale IDs after a filter narrow are confusing.
@@ -1562,7 +1569,13 @@ export default function AppointmentsPage() {
 
       <NewAppointmentSheet
         open={showNewAppt}
-        onClose={() => setShowNewAppt(false)}
+        onClose={() => {
+          setShowNewAppt(false);
+          // Clear the rebook prefill on close so the next "+ New
+          // appointment" click starts from a blank client form.
+          setRebookPrefill(undefined);
+        }}
+        prefill={rebookPrefill}
         onCreated={() => {
           setToast({ type: "success", message: "Appointment created." });
           refresh();
@@ -1599,6 +1612,18 @@ export default function AppointmentsPage() {
         }}
         onArchive={archiveAppointment}
         onUnarchive={unarchiveAppointment}
+        onRebook={(client) => {
+          // Close the action modal first so the new sheet doesn't
+          // stack on top of it, then seed the new sheet with the
+          // existing client's contact details.
+          setSelectedAppt(null);
+          setRebookPrefill({
+            name: client.name,
+            email: client.email,
+            phone: client.phone || undefined,
+          });
+          setShowNewAppt(true);
+        }}
         onSaveEdit={async (id, fields) => {
           await saveEditFromModal(id, fields);
           setSelectedAppt(null);
