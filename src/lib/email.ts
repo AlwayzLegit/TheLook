@@ -207,17 +207,28 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
   const rescheduleUrl = cancelUrl ? cancelUrl.replace("/book/cancel", "/book/reschedule") : undefined;
   const stylistDisplay = anyStylist ? "Any available stylist" : stylistName;
 
+  // Round-15 owner feedback: the subject + opening read like a
+  // confirmation to clients who didn't realise the salon still has
+  // to manually approve, so they sometimes assumed they were locked
+  // in and skipped reading further. Subject now leads with "pending"
+  // and the body opens with an explicit "this is NOT a confirmation
+  // yet" line. The follow-up sendStatusChangeEmail with
+  // newStatus="confirmed" (fired from the admin Confirm action) then
+  // reads as the genuine confirmation.
   const html = brandedEmail({
     brand,
-    preheader: `Your ${serviceName} booking request for ${formatDate(date)} is pending.`,
-    kicker: "Appointment pending",
+    preheader: `Your ${serviceName} request for ${formatDate(date)} is pending — we will email you again once confirmed.`,
+    kicker: "Pending — awaiting confirmation",
     headline: `Thanks, ${clientName.split(" ")[0]} — we got your request.`,
     bodyHtml: `
       <p style="margin: 0 0 14px;">
-        Your appointment is <strong>pending</strong>. The salon will review your booking
-        and send a final confirmation by email shortly.
+        <strong>This email is not a confirmation yet.</strong> Your appointment is
+        <strong>pending</strong> while the salon reviews your booking. You will receive
+        a separate confirmation email from us once your slot is locked in — usually
+        within a few hours.
       </p>
       ${detailsTable([
+        ["Status", "Pending — awaiting confirmation"],
         ["Service", serviceName],
         ["Stylist", stylistDisplay],
         ["Date", formatDate(date)],
@@ -242,9 +253,9 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
     `,
     ctaLabel: cancelUrl ? "Manage booking" : undefined,
     ctaUrl: rescheduleUrl,
-    secondaryLabel: cancelUrl ? "Cancel this appointment" : undefined,
+    secondaryLabel: cancelUrl ? "Cancel this request" : undefined,
     secondaryUrl: cancelUrl,
-    signoff: `See you soon — ${brand.name}`,
+    signoff: `Awaiting confirmation — ${brand.name}`,
   });
 
   // Both sends go through sendThroughResend so a Resend rejection
@@ -258,10 +269,10 @@ export async function sendBookingConfirmation(details: AppointmentDetails) {
   await sendThroughResend({
     from: FROM,
     to: clientEmail,
-    subject: `We got your booking request — ${formatDate(date)} at ${formatTime(startTime)}`,
+    subject: `Pending — your ${formatDate(date)} request at ${formatTime(startTime)} is awaiting confirmation`,
     html,
     text: "",
-    event: "email.booking.client_confirmation",
+    event: "email.booking.client_pending",
   });
   await sendThroughResend({
     from: FROM,

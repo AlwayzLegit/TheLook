@@ -389,6 +389,30 @@ export async function POST(request: NextRequest) {
     appointmentId,
   );
 
+  // Upsert into client_profiles so this client is searchable in
+  // /admin/clients (and shows up in directory queries) even when the
+  // admin booked them with only a phone number — in which case the
+  // synthetic email `phone-<digits>@noemail.thelookhairsalonla.com`
+  // becomes the natural key. Without this upsert the appointment row
+  // exists but the directory is empty for that email; the operator
+  // ends up unable to find the client they just added a slot for.
+  // Mirrors the same upsert the public /api/appointments POST already
+  // does (route.ts line ~426).
+  await supabase
+    .from("client_profiles")
+    .upsert(
+      {
+        email: p.clientEmail.toLowerCase(),
+        name: p.clientName,
+        phone: p.clientPhone || null,
+      },
+      { onConflict: "email", ignoreDuplicates: false },
+    )
+    .then(
+      () => {},
+      (err: unknown) => logError("admin/appointments POST (profile upsert)", err),
+    );
+
   await createNotification({
     toAllAdmins: true,
     type: "booking.admin_created",

@@ -101,6 +101,10 @@ interface Props {
   onArchive: (id: string) => void | Promise<void>;
   onUnarchive: (id: string) => void | Promise<void>;
   onSaveEdit: (id: string, fields: AppointmentEditFields) => void | Promise<void>;
+  // Open the New Appointment sheet pre-filled with this client's
+  // name / email / phone — saves the operator from re-searching by
+  // name at checkout when the client wants to book their next slot.
+  onRebook?: (client: { name: string; email: string; phone: string | null }) => void;
   // List of stylists the admin can reassign to. Comes from the parent
   // page so the modal doesn't have to refetch.
   stylists?: StylistOption[];
@@ -129,6 +133,7 @@ export default function AppointmentActionsModal({
   onArchive,
   onUnarchive,
   onSaveEdit,
+  onRebook,
   stylists = [],
   services = [],
   pending,
@@ -715,6 +720,30 @@ export default function AppointmentActionsModal({
                   title="Send a review request to this client"
                 >
                   Send review request
+                </button>
+              )}
+
+              {onRebook && (
+                <button
+                  onClick={() => {
+                    // Skip the synthetic phone-XXX@noemail... placeholder so
+                    // the operator isn't prompted to "use this real email"
+                    // when the client never provided one. The phone alone
+                    // is enough to identify them on the new booking.
+                    const looksSynthetic =
+                      typeof appointment.client_email === "string" &&
+                      appointment.client_email.endsWith("@noemail.thelookhairsalonla.com");
+                    onRebook({
+                      name: appointment.client_name,
+                      email: looksSynthetic ? "" : appointment.client_email,
+                      phone: appointment.client_phone,
+                    });
+                  }}
+                  disabled={pending}
+                  className="text-xs font-body text-rose border border-rose/40 px-3 py-1.5 hover:bg-rose/10 disabled:opacity-60"
+                  title="Open the new-appointment sheet pre-filled with this client"
+                >
+                  Rebook
                 </button>
               )}
 
