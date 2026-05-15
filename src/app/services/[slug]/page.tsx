@@ -69,6 +69,33 @@ export default async function ServiceCategoryPage({ params }: PageProps) {
       <Navbar />
       <main className="pt-20">
         <ServiceCategory category={category} />
+        {/* Server-rendered editorial body. ServiceCategory loads its
+            service list client-side, so without this block a no-JS
+            crawler only sees the hero + ~40-word description — which
+            tripped Low word count / Low text-to-HTML on every
+            category page in the 2026-05-15 Semrush audit. Rendered
+            here (server component) so the copy is in the static HTML. */}
+        {category.longIntro && category.longIntro.length > 0 && (
+          <section className="bg-white pb-16 md:pb-20">
+            <div className="max-w-3xl mx-auto px-8 lg:px-12">
+              <div className="border-t border-navy/10 pt-12">
+                <h2 className="font-heading text-2xl md:text-3xl text-navy mb-6">
+                  {category.title} at The Look Hair Salon, Glendale
+                </h2>
+                <div className="space-y-5">
+                  {category.longIntro.map((para, i) => (
+                    <p
+                      key={i}
+                      className="text-navy/80 font-body font-light text-[15px] leading-relaxed"
+                    >
+                      {para}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
       <Footer />
       <MobileBookButton />
