@@ -1,972 +1,176 @@
-"use client";
-
-import { useState, useEffect, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import dynamic from "next/dynamic";
+import Script from "next/script";
+import Link from "next/link";
+import { Suspense } from "react";
 import BookingLoading from "./loading";
-import BookingProgress from "@/components/booking/BookingProgress";
-import ServicePicker from "@/components/booking/ServicePicker";
-import StylistPicker from "@/components/booking/StylistPicker";
-import DateTimePicker from "@/components/booking/DateTimePicker";
-import ClientInfoForm from "@/components/booking/ClientInfoForm";
-import BookingConfirmation from "@/components/booking/BookingConfirmation";
-// Round-18 Lighthouse fix: DepositForm pulls in the @stripe/stripe-js +
-// @stripe/react-stripe-js SDKs (~224 KB of JS + a third-party cookie
-// from m.stripe.com). When statically imported here, those bytes were
-// being included in the /book route's shared chunk and downloaded by
-// every visitor — even ones who never reach the deposit step or whose
-// services don't require a deposit. Switch to next/dynamic with
-// ssr: false so the SDK only loads when the deposit form actually
-// mounts (step 4 + requiresDeposit + sub-threshold not skipped).
-const DepositForm = dynamic(
-  () => import("@/components/booking/DepositForm"),
-  { ssr: false, loading: () => <p className="text-navy/70 text-sm font-body">Loading payment form…</p> },
-);
-import { BOOKING } from "@/lib/constants";
-import { track, identify } from "@/lib/analytics";
+import BookingWizard from "@/components/booking/BookingWizard";
+import { SERVICE_CATEGORIES } from "@/lib/service-categories";
+import { getBranding, telHref } from "@/lib/branding";
+import { faqJsonLd } from "@/lib/seo";
 
-// Step layout (matches BookingProgress):
-//   0  Service
-//   1  Stylist     — "Any Stylist" tile at top, specific stylists below
-//   2  Date & Time — shows that stylist's calendar (or union for "Any")
-//   3  Your Info
-//   4  Confirm
-//   5  Success
-const STEP_SERVICE = 0;
-const STEP_STYLIST = 1;
-const STEP_DATETIME = 2;
-const STEP_INFO = 3;
-const STEP_CONFIRM = 4;
-const STEP_DONE = 5;
+// Server Component. The page used to be `"use client"` end-to-end, so
+// useSearchParams() forced a full-route CSR bailout and Next.js
+// auto-attached X-Robots-Tag: noindex to the skeleton-only prerender
+// (the booking page was effectively de-indexed for a long time —
+// pre-dates the PR #50 middleware). Industry-standard App Router fix:
+// the route is now a Server Component that server-renders real,
+// indexable content + FAQPage JSON-LD, and the interactive flow is a
+// client island (components/booking/BookingWizard) mounted under a
+// <Suspense> boundary. The route prerenders, the noindex is gone, and
+// the booking flow itself is byte-identical (moved verbatim).
+//
+// Booking metadata (title / description / canonical "/book") is set in
+// book/layout.tsx, which also renders the Navbar, the <h1> header, and
+// the Footer around this content.
 
-interface Service {
-  id: string;
-  category: string;
-  // Sub-grouping within a category; today only Haircuts uses it
-  // ("Unisex" / "Women's" / "Men's"). The picker renders rows
-  // under a sub-header keyed off this when set; null/missing
-  // collapses back to the flat layout.
-  subcategory?: string | null;
-  name: string;
-  priceText: string;
-  priceMin?: number;
-  duration: number;
-  // Populated when this "service" in the picker list is actually a variant
-  // (e.g. Facial Hair Removal — Brow). `id` still points to the parent
-  // service so FK constraints hold; `variantId` is carried through to the
-  // appointments POST.
-  variantId?: string;
-  variantName?: string;
-  // True when this row is a variant of a parent service that's
-  // independently bookable (e.g. Custom Scissor Cut + Add-On Wash).
-  // Picking it adds to the parent rather than replacing it; the
-  // toggle handler auto-adds the parent when an add-on is checked
-  // and removes all add-ons when the parent is unchecked. False/
-  // undefined for parents and for variants of "starts at" services
-  // (Facial Hair Removal — Brow) where the variant IS the product.
-  isAddOn?: boolean;
-}
+export const revalidate = 3600;
 
-interface Stylist {
-  id: string;
-  name: string;
-  bio: string | null;
-  imageUrl: string | null;
-  specialties: string[];
-  serviceIds: string[];
-}
+// Booking-specific FAQ. Every Q/A is rendered visibly below AND fed
+// into FAQPage JSON-LD verbatim — the two must match or Google
+// suppresses the rich result (same rule the rest of the site follows).
+const BOOKING_FAQS: ReadonlyArray<{ question: string; answer: string }> = [
+  {
+    question: "Do I need an appointment, or do you take walk-ins?",
+    answer:
+      "Walk-ins are welcome whenever a chair is open, but booking online guarantees your preferred stylist and time — especially on Saturdays. The form on this page takes about a minute.",
+  },
+  {
+    question: "Is a deposit required to book?",
+    answer:
+      "A $50 deposit is taken at booking for color services and any appointment over $100. It is credited toward your final bill and is refundable if you cancel at least 24 hours in advance.",
+  },
+  {
+    question: "Will my appointment be confirmed right away?",
+    answer:
+      "Online bookings come in as pending. You'll get an email that your request was received, then a separate confirmation email once the salon reviews and locks in your slot — usually within a few hours.",
+  },
+  {
+    question: "Can I pick a specific stylist?",
+    answer:
+      "Yes. After choosing your service you can select a specific stylist or leave it as “Any Stylist” and we'll match you with the best available team member for that service.",
+  },
+  {
+    question: "How do I change or cancel my appointment?",
+    answer:
+      "Every confirmation email includes reschedule and cancel links. You can also call the salon directly — 24 hours' notice keeps your deposit fully refundable.",
+  },
+];
 
-interface BookingResult {
-  id?: string;
-  service?: string;
-  services?: { id: string; name: string }[];
-  stylist: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  status?: string;
-  anyStylist?: boolean;
-}
+export default async function BookPage() {
+  const brand = await getBranding();
+  const faqLd = faqJsonLd(BOOKING_FAQS);
 
-const FALLBACK_SERVICES: Record<string, Service[]> = {
-  Haircuts: [
-    { id: "f-1", category: "Haircuts", name: "Wash + Cut + Style", priceText: "$80+", duration: 70 },
-    { id: "f-2", category: "Haircuts", name: "Clipper Cut", priceText: "$28", duration: 25 },
-    { id: "f-3", category: "Haircuts", name: "Scissor Cut", priceText: "$40", duration: 25 },
-  ],
-};
-const FALLBACK_STYLISTS: Stylist[] = [];
-
-// useSearchParams() forces a client-side-rendering bailout for the
-// whole route unless it sits under a Suspense boundary. Without the
-// boundary Next.js can only emit a loading skeleton as the prerender
-// AND auto-attaches `X-Robots-Tag: noindex` to that shell — which is
-// why bare /book has been served noindex for a long time (pre-dates
-// the PR #50 middleware; useSearchParams has been top-level here
-// since PR #35). Splitting the flow into an inner component wrapped
-// in <Suspense> lets Next prerender the real page and drop the
-// automatic noindex. The fallback reuses the exact route-segment
-// skeleton (./loading) so there's no visual change during hydration.
-function BookFlow() {
-  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-  const searchParams = useSearchParams();
-
-  // URL-backed step. Read ?step= once on mount to hydrate, then
-  // replaceState on every transition so browser back/forward + refresh
-  // land the user at the same step they were on. Valid range clamped
-  // so a manually-mangled URL doesn't jump past validation gates.
-  const [step, setStep] = useState<number>(() => {
-    const raw = parseInt(searchParams.get("step") || "0", 10);
-    if (!Number.isFinite(raw)) return STEP_SERVICE;
-    return Math.max(STEP_SERVICE, Math.min(STEP_DONE, raw));
-  });
-  // Counts how many forward step transitions we've pushed onto the
-  // browser history stack this session. The in-app Back button uses
-  // it to decide between calling history.back() (which fires popstate
-  // → unwinds the stack naturally) and a plain setStep fallback for
-  // cases where there's nothing to pop (e.g. deep-linked landing at
-  // /book?step=2 with no in-app navigation yet).
-  const pushedStepCountRef = useRef(0);
-  const [services, setServices] = useState<Record<string, Service[]>>({});
-  const [allStylists, setAllStylists] = useState<Stylist[]>([]);
-  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
-  const [selectedStylist, setSelectedStylist] = useState<Stylist | "any" | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [clientInfo, setClientInfo] = useState({ name: "", email: "", phone: "", notes: "", smsConsent: false });
-  const [policyAccepted, setPolicyAccepted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Mirror step → URL so refreshes + shares land at the same step.
-  // Forward transitions PUSH a new history entry so the browser back
-  // button (and the in-app Back button via history.back below) walks
-  // through the wizard. Backward transitions and the initial-mount
-  // URL normalisation REPLACE the existing entry — otherwise every
-  // back press would also add an entry and the stack would never
-  // unwind. Round-26: owner reported that clicking back after picking
-  // a date/time bounced all the way out to /services with every prior
-  // selection wiped. Root cause was the previous version of this
-  // effect using replaceState unconditionally, which meant /book?step=2
-  // overwrote /book?step=1 in history — browser back then left /book
-  // entirely. Direct history API instead of router.replace() to skip
-  // Next's route-rerender on every forward/backward step.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    const current = url.searchParams.get("step");
-    const target = String(step);
-    if (current === target) return;
-    url.searchParams.set("step", target);
-    const currentNum = current === null ? null : Number(current);
-    if (currentNum === null || Number(target) <= currentNum) {
-      window.history.replaceState(null, "", url.toString());
-    } else {
-      window.history.pushState(null, "", url.toString());
-      pushedStepCountRef.current += 1;
-    }
-  }, [step]);
-
-  // Reset scroll to the top of the wizard on every step change.
-  // Round-17 prod QA found the single-rAF version losing the race
-  // against:
-  //   • autoFocus on form inputs scrolling them into view
-  //   • Turnstile iframe mounting on step 3 and adjusting layout
-  //   • smooth-scroll being interruptible mid-animation
-  // Multi-pass approach: double-rAF (run after the new step has
-  // actually painted), then a 100ms setTimeout to override any
-  // late-mount widget that calls scrollIntoView. 'auto' (instant)
-  // instead of 'smooth' so a competing scroll can't interrupt the
-  // reset. Also pin scrollRestoration to manual so the browser
-  // doesn't restore the prior step's scroll position on popstate.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if ("scrollRestoration" in window.history) {
-      window.history.scrollRestoration = "manual";
-    }
-    return () => {
-      if ("scrollRestoration" in window.history) {
-        window.history.scrollRestoration = "auto";
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const scrollTop = () => window.scrollTo({ top: 0, behavior: "auto" });
-    requestAnimationFrame(() => {
-      requestAnimationFrame(scrollTop);
-    });
-    const t = setTimeout(scrollTop, 100);
-    return () => clearTimeout(t);
-  }, [step]);
-
-  // Listen for back/forward so the step state follows the URL.
-  // popstate fires on both browser back AND browser forward — we
-  // decrement the pushed-counter on any pop because the only thing
-  // it gates is "should the in-app Back button use history.back()
-  // or fall back to setStep". A spurious decrement is harmless
-  // (worst case the Back button stops calling history.back() one
-  // press early), an over-count is not (it would call history.back()
-  // when there's nothing to pop, kicking the user out of /book).
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onPop = () => {
-      pushedStepCountRef.current = Math.max(0, pushedStepCountRef.current - 1);
-      const raw = parseInt(new URL(window.location.href).searchParams.get("step") || "0", 10);
-      if (Number.isFinite(raw)) setStep(Math.max(STEP_SERVICE, Math.min(STEP_DONE, raw)));
-    };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
-
-  // Forward-navigation guard — if the user deep-links to step=3 but
-  // hasn't picked services yet, bounce them back to whichever earlier
-  // step they skipped. Checks run in REVERSE order of requirement so
-  // the user always lands on the earliest missing step.
-  useEffect(() => {
-    if (step === STEP_SERVICE) return;
-    if (selectedServices.length === 0) { setStep(STEP_SERVICE); return; }
-    if (step >= STEP_DATETIME && !selectedStylist) { setStep(STEP_STYLIST); return; }
-    if (step >= STEP_INFO && (!selectedDate || !selectedTime)) { setStep(STEP_DATETIME); return; }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
-
-  // When the stylist changes, drop the previously-picked time — the new
-  // stylist's calendar is different, and a slot that was free for Janet
-  // may be taken for Armen. We intentionally KEEP selectedDate so the
-  // user can compare stylists on the same day with one click.
-  useEffect(() => {
-    setSelectedTime(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStylist]);
-
-  // DEF-019: stale submit errors linger across Back + change-selection.
-  // Whenever anything upstream of Confirm changes, drop the error so the
-  // user doesn't see "Invalid UUID" after fixing the real problem.
-  useEffect(() => {
-    setError(null);
-  }, [selectedServices, selectedStylist, selectedDate, selectedTime, clientInfo]);
-  const [result, setResult] = useState<BookingResult | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [discountCode, setDiscountCode] = useState("");
-  const [discountResult, setDiscountResult] = useState<{ code: string; description: string; discountAmount: number; finalPrice: number } | null>(null);
-  const [discountError, setDiscountError] = useState("");
-  const [checkingDiscount, setCheckingDiscount] = useState(false);
-  // Stripe deposit (PaymentIntent id captured here once paid). Only used
-  // when requiresDeposit is true — sub-threshold bookings skip card
-  // collection entirely.
-  const [depositPaymentIntent, setDepositPaymentIntent] = useState<string | null>(null);
-
-  const totalPriceMin = selectedServices.reduce((sum, s) => sum + (s.priceMin || 0), 0);
-  const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration || 0), 0);
-  const anyPricePlus = selectedServices.some((s) => s.priceText.includes("+"));
-
-  // Deposit rules are DB-driven (admin → Settings → Booking). Fetch once
-  // on mount and recompute the required deposit whenever the client's
-  // cart changes. Falls back to "no deposit" if the endpoint is down so
-  // bookings don't block on the rules fetch — the server runs the same
-  // check authoritatively before the appointment is created.
-  type DepositRuleLite = {
-    id: string;
-    trigger_type: "min_price_cents" | "min_duration_minutes";
-    trigger_value: number;
-    deposit_cents: number;
-  };
-  const [depositRules, setDepositRules] = useState<DepositRuleLite[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/deposits/rules")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        if (cancelled) return;
-        setDepositRules(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
-
-  const { requiresDeposit, depositAmountCents } = (() => {
-    let max = 0;
-    for (const r of depositRules) {
-      const matches =
-        r.trigger_type === "min_price_cents"
-          ? totalPriceMin >= r.trigger_value
-          : totalDuration >= r.trigger_value;
-      if (matches && r.deposit_cents > max) max = r.deposit_cents;
-    }
-    return { requiresDeposit: max > 0, depositAmountCents: max };
-  })();
-
-  const serviceKey = (s: Service) => (s.variantId ? `${s.id}:${s.variantId}` : s.id);
-
-  const toggleService = (service: Service) => {
-    setSelectedServices((prev) => {
-      const key = serviceKey(service);
-      const exists = prev.find((s) => serviceKey(s) === key);
-      if (exists) {
-        // Removing. If this is the parent (no variantId), drop any of
-        // its add-on variants too — orphan add-ons without their
-        // parent is the exact "$10 wash with no cut" nonsense the
-        // owner flagged.
-        const filtered = prev.filter((s) => serviceKey(s) !== key);
-        if (!service.variantId) {
-          return filtered.filter((s) => !(s.id === service.id && s.isAddOn));
-        }
-        return filtered;
-      }
-      // Adding. If it's an add-on variant whose parent isn't already
-      // selected, auto-add the parent so the appointment books as a
-      // combo (cut + wash) instead of just the wash.
-      let next = [...prev, service];
-      if (service.isAddOn) {
-        const parentSelected = prev.some(
-          (s) => s.id === service.id && !s.variantId,
-        );
-        if (!parentSelected) {
-          const allRows = Object.values(services).flat();
-          const parent = allRows.find(
-            (s) => s.id === service.id && !s.variantId,
-          );
-          if (parent) next = [parent, ...prev, service];
-        }
-      }
-      return next;
-    });
-    // Service change invalidates downstream selections.
-    setSelectedStylist(null);
-    setSelectedDate(null);
-    setSelectedTime(null);
-    setDiscountResult(null);
-    setDiscountError("");
-    setDepositPaymentIntent(null);
-  };
-
-  const applyDiscount = async () => {
-    if (!discountCode.trim() || selectedServices.length === 0) return;
-    setCheckingDiscount(true);
-    setDiscountError("");
-    try {
-      const res = await fetch("/api/discounts/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: discountCode, servicePrice: totalPriceMin }),
-      });
-      const data = await res.json();
-      if (res.ok && data.valid) {
-        setDiscountResult(data);
-      } else {
-        setDiscountResult(null);
-        setDiscountError(data.error || "Invalid code.");
-      }
-    } catch {
-      setDiscountError("Failed to validate code.");
-    } finally {
-      setCheckingDiscount(false);
-    }
-  };
-
-  // Warn before leaving only when the customer has actually started filling
-  // out the form — otherwise even loading the booking page bounces them with
-  // a confusing "Leave site?" dialog (#18).
-  useEffect(() => {
-    const dirty =
-      step !== STEP_DONE && (
-        selectedServices.length > 0 ||
-        !!selectedDate ||
-        !!selectedTime ||
-        !!selectedStylist ||
-        !!clientInfo.name ||
-        !!clientInfo.email ||
-        !!clientInfo.phone ||
-        !!clientInfo.notes
-      );
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (dirty) e.preventDefault();
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [step, selectedServices, selectedDate, selectedTime, selectedStylist, clientInfo]);
-
-  // Auto-fill returning customer info from localStorage; query params (used
-  // by the "New Appointment for this Client" button in admin) win over it.
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("thelook_client");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setClientInfo((prev) => ({
-          ...prev,
-          name: parsed.name || "",
-          email: parsed.email || "",
-          phone: parsed.phone || "",
-        }));
-      }
-    } catch {}
-    const qpEmail = searchParams?.get("email");
-    const qpName = searchParams?.get("name");
-    const qpPhone = searchParams?.get("phone");
-    if (qpEmail || qpName || qpPhone) {
-      setClientInfo((prev) => ({
-        ...prev,
-        name: qpName || prev.name,
-        email: qpEmail || prev.email,
-        phone: qpPhone || prev.phone,
-      }));
-    }
-  }, [searchParams]);
-
-  // /book?service=<id> support — used by the home-page gallery
-  // photos so clicking any photo lands the customer on booking
-  // with that exact service already selected. The lookup runs
-  // every time the services map changes (fires once after the
-  // initial load completes) so we only preselect once we actually
-  // have the catalog. No-op if the id doesn't match anything.
-  useEffect(() => {
-    const preId = searchParams?.get("service");
-    if (!preId) return;
-    const allRows = Object.values(services).flat();
-    if (allRows.length === 0) return;
-    const match = allRows.find((s) => s.id === preId && !s.variantId);
-    if (!match) return;
-    setSelectedServices((prev) => {
-      // Don't double-add if the customer already toggled it (e.g.
-      // they navigated back/forward).
-      const already = prev.find(
-        (s) => s.id === match.id && !s.variantId,
-      );
-      return already ? prev : [...prev, match];
-    });
-  }, [searchParams, services]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        // B-08: single batched call. The endpoint returns each service with
-        // its variants embedded — no fan-out per service id.
-        const r = await fetch("/api/services?include=variants");
-        const data = await r.json();
-        if (!data || Object.keys(data).length === 0) {
-          setServices(FALLBACK_SERVICES);
-          return;
-        }
-
-        const expandedByCat: Record<string, Service[]> = {};
-        type ServiceApi = {
-          id: string;
-          category: string;
-          subcategory?: string | null;
-          name: string;
-          priceText?: string;
-          price_text?: string;
-          priceMin?: number;
-          price_min?: number;
-          duration: number;
-          variants?: VariantApi[];
-        };
-        type VariantApi = {
-          id: string;
-          name: string;
-          price_text: string;
-          price_min: number;
-          duration: number;
-        };
-        for (const cat of Object.keys(data)) {
-          const rows: Service[] = [];
-          for (const s of (data as Record<string, ServiceApi[]>)[cat]) {
-            const base: Service = {
-              id: s.id,
-              category: s.category,
-              subcategory: s.subcategory ?? null,
-              name: s.name,
-              priceText: s.priceText ?? s.price_text ?? "",
-              priceMin: s.priceMin ?? s.price_min,
-              duration: s.duration,
-            };
-            const variants = Array.isArray(s.variants) ? s.variants : [];
-            // Distinguish add-on variants from replacement variants by
-            // the salon's naming convention: variants whose name starts
-            // with "Add-On" / "Add On" are paid extras layered on the
-            // parent service (e.g. Blow-Out + "Add-On Wash"). Anything
-            // else is a standalone offering in the same family
-            // (Facial Hair Removal → Eyebrows / Full face).
-            //
-            // The previous heuristic — "parent isn't bookable when
-            // priceText ends in +" — was wrong: $40+ means "starts at
-            // $40", not "placeholder", so Blow-Out's parent was being
-            // hidden on /book even though customers can absolutely
-            // book a plain Blow-Out. Switching to a name-based signal
-            // restores the parent for add-on style services without
-            // re-introducing a misleading $5+ Facial Hair Removal row.
-            //
-            // Long-term fix is an is_addon boolean on service_variants
-            // so the salon owner controls this explicitly — TODO.
-            const isAddOnName = (n: string) => /^add[\s-]on\b/i.test((n || "").trim());
-            const hasAddOn = variants.some((v) => isAddOnName(v.name));
-            const showParent = variants.length === 0 || hasAddOn;
-            if (showParent) rows.push(base);
-            for (const v of variants as VariantApi[]) {
-              rows.push({
-                id: s.id,
-                category: s.category,
-                // Variants inherit the parent's subcategory so they
-                // group under the same Unisex / Women's / Men's
-                // sub-header as their parent service.
-                subcategory: s.subcategory ?? null,
-                name: `${s.name} — ${v.name}`,
-                priceText: v.price_text,
-                priceMin: v.price_min,
-                duration: v.duration,
-                variantId: v.id,
-                variantName: v.name,
-                isAddOn: isAddOnName(v.name),
-              });
-            }
-          }
-          expandedByCat[cat] = rows;
-        }
-
-        setServices(expandedByCat);
-      } catch {
-        setServices(FALLBACK_SERVICES);
-      }
-    })();
-
-    fetch("/api/stylists")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setAllStylists(data);
-        } else {
-          setAllStylists(FALLBACK_STYLISTS);
-        }
-      })
-      .catch(() => setAllStylists(FALLBACK_STYLISTS));
-  }, []);
-
-  const isAny = selectedStylist === "any";
-  const stylistObject = isAny ? null : (selectedStylist as Stylist | null);
-  // For availability lookup before stylist is picked, use "any".
-  const availabilityStylistId = stylistObject ? stylistObject.id : "any";
-
-  const canProceed = (): boolean => {
-    switch (step) {
-      case STEP_SERVICE: return selectedServices.length > 0;
-      case STEP_STYLIST: return !!selectedStylist;
-      case STEP_DATETIME: return !!selectedDate && !!selectedTime;
-      case STEP_INFO:
-        return (
-          !!clientInfo.name &&
-          !!clientInfo.email &&
-          !!clientInfo.phone &&
-          clientInfo.phone.replace(/\D/g, "").length >= 7 &&
-          policyAccepted &&
-          (!turnstileSiteKey || !!turnstileToken)
-        );
-      default: return false;
-    }
-  };
-
-  const nextStep = () => {
-    if (step === STEP_SERVICE) setStep(STEP_STYLIST);
-    else if (step === STEP_STYLIST) setStep(STEP_DATETIME);
-    else if (step === STEP_DATETIME) setStep(STEP_INFO);
-    else if (step === STEP_INFO) setStep(STEP_CONFIRM);
-  };
-
-  // PostHog funnel — emit one event per step the user reaches. Anonymous
-  // until booking succeeds, at which point we identify() on the email so
-  // return visits stitch onto the same person timeline.
-  useEffect(() => {
-    const stepName =
-      step === STEP_SERVICE  ? "service" :
-      step === STEP_STYLIST  ? "stylist" :
-      step === STEP_DATETIME ? "datetime" :
-      step === STEP_INFO     ? "info" :
-      step === STEP_CONFIRM  ? "confirm" :
-      step === STEP_DONE     ? "done" : null;
-    if (!stepName) return;
-    track("booking_step_viewed", {
-      step: stepName,
-      service_count: selectedServices.length,
-      total_price_cents: totalPriceMin,
-      total_duration: totalDuration,
-      requires_deposit: requiresDeposit,
-    });
-  }, [step, selectedServices.length, totalPriceMin, totalDuration, requiresDeposit]);
-
-  const prevStep = () => {
-    // If we pushed a forward history entry earlier in this session,
-    // pop it via history.back() so both the in-app Back button and
-    // the browser's native back gesture walk the wizard the same
-    // way. popstate updates step + decrements the counter. Falls
-    // back to a plain setStep when there's nothing on the stack
-    // (e.g. the user deep-linked into /book?step=2 from an email).
-    if (typeof window !== "undefined" && pushedStepCountRef.current > 0) {
-      window.history.back();
-      return;
-    }
-    // Functional setState so a concurrent re-render (e.g. the
-    // navigation guard fires on the same tick) reads the freshest
-    // step value rather than a stale closure capture.
-    setStep((s) => (s > STEP_SERVICE ? s - 1 : s));
-  };
-
-  const handleSubmit = async () => {
-    if (selectedServices.length === 0 || !selectedStylist || !selectedDate || !selectedTime) return;
-    if (requiresDeposit && !depositPaymentIntent) {
-      setError("Deposit required to confirm this booking.");
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/appointments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          serviceIds: selectedServices.map((s) => s.id),
-          variantIds: selectedServices.map((s) => s.variantId || ""),
-          stylistId: isAny ? BOOKING.ANY_STYLIST_ID : (selectedStylist as Stylist).id,
-          anyStylist: isAny,
-          date: selectedDate,
-          startTime: selectedTime,
-          clientName: clientInfo.name,
-          clientEmail: clientInfo.email,
-          clientPhone: clientInfo.phone || undefined,
-          notes: clientInfo.notes || undefined,
-          smsConsent: clientInfo.smsConsent,
-          policyAccepted,
-          depositPaymentIntentId: depositPaymentIntent || undefined,
-          turnstileToken: turnstileToken || undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        track("booking_failed", {
-          status: res.status,
-          error: String(data?.error || "unknown"),
-          total_price_cents: totalPriceMin,
-          total_duration: totalDuration,
-          requires_deposit: requiresDeposit,
-        });
-        // Round-17 QA caught a customer-facing dead-end: Turnstile
-        // tokens expire ~5 min after issue, so a customer who lingers
-        // on step 4 (e.g. takes a phone call after step 3, comes back
-        // to confirm) hits "Captcha verification failed" with no path
-        // forward — Confirm is disabled, Back appeared not to work,
-        // and a page refresh dumps the wizard state. Recovery: clear
-        // the stale token, bounce them to step 3 where the Turnstile
-        // widget lives so it re-challenges, and show a clear message.
-        const errStr = String(data?.error || "").toLowerCase();
-        if (errStr.includes("captcha") || errStr.includes("turnstile") || errStr.includes("verification")) {
-          setTurnstileToken(null);
-          setStep(STEP_INFO);
-          setError("Verification expired — please confirm you're human and continue again.");
-          setSubmitting(false);
-          return;
-        }
-        setError(data.error || "Failed to book appointment");
-        setSubmitting(false);
-        return;
-      }
-
-      const data = await res.json();
-      // Identify by email so the funnel stitches across sessions,
-      // then fire the conversion event.
-      identify(clientInfo.email, {
-        name: clientInfo.name,
-        has_phone: !!clientInfo.phone,
-        sms_consent: clientInfo.smsConsent,
-      });
-      track("booking_submitted", {
-        service_count: selectedServices.length,
-        total_price_cents: totalPriceMin,
-        total_duration: totalDuration,
-        requires_deposit: requiresDeposit,
-        deposit_amount_cents: depositAmountCents,
-        deposit_paid: !!depositPaymentIntent,
-        is_any_stylist: isAny,
-        sms_consent: clientInfo.smsConsent,
-      });
-      setResult(data);
-      setStep(STEP_DONE);
-      try {
-        localStorage.setItem("thelook_client", JSON.stringify({
-          name: clientInfo.name,
-          email: clientInfo.email,
-          phone: clientInfo.phone,
-        }));
-      } catch {}
-    } catch {
-      setError("Something went wrong. Please try again.");
-    }
-    setSubmitting(false);
-  };
-
-  const formatTime = (time: string) => {
-    const [h, m] = time.split(":").map(Number);
-    const ampm = h >= 12 ? "PM" : "AM";
-    return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${ampm}`;
-  };
-
-  const formatDate = (date: string) =>
-    new Date(date + "T00:00:00").toLocaleDateString("en-US", {
-      weekday: "long", month: "long", day: "numeric",
-    });
-
-  const formatDuration = (mins: number) => {
-    if (mins < 60) return `${mins} min`;
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return m === 0 ? `${h} hr` : `${h} hr ${m} min`;
-  };
-
-  const hasPriceMin = selectedServices.length > 0 && selectedServices.every((s) => typeof s.priceMin === "number" && s.priceMin > 0);
-  const combinedPriceText = hasPriceMin
-    ? `$${Math.round(totalPriceMin / 100)}${anyPricePlus ? "+" : ""}`
-    : selectedServices.map((s) => s.priceText).join(" + ");
-
-  const stylistDisplayName = isAny ? "Any available stylist" : stylistObject?.name || "";
-
-  // Navbar / Footer / page heading live in /book/layout.tsx so they
-  // render unconditionally in the SSR HTML for every /book?... query
-  // variant (Round-27 SEO fix — Semrush flagged 181 variants as
-  // "Missing h1" because the inline header here was inside the
-  // "use client" tree).
   return (
     <>
-      <div className="max-w-4xl mx-auto px-6">
-          {step < STEP_DONE && <BookingProgress current={step} />}
+      <Script
+        id="ldjson-booking-faq"
+        type="application/ld+json"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+      />
 
-          {step === STEP_SERVICE && (
-            <ServicePicker
-              services={services}
-              selected={selectedServices}
-              onToggle={toggleService}
-              onContinue={() => { if (selectedServices.length > 0) setStep(STEP_STYLIST); }}
-            />
-          )}
+      {/* Interactive booking flow — client island. Suspense lets the
+          server route prerender around it instead of CSR-bailing the
+          whole page (which is what triggered the auto-noindex). */}
+      <Suspense fallback={<BookingLoading />}>
+        <BookingWizard />
+      </Suspense>
 
-          {step === STEP_STYLIST && selectedServices.length > 0 && (
-            <StylistPicker
-              stylists={allStylists}
-              serviceIds={selectedServices.map((s) => s.id)}
-              variantIds={selectedServices.map((s) => s.variantId || "")}
-              onSelect={(s) => { setSelectedStylist(s); setStep(STEP_DATETIME); }}
-              selected={selectedStylist}
-            />
-          )}
+      {/* Server-rendered, indexable content. Sits below the wizard so
+          the booking UI stays the first thing a visitor sees, while
+          crawlers get real content + internal links instead of an
+          empty skeleton. */}
+      <section className="max-w-4xl mx-auto px-6 pb-20 pt-4">
+        <div className="border-t border-navy/10 pt-12 space-y-14">
+          <div>
+            <h2 className="font-heading text-2xl md:text-3xl text-navy mb-6">
+              How booking at {brand.name} works
+            </h2>
+            <ol className="space-y-4 text-navy/80 font-body text-[15px] leading-relaxed">
+              <li>
+                <strong className="text-navy">1. Pick your service.</strong>{" "}
+                Choose from haircuts, color, styling, treatments, or facial
+                services. Pricing and duration are shown as you go.
+              </li>
+              <li>
+                <strong className="text-navy">2. Choose a stylist &amp; time.</strong>{" "}
+                Select a specific stylist or “Any Stylist,” then a date and
+                time from live availability.
+              </li>
+              <li>
+                <strong className="text-navy">3. Confirm.</strong>{" "}
+                Add your details, place the deposit if your service requires
+                one, and you&apos;ll get an email confirmation once the salon
+                reviews your request.
+              </li>
+            </ol>
+          </div>
 
-          {step === STEP_DATETIME && selectedServices.length > 0 && selectedStylist && (
-            <DateTimePicker
-              stylistId={availabilityStylistId}
-              stylistName={typeof selectedStylist === "string" ? "any available stylist" : selectedStylist.name}
-              serviceIds={selectedServices.map((s) => s.id)}
-              variantIds={selectedServices.map((s) => s.variantId || "")}
-              selectedDate={selectedDate}
-              selectedTime={selectedTime}
-              onSelect={(d, t) => { setSelectedDate(d); setSelectedTime(t); }}
-              onChangeStylist={prevStep}
-            />
-          )}
-
-          {step === STEP_INFO && (
-            <ClientInfoForm
-              info={clientInfo}
-              onChange={setClientInfo}
-              turnstileSiteKey={turnstileSiteKey}
-              onTurnstileChange={setTurnstileToken}
-              policyAccepted={policyAccepted}
-              onPolicyChange={setPolicyAccepted}
-              requiresDeposit={requiresDeposit}
-              depositAmountCents={depositAmountCents}
-            />
-          )}
-
-          {step === STEP_CONFIRM && selectedServices.length > 0 && selectedStylist && selectedDate && selectedTime && (
-            <div className="max-w-lg mx-auto">
-              <h2 className="font-heading text-3xl mb-2 text-center">Review &amp; Confirm</h2>
-              <p className="text-navy/70 font-body text-sm text-center mb-8">
-                Please review your appointment details
-              </p>
-              <div className="bg-white border border-navy/10 p-8 space-y-4">
-                <div>
-                  <p className="text-navy/70 text-sm font-body mb-2">
-                    {selectedServices.length === 1 ? "Service" : "Services"}
-                  </p>
-                  <ul className="space-y-1.5">
-                    {selectedServices.map((s) => (
-                      <li key={serviceKey(s)} className="flex items-baseline justify-between gap-4">
-                        <span className="font-body text-sm text-navy">{s.name}</span>
-                        <span className="text-gold font-heading text-sm shrink-0">{s.priceText}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="flex justify-between border-t border-navy/5 pt-3">
-                  <span className="text-navy/70 text-sm font-body">Total</span>
-                  <span className="text-gold font-heading">{combinedPriceText}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-navy/70 text-sm font-body">Total duration</span>
-                  <span className="font-body text-sm">{formatDuration(totalDuration)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-navy/70 text-sm font-body">Stylist</span>
-                  <span className="font-body font-bold text-sm">{stylistDisplayName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-navy/70 text-sm font-body">Date</span>
-                  <span className="font-body font-bold text-sm">{formatDate(selectedDate)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-navy/70 text-sm font-body">Time</span>
-                  <span className="font-body font-bold text-sm">{formatTime(selectedTime)}</span>
-                </div>
-                <div className="border-t border-navy/10 pt-4">
-                  <p className="text-navy/70 text-sm font-body">{clientInfo.name}</p>
-                  <p className="text-navy/70 text-sm font-body">{clientInfo.email}</p>
-                  {clientInfo.phone && <p className="text-navy/70 text-sm font-body">{clientInfo.phone}</p>}
-                </div>
-                {requiresDeposit && (
-                  <div className="border-t border-navy/10 pt-4">
-                    <p className="text-navy/70 text-sm font-body mb-1">
-                      Required deposit — ${depositAmountCents / 100}
-                    </p>
-                    <p className="text-navy/70 text-xs font-body mb-3 leading-relaxed">
-                      A <strong>${depositAmountCents / 100}</strong> deposit is required
-                      for this booking. It&apos;s <strong>applied to your service total</strong>
-                      at the appointment. If you no-show or cancel within 24&nbsp;hours, the
-                      deposit is forfeited.
-                    </p>
-                    {depositPaymentIntent ? (
-                      <p className="text-green-700 text-sm font-body">
-                        ✓ ${depositAmountCents / 100} deposit collected.
-                      </p>
-                    ) : clientInfo.email ? (
-                      <DepositForm
-                        amountCents={depositAmountCents}
-                        clientEmail={clientInfo.email}
-                        clientName={clientInfo.name}
-                        description={selectedServices.map((s) => s.name).join(", ")}
-                        onSuccess={(pid) => {
-                          setDepositPaymentIntent(pid);
-                          track("booking_deposit_paid", {
-                            amount_cents: depositAmountCents,
-                            total_price_cents: totalPriceMin,
-                          });
-                        }}
-                      />
-                    ) : (
-                      <p className="text-navy/70 text-xs font-body">
-                        Fill in your info to pay the deposit.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="border-t border-navy/10 pt-4 mt-4">
-                <p className="text-navy/70 text-xs font-body mb-2">Have a discount code?</p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={discountCode}
-                    onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountResult(null); setDiscountError(""); }}
-                    placeholder="Enter code"
-                    className="flex-1 border border-navy/20 px-3 py-2 text-sm font-body uppercase"
-                  />
-                  <button
-                    type="button"
-                    onClick={applyDiscount}
-                    disabled={checkingDiscount || !discountCode.trim()}
-                    className="px-4 py-2 bg-navy text-white text-xs font-body hover:bg-navy/90 disabled:opacity-60"
+          <div>
+            <h2 className="font-heading text-2xl md:text-3xl text-navy mb-2">
+              What you can book
+            </h2>
+            <p className="text-navy/70 font-body text-sm mb-6">
+              Browse the full menu and pricing for any category before you
+              book.
+            </p>
+            <ul className="grid sm:grid-cols-2 gap-4">
+              {SERVICE_CATEGORIES.map((c) => (
+                <li key={c.slug}>
+                  <Link
+                    href={`/services/${c.slug}`}
+                    className="group block border border-navy/10 hover:border-navy/30 p-5 transition-colors"
                   >
-                    {checkingDiscount ? "Checking..." : "Apply"}
-                  </button>
-                </div>
-                {discountError && (
-                  <p role="alert" aria-live="polite" className="text-red-500 text-xs font-body mt-1">{discountError}</p>
-                )}
-                {discountResult && (
-                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded">
-                    <p className="text-green-700 text-sm font-body font-bold">{discountResult.code} applied!</p>
-                    <p className="text-green-600 text-xs font-body">{discountResult.description || `Saves $${(discountResult.discountAmount / 100).toFixed(0)}`}</p>
-                  </div>
-                )}
-              </div>
+                    <p className="font-heading text-lg text-navy group-hover:text-rose transition-colors">
+                      {c.title}
+                    </p>
+                    <p className="text-navy/70 font-body text-sm mt-1">
+                      {c.subtitle}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-              {error && (
-                <p
-                  role="alert"
-                  aria-live="polite"
-                  className="text-red-600 text-sm font-body mt-4 text-center"
+          <div>
+            <h2 className="font-heading text-2xl md:text-3xl text-navy mb-6">
+              Booking FAQ
+            </h2>
+            <div className="divide-y divide-navy/10">
+              {BOOKING_FAQS.map((f, i) => (
+                <details
+                  key={i}
+                  className="group py-4"
+                  {...(i === 0 ? { open: true } : {})}
                 >
-                  {error}
-                </p>
-              )}
-
-              {requiresDeposit && (
-                <div className="mt-5 bg-rose/5 border border-rose/30 p-3 text-xs font-body text-navy/70 leading-relaxed">
-                  <p className="font-bold text-navy mb-1">Cancellation Policy</p>
-                  <p>
-                    Your <strong>${depositAmountCents / 100} deposit</strong> is
-                    refundable if you cancel at least 24&nbsp;hours in advance. Cancellations
-                    within 24&nbsp;hours of the appointment forfeit the deposit. Additional
-                    cancellation or no-show fees may apply where applicable.
+                  <summary className="font-heading text-base md:text-lg text-navy cursor-pointer list-none flex items-start justify-between gap-4">
+                    <span>{f.question}</span>
+                    <span
+                      aria-hidden
+                      className="text-gold text-xl leading-none mt-0.5 transition-transform group-open:rotate-45"
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <p className="text-navy/75 font-body text-sm leading-relaxed mt-3 pr-8">
+                    {f.answer}
                   </p>
-                </div>
-              )}
-
-              <p className="text-navy/70 text-xs font-body mt-4 text-center">
-                After you submit, your booking will be reviewed by the salon. You&apos;ll get an email
-                once it&apos;s approved.
-              </p>
+                </details>
+              ))}
             </div>
-          )}
+          </div>
 
-          {step === STEP_DONE && result && <BookingConfirmation result={result} />}
-
-          {step > STEP_SERVICE && step < STEP_DONE && (
-            <div className="flex justify-between max-w-2xl mx-auto mt-10">
-              <button
-                onClick={prevStep}
-                className="border border-navy/20 text-navy/70 hover:text-navy hover:border-navy/40 tracking-widest uppercase text-sm px-8 py-3 transition-colors font-body"
-              >
-                Back
-              </button>
-
-              {step < STEP_CONFIRM ? (
-                <button
-                  onClick={() => canProceed() && nextStep()}
-                  disabled={!canProceed()}
-                  className="bg-rose hover:bg-rose-light disabled:opacity-40 disabled:cursor-not-allowed text-white tracking-widest uppercase text-sm px-8 py-3 transition-colors font-body"
-                >
-                  Continue
-                </button>
-              ) : (
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || (requiresDeposit && !depositPaymentIntent)}
-                  className="bg-rose hover:bg-rose-light disabled:opacity-60 text-white tracking-widest uppercase text-sm px-8 py-3 transition-colors font-body"
-                >
-                  {submitting ? "Booking..." : "Confirm Booking"}
-                </button>
-              )}
-            </div>
-          )}
+          <p className="text-navy/60 font-body text-xs text-center">
+            {brand.name} · {brand.address} ·{" "}
+            <a
+              href={telHref(brand.phone)}
+              className="hover:text-rose transition-colors"
+            >
+              {brand.phone}
+            </a>
+          </p>
         </div>
+      </section>
     </>
-  );
-}
-
-export default function BookPage() {
-  return (
-    <Suspense fallback={<BookingLoading />}>
-      <BookFlow />
-    </Suspense>
   );
 }
