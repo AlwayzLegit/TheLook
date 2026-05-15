@@ -186,6 +186,16 @@ export default async function middleware(request: NextRequest): Promise<NextResp
   }
 
   // Public path — pass through, still apply security headers.
+  //
+  // NOTE: do NOT try to noindex /book?service=… variants by setting
+  // X-Robots-Tag from middleware here. /book is a prerendered page
+  // (x-nextjs-prerender:1) and Vercel's CDN keys its cache on the
+  // matched path (/book), not the query string — a header mutated
+  // on a /book?x request gets cached and then served for the bare
+  // /book URL too, which would deindex the real booking page. The
+  // query-variant crawl noise is handled in public/robots.txt with
+  // `Disallow: /book?` instead, which is cache-safe and leaves bare
+  // /book fully indexable.
   return addSecurityHeaders(NextResponse.next());
 }
 
