@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import ReviewRequestModal from "./ReviewRequestModal";
 import RefundDialog from "./RefundDialog";
+import ChargeCardDialog from "./ChargeCardDialog";
 import {
   timeToMinutes,
   minutesToTime,
@@ -91,6 +92,13 @@ export interface AppointmentEditFields {
     duration: number;
     sort_order: number;
   }>;
+  // Contact corrections sent through the same PATCH. Omitted on a
+  // normal time/service edit so the route's contact-sync stays dormant.
+  // client_email is only honoured server-side when the row currently
+  // holds a synthetic @noemail placeholder.
+  client_name?: string;
+  client_phone?: string | null;
+  client_email?: string;
 }
 
 interface Props {
@@ -148,6 +156,13 @@ export default function AppointmentActionsModal({
   });
   const [reviewOpen, setReviewOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [chargeOpen, setChargeOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState(false);
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactErr, setContactErr] = useState<string | null>(null);
+  const [contactSaving, setContactSaving] = useState(false);
   // Per-service editable lines. Owner edits price/duration here so the
   // next time this client books the same service we can keep pricing
   // consistent across visits.
@@ -172,6 +187,12 @@ export default function AppointmentActionsModal({
       setServicesEdited(false);
       setEndOverridden(false);
       setAddServiceId("");
+      setEditingContact(false);
+      setContactName(appointment.client_name || "");
+      setContactPhone(appointment.client_phone || "");
+      setContactEmail(appointment.client_email || "");
+      setContactErr(null);
+      setContactSaving(false);
     }
     // Gate on the appointment id, not the object reference. The parent
     // (admin/appointments/page.tsx) passes a freshly-derived
@@ -268,6 +289,51 @@ export default function AppointmentActionsModal({
   // either way the client still owes the full services total.
   const balanceCents = servicesTotalCents - (depositPaid ? depositCents : 0);
 
+  // A real email is identity. When the row only holds the synthetic
+  // phone-hold placeholder the operator may attach a real address;
+  // otherwise email is read-only here (must be changed from the
+  // client profile) — mirrors the server-side gate in the PATCH route.
+  const emailIsSynthetic =
+    typeof appointment.client_email === "string" &&
+    appointment.client_email.endsWith("@noemail.thelookhairsalonla.com");
+
+  const saveContact = async () => {
+    const name = contactName.trim();
+    if (!name) {
+      setContactErr("Name can't be empty.");
+      return;
+    }
+    const phone = contactPhone.trim();
+    // Source the non-contact fields from the saved appointment, not the
+    // body-edit `fields` state, so a contact fix never piggybacks an
+    // unsaved time/stylist edit. Same shape the proven main-save sends.
+    const payload: AppointmentEditFields = {
+      date: appointment.date,
+      start_time: appointment.start_time,
+      end_time: appointment.end_time,
+      staff_notes: appointment.staff_notes || "",
+      stylist_id: appointment.stylist_id || "",
+      client_name: name,
+      client_phone: phone ? phone : null,
+    };
+    if (emailIsSynthetic) {
+      const email = contactEmail.trim();
+      // Blank = keep them phone-only. A non-placeholder address
+      // promotes the walk-in to a real client (server re-keys).
+      if (email && !email.endsWith("@noemail.thelookhairsalonla.com")) {
+        payload.client_email = email;
+      }
+    }
+    setContactErr(null);
+    setContactSaving(true);
+    try {
+      await onSaveEdit(appointment.id, payload);
+      setEditingContact(false);
+    } finally {
+      setContactSaving(false);
+    }
+  };
+
   // Issue 1 fix: backdrop is no longer click-to-close. Native iOS time
   // pickers occasionally bubble their dismissal as a tap on whatever's
   // behind, which made the modal close mid-edit. Close is now strictly
@@ -276,12 +342,89 @@ export default function AppointmentActionsModal({
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
       <div className="bg-white w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between px-5 py-4 border-b border-navy/10 sticky top-0 bg-white">
-          <div className="min-w-0">
-            <p className="font-body font-bold text-base truncate">{appointment.client_name}</p>
-            <p className="text-xs font-body text-navy/50 truncate">
-              {appointment.client_email}
-              {appointment.client_phone ? ` · ${appointment.client_phone}` : ""}
-            </p>
+          <div className="min-w-0 flex-1 pr-3">
+            {editingContact ? (
+              <div className="space-y-2">
+                <input
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="Client name"
+                  aria-label="Client name"
+                  className="w-full border border-navy/20 px-2 py-1 text-sm font-body"
+                />
+                <input
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  placeholder="Phone"
+                  aria-label="Client phone"
+                  inputMode="tel"
+                  className="w-full border border-navy/20 px-2 py-1 text-sm font-body"
+                />
+                {emailIsSynthetic ? (
+                  <input
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="Email (optional — promotes to a full client)"
+                    aria-label="Client email"
+                    type="email"
+                    className="w-full border border-navy/20 px-2 py-1 text-sm font-body"
+                  />
+                ) : (
+                  <p className="text-[11px] font-body text-navy/40">
+                    {appointment.client_email} · email is locked (change it from the
+                    client profile)
+                  </p>
+                )}
+                {contactErr && (
+                  <p role="alert" className="text-red-600 text-[11px] font-body">
+                    {contactErr}
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={saveContact}
+                    disabled={contactSaving || pending}
+                    className="text-xs font-body bg-navy text-white px-3 py-1 hover:bg-navy/90 disabled:opacity-60"
+                  >
+                    {contactSaving ? "Saving…" : "Save"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingContact(false);
+                      setContactName(appointment.client_name || "");
+                      setContactPhone(appointment.client_phone || "");
+                      setContactEmail(appointment.client_email || "");
+                      setContactErr(null);
+                    }}
+                    disabled={contactSaving}
+                    className="text-xs font-body text-navy/50 hover:text-navy px-2 py-1 disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="font-body font-bold text-base truncate">
+                  {appointment.client_name}
+                </p>
+                <p className="text-xs font-body text-navy/50 truncate">
+                  {emailIsSynthetic
+                    ? appointment.client_phone || "phone-only — no email"
+                    : appointment.client_email}
+                  {!emailIsSynthetic && appointment.client_phone
+                    ? ` · ${appointment.client_phone}`
+                    : ""}
+                  {emailIsSynthetic ? " · no email on file" : ""}
+                </p>
+                <button
+                  onClick={() => setEditingContact(true)}
+                  className="mt-0.5 text-[11px] font-body text-gold hover:underline"
+                >
+                  Edit contact
+                </button>
+              </>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -801,6 +944,17 @@ export default function AppointmentActionsModal({
                 </button>
               )}
 
+              {appointment.stripe_customer_id && (
+                <button
+                  onClick={() => setChargeOpen(true)}
+                  disabled={pending}
+                  className="text-xs font-body text-rose border border-rose/40 px-3 py-1.5 hover:bg-rose/10 disabled:opacity-60"
+                  title="Charge the card on file (no-show fee or custom amount)"
+                >
+                  Charge card
+                </button>
+              )}
+
               {canArchive && (
                 <button
                   onClick={() => onArchive(appointment.id)}
@@ -858,6 +1012,17 @@ export default function AppointmentActionsModal({
         appointmentId={refundOpen ? appointment.id : null}
         clientName={appointment.client_name}
         onClose={() => setRefundOpen(false)}
+      />
+
+      <ChargeCardDialog
+        appointmentId={chargeOpen ? appointment.id : null}
+        clientName={appointment.client_name}
+        cardLabel={
+          appointment.card_brand
+            ? `${appointment.card_brand.toUpperCase()} •••${appointment.card_last4 ?? ""}`
+            : null
+        }
+        onClose={() => setChargeOpen(false)}
       />
     </div>
   );

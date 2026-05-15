@@ -590,6 +590,9 @@ export default function AppointmentsPage() {
         duration: number;
         sort_order: number;
       }>;
+      client_name?: string;
+      client_phone?: string | null;
+      client_email?: string;
     },
   ) => {
     try {
