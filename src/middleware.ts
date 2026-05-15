@@ -163,6 +163,7 @@ export default async function middleware(request: NextRequest): Promise<NextResp
   if (needsAuth(request.nextUrl.pathname)) {
     return authCheck(request);
   }
+
   // Public path — pass through, still apply security headers.
   //
   // NOTE: do NOT try to noindex /book?service=… variants by setting
