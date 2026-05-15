@@ -52,6 +52,29 @@ interface Props {
 const STEP_WHO = 0;
 const STEP_WHAT = 1;
 
+// Fire-and-forget breadcrumb into the activity log (admin_log) via
+// /api/internal/client-event. This sheet's submit path used to be a
+// total blind spot: a failed booking attempt that never issued a
+// network request (client-side validation dead-end, exception before
+// fetch, etc.) left zero trace anywhere — which is exactly the class
+// of failure Anna hit. Every call here is best-effort and MUST NOT
+// affect the UI: no await on the result, swallow all errors,
+// keepalive:true so an in-flight beacon survives the sheet closing
+// or a route change. The endpoint forces action="client.<event>" so
+// these can never forge a real audit row.
+function logSheetEvent(event: string, detail: Record<string, unknown>): void {
+  try {
+    void fetch("/api/internal/client-event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event: `book_sheet.${event}`, detail }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* diagnostics must never break the booking UI */
+  }
+}
+
 export default function NewAppointmentSheet({ open, onClose, onCreated, prefill }: Props) {
   const [step, setStep] = useState<typeof STEP_WHO | typeof STEP_WHAT>(STEP_WHO);
   const [saving, setSaving] = useState(false);
@@ -211,15 +234,30 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
     setClientQuery("");
     setClientResults([]);
     setStep(STEP_WHAT);
+    logSheetEvent("client_selected", {
+      mode: "existing",
+      hasEmail: !!hit.email,
+      hasPhone: !!hit.phone,
+      banned: !!hit.banned,
+    });
   };
   const confirmNewClient = () => {
-    if (!newClient.name.trim()) { toast.error("Name is required."); return; }
+    if (!newClient.name.trim()) {
+      toast.error("Name is required.");
+      logSheetEvent("new_client_blocked", { reason: "name_empty" });
+      return;
+    }
     if (newClient.phone.replace(/\D/g, "").length < 7) {
       toast.error("Phone is required (at least 7 digits).");
+      logSheetEvent("new_client_blocked", {
+        reason: "phone_too_short",
+        digits: newClient.phone.replace(/\D/g, "").length,
+      });
       return;
     }
     if (!newClient.email.trim() && !newClient.phone.trim()) {
       toast.error("Add either an email or a phone number.");
+      logSheetEvent("new_client_blocked", { reason: "no_contact" });
       return;
     }
     setClient({
@@ -230,6 +268,11 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
     });
     setNewClientMode(false);
     setStep(STEP_WHAT);
+    logSheetEvent("client_selected", {
+      mode: "new",
+      hasEmail: !!newClient.email.trim(),
+      hasPhone: !!newClient.phone.trim(),
+    });
   };
 
   const toggleService = (id: string) => {
@@ -238,13 +281,55 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
   };
 
   const submit = async () => {
-    if (!client) { setError("Pick or create a client first."); return; }
-    if (selectedServiceIds.length === 0) { setError("Select at least one service."); return; }
-    if (!stylistId) { setError("Pick a stylist."); return; }
-    if (!date) { setError("Pick a date."); return; }
-    if (!startTime) { setError("Pick a time."); return; }
+    // Snapshot of what the form actually holds at click time. This is
+    // the breadcrumb that was missing for Anna — it pins down whether
+    // the button did anything and which field was empty.
+    logSheetEvent("submit_clicked", {
+      hasClient: !!client,
+      clientMode: client ? (client.existing ? "existing" : "new") : null,
+      serviceCount: selectedServiceIds.length,
+      hasStylist: !!stylistId,
+      anyStylist: stylistId === BOOKING.ANY_STYLIST_ID,
+      hasDate: !!date,
+      hasStartTime: !!startTime,
+      override,
+      status,
+    });
+    if (!client) {
+      setError("Pick or create a client first.");
+      logSheetEvent("blocked", { reason: "no_client" });
+      return;
+    }
+    if (selectedServiceIds.length === 0) {
+      setError("Select at least one service.");
+      logSheetEvent("blocked", { reason: "no_services" });
+      return;
+    }
+    if (!stylistId) {
+      setError("Pick a stylist.");
+      logSheetEvent("blocked", { reason: "no_stylist" });
+      return;
+    }
+    if (!date) {
+      setError("Pick a date.");
+      logSheetEvent("blocked", { reason: "no_date" });
+      return;
+    }
+    if (!startTime) {
+      setError("Pick a time.");
+      logSheetEvent("blocked", { reason: "no_start_time" });
+      return;
+    }
     setError(null);
     setSaving(true);
+    logSheetEvent("posting", {
+      serviceCount: selectedServiceIds.length,
+      date,
+      startTime,
+      anyStylist: stylistId === BOOKING.ANY_STYLIST_ID,
+      override,
+      status,
+    });
     try {
       const res = await fetch("/api/admin/appointments", {
         method: "POST",
@@ -264,16 +349,24 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
           overrideConflicts: override,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error || "Failed to create appointment.");
+        logSheetEvent("server_error", {
+          httpStatus: res.status,
+          error: typeof data?.error === "string" ? data.error.slice(0, 200) : null,
+        });
         return;
       }
+      logSheetEvent("created", { httpStatus: res.status, id: data?.id ?? null });
       toast.success("Appointment created.");
       onCreated?.(data.id);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error.");
+      logSheetEvent("exception", {
+        message: err instanceof Error ? err.message : String(err),
+      });
     } finally {
       setSaving(false);
     }
