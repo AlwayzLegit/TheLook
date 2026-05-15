@@ -243,6 +243,11 @@ const adminBookingSchema = z.object({
   staffNotes: z.string().trim().max(2000).optional().nullable(),
   status: z.enum(["pending", "confirmed", "completed"]).default("confirmed"),
   overrideConflicts: z.boolean().optional(),
+  // Admin escape hatch for the salon's deposit rules. Defaults to
+  // applying them (parity with the public booking flow). false = book
+  // with no deposit — comps, trusted regulars, phone holds the owner
+  // doesn't want to gate behind a card.
+  requireDeposit: z.boolean().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -319,10 +324,13 @@ export async function POST(request: NextRequest) {
   const appointmentId = crypto.randomUUID();
   const cancelToken = crypto.randomUUID().replace(/-/g, "");
 
-  const adminDepositCalc = await computeRequiredDeposit({
-    totalPriceCents: totalPriceMin,
-    totalDurationMinutes: totalDuration,
-  });
+  const adminDepositCalc =
+    p.requireDeposit === false
+      ? { requiresDeposit: false, depositCents: 0, matchedRule: null }
+      : await computeRequiredDeposit({
+          totalPriceCents: totalPriceMin,
+          totalDurationMinutes: totalDuration,
+        });
 
   const insertPayload: Record<string, unknown> = {
     id: appointmentId,

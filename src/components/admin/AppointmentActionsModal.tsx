@@ -255,6 +255,19 @@ export default function AppointmentActionsModal({
   const isArchived = Boolean(appointment.archived_at);
   const canArchive = ["cancelled", "no_show", "completed"].includes(appointment.status) && !isArchived;
 
+  // Money summary the owner asked for: what the services come to, the
+  // deposit (only when one applied to this booking), and the balance
+  // the client still owes at the chair. serviceLines is loaded on modal
+  // open regardless of edit mode, so this renders in the read view too.
+  const servicesTotalCents = serviceLines.reduce((sum, l) => sum + (l.price_min || 0), 0);
+  const depositCents = appointment.deposit_required_cents ?? 0;
+  const depositApplies = depositCents > 0 && appointment.deposit_status !== "none";
+  const depositPaid = appointment.deposit_status === "paid";
+  // Only a paid deposit offsets the chair-side balance. Pending means
+  // it hasn't been collected yet; refunded means it was given back —
+  // either way the client still owes the full services total.
+  const balanceCents = servicesTotalCents - (depositPaid ? depositCents : 0);
+
   // Issue 1 fix: backdrop is no longer click-to-close. Native iOS time
   // pickers occasionally bubble their dismissal as a tap on whatever's
   // behind, which made the modal close mid-edit. Close is now strictly
@@ -355,6 +368,36 @@ export default function AppointmentActionsModal({
                 )}
             </div>
           </div>
+
+          {serviceLines.length > 0 && (
+            <div className="text-sm font-body border-t border-navy/10 pt-3 space-y-0.5">
+              <div className="flex justify-between text-navy/80">
+                <span>Services total</span>
+                <span>${Math.round(servicesTotalCents / 100)}</span>
+              </div>
+              {depositApplies && (
+                <div className="flex justify-between text-navy/55">
+                  <span>
+                    Deposit{" "}
+                    {depositPaid
+                      ? "paid"
+                      : appointment.deposit_status === "refunded"
+                        ? "refunded"
+                        : "pending"}
+                  </span>
+                  <span>
+                    {depositPaid ? "−" : ""}${Math.round(depositCents / 100)}
+                  </span>
+                </div>
+              )}
+              {depositApplies && (
+                <div className="flex justify-between font-bold text-navy pt-0.5 border-t border-navy/10 mt-1">
+                  <span>Balance due</span>
+                  <span>${Math.round(balanceCents / 100)}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {editing ? (
             <div className="space-y-3 p-3 bg-cream/50 border border-navy/10">
