@@ -25,6 +25,15 @@ export async function generateMetadata(): Promise<Metadata> {
 // variants. Hoisting Navbar + the heading shell + Footer into this
 // server-rendered layout puts the h1 in the static HTML for every
 // /book* URL, before any JS executes.
+//
+// 2026-05-15 cache-bust: PR #50's middleware briefly set
+// `X-Robots-Tag: noindex` on /book, and Vercel persisted that header
+// in the prerendered route artifact. PR #51 reverted the middleware
+// but the /book build output was unchanged, so Vercel reused the
+// poisoned artifact across the deploy and bare /book kept returning
+// noindex. Editing this file changes the route's build hash, forcing
+// Vercel to regenerate a clean /book prerender. Safe to delete this
+// note on the next unrelated /book change.
 export default function BookLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
