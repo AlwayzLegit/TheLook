@@ -163,6 +163,28 @@ export default async function middleware(request: NextRequest): Promise<NextResp
   if (needsAuth(request.nextUrl.pathname)) {
     return authCheck(request);
   }
+
+  // SEO: the /book page is a single canonical URL, but every
+  // service/stylist deep-link adds ?service=…&stylist=… query params.
+  // Semrush's site audit crawls each permutation as a distinct page
+  // (190+ of them in the 2026-05-15 export), drowning the real
+  // findings under "low word count" / "low text-to-HTML" noise even
+  // though /book/layout.tsx already sets <link rel="canonical"
+  // href="/book">. Emitting X-Robots-Tag: noindex, follow for any
+  // /book URL that carries a query string tells Google + Semrush to
+  // drop the variants while keeping bare /book fully indexable and
+  // letting link equity continue to flow (follow). The /book/cancel,
+  // /book/reschedule, /book/waitlist sub-routes are already
+  // disallowed in robots.txt + carry their own noindex layouts.
+  if (
+    request.nextUrl.pathname === "/book" &&
+    request.nextUrl.search.length > 0
+  ) {
+    const res = addSecurityHeaders(NextResponse.next());
+    res.headers.set("X-Robots-Tag", "noindex, follow");
+    return res;
+  }
+
   // Public path — pass through, still apply security headers.
   return addSecurityHeaders(NextResponse.next());
 }
