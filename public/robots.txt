@@ -23,6 +23,13 @@ Disallow: /api/
 Disallow: /book/cancel
 Disallow: /book/reschedule
 Disallow: /book/waitlist
+# Every service/stylist deep-link is /book?service=…&stylist=… —
+# /book/layout.tsx already canonicalises them to /book, but Semrush
+# crawled 190+ permutations as distinct pages (2026-05-15 export),
+# burying the real findings under low-word-count noise. `?` prefix
+# match blocks only the parameterised variants; bare /book has no
+# query string so it stays fully crawlable + indexable.
+Disallow: /book?
 
 # Note: /my (client portal) was previously disallowed here, but Semrush
 # counted that as "Blocked from AI Search" because the navbar and
@@ -67,5 +74,6 @@ Disallow: /api/
 Disallow: /book/cancel
 Disallow: /book/reschedule
 Disallow: /book/waitlist
+Disallow: /book?
 
 Sitemap: https://www.thelookhairsalonla.com/sitemap.xml
