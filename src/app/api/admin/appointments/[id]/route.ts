@@ -64,6 +64,38 @@ export async function PATCH(
     updateData.service_id = payload.services[0].service_id;
   }
 
+  // Contact corrections. Name + phone are always editable. Email is
+  // identity (it keys client_profiles, charges, the cancel-token
+  // emails) so it's only editable here when the row currently holds a
+  // synthetic phone-hold placeholder — promoting a walk-in to a real
+  // address. Changing an already-real email is refused; that has to
+  // happen from the client profile so we don't silently fork history.
+  const SYNTHETIC_EMAIL_RE = /@noemail\.thelookhairsalonla\.com$/i;
+  const priorEmail = (priorRow?.client_email || "").trim();
+  const priorIsPlaceholder = SYNTHETIC_EMAIL_RE.test(priorEmail);
+  let emailReKeyedFrom: string | null = null;
+  if (payload.client_name !== undefined) updateData.client_name = payload.client_name;
+  if (payload.client_phone !== undefined) {
+    updateData.client_phone = payload.client_phone ? payload.client_phone : null;
+  }
+  if (payload.client_email !== undefined) {
+    const nextEmail = payload.client_email.toLowerCase();
+    const sameAsPrior = nextEmail === priorEmail.toLowerCase();
+    if (!sameAsPrior) {
+      if (!priorIsPlaceholder) {
+        return apiError(
+          "This client already has a real email on file. Change it from their client profile, not the appointment.",
+          409,
+        );
+      }
+      if (SYNTHETIC_EMAIL_RE.test(nextEmail)) {
+        return apiError("Enter a real email address.", 400);
+      }
+      updateData.client_email = nextEmail;
+      emailReKeyedFrom = priorEmail;
+    }
+  }
+
   // Stamp approver info whenever a pending booking becomes confirmed.
   // Kept in its own object so we can cleanly retry without it if the DB
   // schema pre-dates the 20260419 salon_fixes migration (which added the
@@ -115,6 +147,51 @@ export async function PATCH(
     // template was correct but worth keeping; comment is here so a future
     // refactor doesn't strip it back to a constant string and re-blind us.
     return apiError(`Failed to update appointment: ${error.message || "unknown error"}`, 500);
+  }
+
+  // Mirror a contact correction into client_profiles so the directory,
+  // search, and future rebooks see the fixed name/phone/email. Only
+  // runs when a contact field was actually in this PATCH (a status or
+  // time-only edit must not churn the profile). Best-effort: the
+  // appointment row is already saved, so a profile-sync hiccup is
+  // logged, not surfaced as a failed update. `data` is the post-update
+  // row so it already carries the new values.
+  const contactTouched =
+    payload.client_name !== undefined ||
+    payload.client_phone !== undefined ||
+    payload.client_email !== undefined;
+  if (contactTouched && data) {
+    const effectiveEmail = String(data.client_email || "").toLowerCase();
+    if (effectiveEmail) {
+      await supabase
+        .from("client_profiles")
+        .upsert(
+          {
+            email: effectiveEmail,
+            name: data.client_name,
+            phone: data.client_phone || null,
+          },
+          { onConflict: "email" },
+        )
+        .then(
+          () => {},
+          (err: unknown) => logError("admin/appointments PATCH (profile sync)", err),
+        );
+    }
+    // The booking was promoted from a phone-only hold to a real email.
+    // The synthetic @noemail profile was a throwaway keyed off the old
+    // placeholder address and is now orphaned — drop it so the client
+    // directory doesn't show a ghost duplicate next to the real one.
+    if (emailReKeyedFrom && emailReKeyedFrom.toLowerCase() !== effectiveEmail) {
+      await supabase
+        .from("client_profiles")
+        .delete()
+        .eq("email", emailReKeyedFrom.toLowerCase())
+        .then(
+          () => {},
+          (err: unknown) => logError("admin/appointments PATCH (orphan profile cleanup)", err),
+        );
+    }
   }
 
   // Replace appointment_services when the admin sent a new services

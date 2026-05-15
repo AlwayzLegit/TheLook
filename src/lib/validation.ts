@@ -160,6 +160,14 @@ export const adminAppointmentPatchSchema = z.object({
   // booking. Each entry carries the snapshotted price + duration the
   // admin wants on the row; absent → existing services stay untouched.
   services: z.array(adminAppointmentServiceLineSchema).min(1).max(20).optional(),
+  // Correct a client's contact details on the booking (typo'd name,
+  // wrong phone, or attaching a real email to a phone-only walk-in).
+  // The PATCH route only honours client_email when the row currently
+  // holds a synthetic @noemail placeholder — a real email is identity
+  // and must be changed from the client profile, not an appointment.
+  client_name: z.string().trim().min(1).max(200).optional(),
+  client_phone: z.string().trim().max(50).nullable().optional(),
+  client_email: z.string().trim().email().max(200).optional(),
 });
 
 // 32-hex cancel token issued by /api/appointments (crypto.randomUUID
