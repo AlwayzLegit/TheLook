@@ -99,6 +99,7 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
   const [clientNotes, setClientNotes] = useState("");
   const [staffNotes, setStaffNotes] = useState("");
   const [override, setOverride] = useState(false);
+  const [requireDeposit, setRequireDeposit] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Reset state when sheet reopens.
@@ -127,6 +128,7 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
     setClientNotes("");
     setStaffNotes("");
     setOverride(false);
+    setRequireDeposit(true);
     setError(null);
   }, [open, prefill]);
 
@@ -347,6 +349,7 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
           staffNotes: staffNotes || null,
           status,
           overrideConflicts: override,
+          requireDeposit,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -662,6 +665,12 @@ export default function NewAppointmentSheet({ open, onClose, onCreated, prefill 
                 onCheckedChange={setOverride}
                 label="Override conflicts"
                 hint="Allow booking outside regular hours or over another appointment."
+              />
+              <Switch
+                checked={requireDeposit}
+                onCheckedChange={setRequireDeposit}
+                label="Require deposit"
+                hint="On = apply the salon's deposit rules. Off = no deposit (comps, regulars, phone holds)."
               />
             </div>
           </details>

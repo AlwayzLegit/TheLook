@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import {
   addMonths,
@@ -222,15 +222,52 @@ export function TimePicker({
     [options, stepMinutes, startHour, endHour],
   );
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const stepValue = useCallback(
+    (dir: 1 | -1) => {
+      if (disabled || slots.length === 0) return;
+      const idx = value ? slots.indexOf(value) : -1;
+      const nextIdx =
+        idx === -1
+          ? dir === 1
+            ? 0
+            : slots.length - 1
+          : Math.min(slots.length - 1, Math.max(0, idx + dir));
+      const next = slots[nextIdx];
+      if (next && next !== value) onChange(next);
+    },
+    [disabled, slots, value, onChange],
+  );
+
+  // Mouse-wheel over the field steps the selected time without opening
+  // the popover — the owner asked for this so a start time can be dialed
+  // in fast while taking a booking over the phone. Registered as a
+  // non-passive native listener because React's synthetic onWheel is
+  // passive: preventDefault() there is a no-op and the page would scroll
+  // under the cursor instead of the time changing.
+  useEffect(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (disabled || slots.length === 0) return;
+      e.preventDefault();
+      stepValue(e.deltaY > 0 ? 1 : -1);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [stepValue, disabled, slots.length]);
 
   return (
     <FieldShell label={label} hint={hint} error={error} required={required} htmlFor={id} className={className}>
       <Popover.Root open={open} onOpenChange={disabled ? undefined : setOpen}>
         <Popover.Trigger asChild>
           <button
+            ref={triggerRef}
             type="button"
             disabled={disabled}
             id={id}
+            title="Scroll to change the time"
             className={cn(
               "flex h-10 w-full items-center justify-between rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 text-left text-[0.8125rem]",
               "hover:border-[var(--color-text-muted)] transition-colors",
