@@ -215,26 +215,162 @@ event without a separate `service_page_view` event.
 
 ---
 
+## WP-H — Post-audit admin + content fixes
+**Status:** complete, shipped to production
+**PRs:** #47, #48, #49
+
+Owner-reported items handled between SEO work packages:
+
+- **#47** — homepage About badge copy: "14+ Years of Excellence" →
+  "15+ Years of Passion and Expertise" (`src/components/About.tsx`).
+  Salon founded 11.11.11, so 15+ is accurate.
+- **#48** — `AppointmentActionsModal` "+ Add service…" picker grouped
+  by category via `<optgroup>` (Haircuts → Color & Highlights →
+  Styling → Treatments → Facial Services; unknown/empty → "Other").
+  `Service` / `ServiceCatalogOption` gained a `category` field; the
+  admin services API already returned it via `SELECT *`.
+- **#49** — three fixes in one:
+  1. **Missing client_profiles.** Admin `POST /api/admin/appointments`
+     never upserted `client_profiles`, so admin-added (phone-only,
+     synthetic-email) clients were absent from `/admin/clients`.
+     Added the upsert + a one-shot backfill migration
+     `20260525_backfill_client_profiles.sql`. Backfill applied to
+     production: 1397 → 1424 profiles (+27 orphans healed, 0
+     remaining; "Letty" recovered).
+  2. **Pending email clarity.** First booking email read like a
+     confirmation. Rewrote `sendBookingConfirmation` copy/subject to
+     unmistakably say "Pending — awaiting confirmation"; the existing
+     status-change email remains the genuine confirmation.
+  3. **Rebook button.** New "Rebook" action in the appointment edit
+     modal opens `NewAppointmentSheet` pre-filled with the client's
+     name/email/phone (synthetic `@noemail` placeholders stripped).
+
+**Deviation from plan:** out of original scope — owner requests during
+the engagement. No SEO-plan deviation.
+
+---
+
+## WP-I — 2026-05-15 Semrush mega-export response
+**Status:** complete, shipped to production
+**PRs:** #50 (code), DB content edits applied directly
+
+Aggregated the 279-row site-audit export. Top buckets were dominated
+by one root cause + two thin-content patterns:
+
+- **190 `/book?service=…&stylist=…` query variants** were being
+  crawled as distinct pages (drove 190/261 "low text-to-HTML",
+  190/202 "low word count", 39/44 "one internal link"). Fixed with
+  `Disallow: /book?` in `public/robots.txt` (both default and
+  AI-crawler groups). Prefix match — bare `/book` is unaffected.
+- **5 `/services/<category>` pages** flagged low word count — the
+  service list loads client-side so a no-JS crawler saw ~40 words.
+  Added a server-rendered `longIntro` (~250 unique words/category) to
+  `ServiceCategoryMeta`, rendered from the server component.
+- **4 `/blog/category/<slug>` pages** — same shape; added slug-keyed
+  server-rendered intro copy.
+- **DB content edits** (applied directly, ISR picks up — no deploy):
+  - `ombre-vs-balayage-color-technique`: `meta_title` was verbatim
+    equal to the H1 ("Duplicate content in h1 and title") → set to a
+    distinct brand-suffixed title.
+  - `color-treated-hair-care-tips-vibrant-color`: removed a broken
+    1999 journal DOI outbound link; kept the citation as plain text.
+
+**Deferred (intentional):** the 34 `/services/item/*` + 6 `/team/*`
+"low text-to-HTML" flags — those pages already received framing +
+FAQs in earlier PRs and the 2026-05-15 crawl predates those deploys;
+re-pull Semrush in ~48–72h before touching them.
+
+---
+
+## WP-J — /book indexability (the noindex saga)
+**Status:** resolved, shipped to production
+**PRs:** #51 → #52 → #53 → #54 (four iterations)
+
+**Symptom:** bare `/book` served `X-Robots-Tag: noindex`.
+
+**Root cause (confirmed pre-existing, NOT a regression):**
+`/book/page.tsx` was `"use client"` end-to-end and called
+`useSearchParams()` at the top level with no Suspense boundary —
+since PR #35, ~15 PRs before any work in this engagement. That forces
+a full-route CSR bailout; Next.js can only prerender a loading
+skeleton and deliberately attaches `X-Robots-Tag: noindex` to it
+(indexing an empty shell is harmful). Verified via git history.
+
+**Iteration log:**
+- **#51** — reverted a buggy middleware approach (PR #50 had set the
+  noindex header from middleware; Vercel's CDN keys the `/book`
+  prerender cache on path, not query string, so the header bled onto
+  bare `/book`). Replaced with the cache-safe `robots.txt
+  Disallow: /book?`. Correct, but only addressed the query-variant
+  noise, not the underlying shell noindex.
+- **#52** — busted the stale `/book` prerender artifact (Vercel
+  reused the poisoned artifact across the #51 deploy since the route
+  output was unchanged). Necessary cleanup; noindex persisted.
+- **#53** — wrapped `useSearchParams()` in `<Suspense>` (the
+  documented Next.js remedy). Necessary but **insufficient**: the
+  whole route was still a client component, so there was no server
+  content to prerender and Next kept the noindex.
+- **#54** — the actual fix. Industry-standard App Router architecture:
+  - `src/components/booking/BookingWizard.tsx` (new, `"use client"`)
+    — the entire previous booking flow moved **verbatim** (same
+    hooks, state machine, `useSearchParams`, `?step=` sync, Stripe
+    dynamic import, JSX). Zero behavioural change.
+  - `src/app/book/page.tsx` — now a **Server Component** rendering
+    real indexable content (How-booking-works explainer,
+    "What you can book" grid linking every `/services/<category>`,
+    a 5-Q booking FAQ with visible Q/A, NAP) + `FAQPage` JSON-LD.
+    The wizard mounts as a client island under `<Suspense>`.
+
+**Merge hazard caught pre-ship:** because every PR in this engagement
+came from the same long-lived branch and each was *squash*-merged to
+`main`, `git merge origin/main` produced a **silent, conflict-marker-
+free bad auto-merge** in `src/middleware.ts` that re-introduced the
+#50 noindex block. Caught by auditing the merged file before pushing;
+removed, restoring the correct #51 state. **Recommendation:** retire
+`claude/improve-website-seo-LybGl` and start future work from fresh
+branches off `main` to prevent recurrence.
+
+**Production verification (`9e6a8de`, live):**
+- `/book` → `200`, `x-robots-tag` **absent**, `x-vercel-cache:
+  PRERENDER` — indexable.
+- Server-rendered "How booking works", "What you can book" +
+  `/services/*` links, "Booking FAQ" (visible Q/A) all present in
+  the no-JS HTML.
+- `ldjson-booking-faq` `FAQPage` JSON-LD present.
+- Wizard island present (Suspense skeleton SSR'd, hydrates
+  client-side); booking behaviour byte-identical.
+- `middleware.ts` post-merge confirmed clean (no resurrected
+  noindex).
+
+**Open follow-up:** `/book` is now genuinely indexable for the first
+time — submit it to GSC URL Inspector → Request Indexing so Google
+re-crawls promptly.
+
+---
+
 ## Owner punch list (post-deploy)
 
-Once this branch is merged and the Vercel deploy is live:
+Migrations are **already applied** to production Supabase
+(`hrrijetwksnfjtrcxihk`): `20260523_service_faqs`,
+`20260524_neighborhoods`, `20260525_backfill_client_profiles`. All
+WP code is merged to `main` and live. Remaining owner actions:
 
-1. Apply the two new Supabase migrations (run in order):
-   - `20260523_service_faqs.sql`
-   - `20260524_neighborhoods.sql`
-2. Confirm the FAQ accordion renders on a service-item page that has
-   seeded FAQs (e.g. `/services/item/balayage-incl-toner`).
-3. Confirm a neighborhood page renders (e.g. `/neighborhoods/pasadena-hair-salon`).
-4. Validate schema:
-   - Run https://search.google.com/test/rich-results on
+1. Validate schema:
+   - https://search.google.com/test/rich-results on
      `https://www.thelookhairsalonla.com/services/item/balayage-incl-toner`
-     and confirm Service + FAQ rich-result eligibility.
-   - Run the same against `/neighborhoods/pasadena-hair-salon` and
-     confirm Breadcrumb + FAQ are detected.
-5. Upload `docs/seo/disavow.txt` via Google Search Console →
+     → Service + FAQ rich-result eligibility.
+   - Same against `/neighborhoods/pasadena-hair-salon` → Breadcrumb +
+     FAQ.
+   - Same against `/book` → FAQ.
+2. Upload `docs/seo/disavow.txt` via Google Search Console →
    Disavow Links Tool against the canonical property.
-6. Run the GSC reindex requests listed in `docs/seo/index-consolidation.md`.
-7. Work through `docs/seo/citations.md` — start with the top-6 free
+3. Run the GSC reindex requests in `docs/seo/index-consolidation.md`,
+   **and** add `/book` to that list (now indexable after WP-J).
+4. Work through `docs/seo/citations.md` — start with the top-6 free
    listings, defer the rest.
-8. Wait 14 days; re-run Semrush organic_research and compare to the
-   baseline captured in the chat where this work was planned.
+5. Wait 14 days; re-run Semrush `organic_research` and compare to the
+   baseline captured when this work was planned. Re-pull the site
+   audit at +48–72h to confirm the WP-I/WP-J fixes cleared and to
+   re-evaluate the deferred `/services/item/*` + `/team/*` flags.
+6. Engineering hygiene: retire `claude/improve-website-seo-LybGl`;
+   branch future work off `main` (see WP-J merge-hazard note).
