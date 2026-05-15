@@ -99,7 +99,7 @@ export default async function BookPage() {
               <li>
                 <strong className="text-navy">3. Confirm.</strong>{" "}
                 Add your details, place the deposit if your service requires
-                one, and you'll get an email confirmation once the salon
+                one, and you&apos;ll get an email confirmation once the salon
                 reviews your request.
               </li>
             </ol>
