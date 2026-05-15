@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
+import BookingLoading from "./loading";
 import BookingProgress from "@/components/booking/BookingProgress";
 import ServicePicker from "@/components/booking/ServicePicker";
 import StylistPicker from "@/components/booking/StylistPicker";
@@ -96,7 +97,17 @@ const FALLBACK_SERVICES: Record<string, Service[]> = {
 };
 const FALLBACK_STYLISTS: Stylist[] = [];
 
-export default function BookPage() {
+// useSearchParams() forces a client-side-rendering bailout for the
+// whole route unless it sits under a Suspense boundary. Without the
+// boundary Next.js can only emit a loading skeleton as the prerender
+// AND auto-attaches `X-Robots-Tag: noindex` to that shell — which is
+// why bare /book has been served noindex for a long time (pre-dates
+// the PR #50 middleware; useSearchParams has been top-level here
+// since PR #35). Splitting the flow into an inner component wrapped
+// in <Suspense> lets Next prerender the real page and drop the
+// automatic noindex. The fallback reuses the exact route-segment
+// skeleton (./loading) so there's no visual change during hydration.
+function BookFlow() {
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const searchParams = useSearchParams();
 
@@ -949,5 +960,13 @@ export default function BookPage() {
           )}
         </div>
     </>
+  );
+}
+
+export default function BookPage() {
+  return (
+    <Suspense fallback={<BookingLoading />}>
+      <BookFlow />
+    </Suspense>
   );
 }
