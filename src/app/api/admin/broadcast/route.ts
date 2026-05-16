@@ -10,6 +10,11 @@ import { getBranding } from "@/lib/branding";
 import { z } from "zod";
 import { NextRequest } from "next/server";
 
+// Phone-only walk-ins carry a synthetic placeholder address; mailing
+// it is a guaranteed bounce, so they're excluded from email blasts.
+const SYNTHETIC_EMAIL_RE = /@noemail\.thelookhairsalonla\.com$/i;
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 // Owner-initiated broadcast. Separate from the per-appointment SMS/email
 // paths because broadcasts need segmentation, cost pre-flight, and a
 // confirm step before a few hundred sends fire.
@@ -208,7 +213,7 @@ export async function POST(request: NextRequest) {
   const audience = await collectAudience(parsed.data.segment, parsed.data.serviceId);
   const eligible = audience.filter((r) => {
     if (parsed.data.channel === "sms") return Boolean(r.phone && r.sms_consent);
-    return Boolean(r.email);
+    return Boolean(r.email) && !SYNTHETIC_EMAIL_RE.test(r.email);
   });
 
   const cap = parsed.data.limit ?? 500;
@@ -252,6 +257,10 @@ export async function POST(request: NextRequest) {
       });
       if (ok) results.sent += 1;
       else results.failed += 1;
+      // Space email sends to ~4/s so a large blast stays under
+      // Resend's 5 req/s cap (the per-send retry in lib/email
+      // absorbs any residual spike). SMS keeps its own pacing.
+      await sleep(250);
     }
   }
 

@@ -17,6 +17,19 @@ function getResend() {
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
 const FROM = `The Look Hair Salon <${FROM_EMAIL}>`;
 
+// Phone-only walk-ins get a synthetic placeholder address
+// (phone-3106…@noemail.thelookhairsalonla.com). That domain can't
+// receive mail — sending to it is a guaranteed failure that also
+// burns Resend's 5 req/s budget and produces reputation-damaging
+// bounces. Recognised here so the chokepoint can skip it.
+const SYNTHETIC_EMAIL_RE = /@noemail\.thelookhairsalonla\.com$/i;
+// Resend's free/default tier caps at 5 requests/second; over that it
+// returns a 429 whose message is "Too many requests. You can only
+// make 5 requests per second." Match broadly so a wording tweak on
+// their side doesn't silently disable the retry.
+const RATE_LIMIT_RE = /rate.?limit|too many requests|requests per second|\b429\b/i;
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 // Template-driven sender. When `html` is provided we send the HTML
 // variant and fall back to the plain-text `text` for legacy clients.
 // Optional `cc` so the status-change path can loop the salon inbox in
@@ -71,9 +84,35 @@ async function sendThroughResend(args: {
   replyTo?: string;
   event: string;
 }): Promise<boolean> {
-  const recipients = Array.isArray(args.to) ? args.to.join(", ") : args.to;
+  // Drop synthetic phone-hold placeholders before anything else. If
+  // every recipient is synthetic the send is meaningless — log it as
+  // skipped (so "why no email?" stays answerable) but do NOT raise an
+  // ops notification: this is the expected state for a phone-only
+  // walk-in, not a failure, and it was the source of the false
+  // "Email sending is failing" bell alerts.
+  const toList = (Array.isArray(args.to) ? args.to : [args.to]).filter(Boolean);
+  const realTo = toList.filter((e) => !SYNTHETIC_EMAIL_RE.test(e));
+  const ccList =
+    args.cc === undefined
+      ? undefined
+      : (Array.isArray(args.cc) ? args.cc : [args.cc]).filter(
+          (e) => e && !SYNTHETIC_EMAIL_RE.test(e),
+        );
+  const recipients = realTo.join(", ");
   const detail = (extra: Record<string, unknown>) =>
     JSON.stringify({ to: recipients, subject: args.subject, ...extra });
+
+  if (realTo.length === 0) {
+    await logEmail(
+      `${args.event}.skipped`,
+      JSON.stringify({
+        to: toList.join(", "),
+        subject: args.subject,
+        reason: "synthetic placeholder recipient — no real email on file",
+      }),
+    );
+    return false;
+  }
 
   if (!process.env.RESEND_API_KEY) {
     // Dev / preview without Resend wired up. Don't throw, but make
@@ -89,20 +128,56 @@ async function sendThroughResend(args: {
     }).catch(() => {});
     return false;
   }
-  try {
-    const res = await getResend().emails.send({
-      from: args.from,
-      to: args.to,
-      cc: args.cc,
-      subject: args.subject,
-      text: args.text,
-      html: args.html,
-      replyTo: args.replyTo,
-    });
-    if (res?.error) {
-      const reason = (res.error && (res.error as { message?: string }).message) || JSON.stringify(res.error);
+
+  // Resend caps at 5 req/s. A single booking can fan out several
+  // emails and the broadcast loop sends in a tight loop, so a 429 is
+  // expected under load rather than fatal. Retry the rate-limited
+  // case with exponential backoff (300 → 600 → 1200 ms — inside the
+  // 1s window) before giving up and alerting. Non-rate-limit errors
+  // fail immediately, exactly as before.
+  const MAX_ATTEMPTS = 4;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await getResend().emails.send({
+        from: args.from,
+        to: realTo,
+        cc: ccList && ccList.length > 0 ? ccList : undefined,
+        subject: args.subject,
+        text: args.text,
+        html: args.html,
+        replyTo: args.replyTo,
+      });
+      if (res?.error) {
+        const reason =
+          (res.error && (res.error as { message?: string }).message) ||
+          JSON.stringify(res.error);
+        const rateLimited =
+          RATE_LIMIT_RE.test(reason) ||
+          (res.error as { statusCode?: number }).statusCode === 429;
+        if (rateLimited && attempt < MAX_ATTEMPTS) {
+          await sleep(300 * 2 ** (attempt - 1));
+          continue;
+        }
+        await logEmail(`${args.event}.failed`, detail({ reason }));
+        console.error(`Email send failed (${args.event}):`, res.error);
+        notifyOpsFailure({
+          category: "email",
+          reason,
+          context: `Event ${args.event} → ${recipients}`,
+        }).catch(() => {});
+        return false;
+      }
+      const id = (res?.data as { id?: string } | null | undefined)?.id ?? null;
+      await logEmail(`${args.event}.sent`, detail({ resendId: id }));
+      return true;
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      if (RATE_LIMIT_RE.test(reason) && attempt < MAX_ATTEMPTS) {
+        await sleep(300 * 2 ** (attempt - 1));
+        continue;
+      }
       await logEmail(`${args.event}.failed`, detail({ reason }));
-      console.error(`Email send failed (${args.event}):`, res.error);
+      console.error(`Email send exception (${args.event}):`, err);
       notifyOpsFailure({
         category: "email",
         reason,
@@ -110,20 +185,20 @@ async function sendThroughResend(args: {
       }).catch(() => {});
       return false;
     }
-    const id = (res?.data as { id?: string } | null | undefined)?.id ?? null;
-    await logEmail(`${args.event}.sent`, detail({ resendId: id }));
-    return true;
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    await logEmail(`${args.event}.failed`, detail({ reason }));
-    console.error(`Email send exception (${args.event}):`, err);
-    notifyOpsFailure({
-      category: "email",
-      reason,
-      context: `Event ${args.event} → ${recipients}`,
-    }).catch(() => {});
-    return false;
   }
+
+  // Persistent rate-limiting across every attempt. Treat as a real
+  // failure so the ledger + bell reflect it.
+  await logEmail(
+    `${args.event}.failed`,
+    detail({ reason: "rate limited — exhausted retries" }),
+  );
+  notifyOpsFailure({
+    category: "email",
+    reason: "Rate limited by Resend — exhausted retries (5 req/s cap)",
+    context: `Event ${args.event} → ${recipients}`,
+  }).catch(() => {});
+  return false;
 }
 
 // Fire-and-forget admin_log writer. Lazy-imported so the email module
